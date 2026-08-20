@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Redirection…</title>
+    <meta name="robots" content="noindex" />
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #1f2933;
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        background: #f8fafc;
+      }
+
+      .message {
+        max-width: 32rem;
+        text-align: center;
+        line-height: 1.5;
+      }
+    </style>
+    <script type="text/javascript">
+      (function () {
+        var l = window.location;
+        var segments = l.pathname
+          .replace(/\/+/g, "/")
+          .replace(/^\//, "")
+          .replace(/\/$/, "")
+          .split("/")
+          .filter(function (segment) {
+            return segment.length > 0;
+          });
+        var pathSegmentsToKeep =
+          segments.length > 0 && segments[0] === "examens_blanc_lfjp" ? 1 : 0;
+        var keptPath = segments.slice(0, pathSegmentsToKeep).join("/");
+        var routePath = segments.slice(pathSegmentsToKeep).join("/");
+        var newUrl =
+          l.protocol +
+          "//" +
+          l.hostname +
+          (l.port ? ":" + l.port : "") +
+          (keptPath ? "/" + keptPath : "") +
+          "/?/" +
+          routePath.replace(/&/g, "~and~") +
+          (l.search ? "&" + l.search.slice(1).replace(/&/g, "~and~") : "") +
+          l.hash;
+        l.replace(newUrl);
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="message">
+      <p>Redirection en cours…</p>
+      <p>Si vous n'êtes pas redirigé automatiquement, veuillez revenir à la page d'accueil.</p>
+    </div>
+  </body>
+</html>

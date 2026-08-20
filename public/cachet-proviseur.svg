@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img" aria-labelledby="title desc">
+  <title id="title">Cachet du proviseur</title>
+  <desc id="desc">Cachet institutionnel stylisé pour la convocation de surveillance.</desc>
+  <defs>
+    <linearGradient id="ink" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#0f2f86" />
+      <stop offset="1" stop-color="#1f4db8" />
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="308" height="168" rx="14" fill="none" stroke="url(#ink)" stroke-width="6" />
+  <circle cx="160" cy="90" r="62" fill="none" stroke="url(#ink)" stroke-width="5" />
+  <circle cx="160" cy="90" r="48" fill="none" stroke="url(#ink)" stroke-width="2.5" stroke-dasharray="5 4" />
+  <text x="160" y="54" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700" fill="url(#ink)">
+    LYCEE FRANCAIS
+  </text>
+  <text x="160" y="76" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="url(#ink)">
+    SERVICE DES EXAMENS
+  </text>
+  <text x="160" y="101" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="800" fill="url(#ink)">
+    CACHET OFFICIEL
+  </text>
+  <text x="160" y="124" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="600" fill="url(#ink)">
+    Session Juin 2026
+  </text>
+</svg>
