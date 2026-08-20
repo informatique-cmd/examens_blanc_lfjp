@@ -216,7 +216,6 @@ const supportRoomNumberMap: Record<string, RoomColumn> = {
   "13": "S13",
   "14": "S14",
   "15": "S15",
-  "16": "S16",
 };
 
 const extractSupportRooms = (value: string): RoomColumn[] => {

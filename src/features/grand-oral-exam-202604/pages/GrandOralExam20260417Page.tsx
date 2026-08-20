@@ -112,7 +112,7 @@ function downloadPlanningPdf(filename: string, title: string, subtitle: string, 
         doc.setTextColor(15, 23, 42);
 
         let textY = y + rowPadding + lineHeight;
-        cell.forEach((line) => {
+        cell.forEach((line: string) => {
           doc.text(line, x + 6, textY);
           textY += lineHeight;
         });

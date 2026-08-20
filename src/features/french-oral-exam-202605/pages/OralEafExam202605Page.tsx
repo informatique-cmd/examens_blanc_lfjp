@@ -176,7 +176,7 @@ function downloadPlanningPdf({ filename, title, subtitle, columns, rows }: Downl
         doc.setFontSize(11);
 
         let textY = y + rowPadding + lineHeight;
-        cell.forEach((line) => {
+        cell.forEach((line: string) => {
           doc.text(line, x + rowPadding, textY);
           textY += lineHeight;
         });
@@ -197,7 +197,7 @@ function downloadPlanningPdf({ filename, title, subtitle, columns, rows }: Downl
   doc.setFontSize(12);
   doc.setTextColor(71, 85, 105);
   const subtitleLines = doc.splitTextToSize(subtitle, usableWidth);
-  subtitleLines.forEach((line, index) => {
+  subtitleLines.forEach((line: string, index: number) => {
     doc.text(line, marginX, marginY + index * 16);
   });
 

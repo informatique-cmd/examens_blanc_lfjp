@@ -12,13 +12,12 @@ module.exports = {
       jsx: true,
     },
   },
-  plugins: ["@typescript-eslint", "react", "react-hooks", "react-refresh"],
+  plugins: ["@typescript-eslint", "react", "react-hooks"],
   extends: [
     "eslint:recommended",
     "plugin:react/recommended",
     "plugin:@typescript-eslint/recommended",
     "plugin:react-hooks/recommended",
-    "plugin:react-refresh/recommended",
     "prettier",
   ],
   settings: {
@@ -28,5 +27,6 @@ module.exports = {
   },
   rules: {
     "react/react-in-jsx-scope": "off",
+    "react/no-unescaped-entities": "off",
   },
 };

@@ -26,7 +26,8 @@ const HTML2CANVAS_OPTIONS = {
 import type { ExamColumn } from "../data/scheduleData";
 import { scheduleData } from "../data/scheduleData";
 
-type ExamType = "bac" | "dnb" | "recap";
+type ScheduleExamType = keyof typeof scheduleData;
+type ExamType = ScheduleExamType | "recap";
 interface ShiftAssignment {
   room: string;
   col: ExamColumn;
@@ -65,8 +66,8 @@ function getSupervisorSortKey(name: string) {
 
 function getUniqueSupervisors() {
   const supervisors = new Set<string>();
-  ["bac", "dnb"].forEach((exam) => {
-    scheduleData[exam as ExamType].rows.forEach((row) => {
+  ( ["bac", "dnb"] as ScheduleExamType[]).forEach((exam) => {
+    scheduleData[exam].rows.forEach((row) => {
       row.shifts.forEach((shift) => {
         shift.forEach((person) => {
           if (person) supervisors.add(person);
@@ -80,7 +81,7 @@ function getUniqueSupervisors() {
   );
 }
 
-function buildSupervisorShifts(supervisor: string, exam: ExamType): ShiftAssignment[] {
+function buildSupervisorShifts(supervisor: string, exam: ScheduleExamType): ShiftAssignment[] {
   const shifts: ShiftAssignment[] = [];
   const dataset = scheduleData[exam];
 
