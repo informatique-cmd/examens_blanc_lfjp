@@ -26,6 +26,17 @@ interface Student { id: string; school_year_id: string; first_name: string; last
 interface Room { id: string; school_year_id: string; name: string; capacity: number; }
 interface Assignment { id: string; exam_id: string; teacher_id: string; room_id: string | null; mission: string; starts_at: string | null; ends_at: string | null; }
 
+function parseCsv(text: string): Record<string, string>[] {
+  const lines = text.trim().split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) return [];
+  const separator = lines[0].includes(";") ? ";" : ",";
+  const headers = lines[0].split(separator).map((header) => header.trim().toLowerCase().replace(/^"|"$/g, ""));
+  return lines.slice(1).map((line) => {
+    const values = line.split(separator).map((value) => value.trim().replace(/^"|"$/g, ""));
+    return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""]));
+  });
+}
+
 export default function AdminPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,6 +58,8 @@ export default function AdminPage() {
   const [studentForm, setStudentForm] = useState({ firstName: "", lastName: "", className: "" });
   const [roomForm, setRoomForm] = useState({ name: "", capacity: "" });
   const [assignmentForm, setAssignmentForm] = useState({ examId: "", teacherId: "", roomId: "", mission: "Surveillance", startsAt: "", endsAt: "" });
+  const [studentCsv, setStudentCsv] = useState<File | null>(null);
+  const [teacherCsv, setTeacherCsv] = useState<File | null>(null);
 
   useEffect(() => {
     if (!supabase) return;
@@ -190,6 +203,34 @@ export default function AdminPage() {
     const { error } = await supabase.from("surveillance_assignments").insert({ exam_id: assignmentForm.examId, teacher_id: assignmentForm.teacherId, room_id: assignmentForm.roomId || null, mission: assignmentForm.mission.trim(), starts_at: assignmentForm.startsAt ? new Date(assignmentForm.startsAt).toISOString() : null, ends_at: assignmentForm.endsAt ? new Date(assignmentForm.endsAt).toISOString() : null });
     setMessage(error ? error.message : "Surveillance ajoutée.");
     if (!error && selectedYearId) { setAssignmentForm({ examId: "", teacherId: "", roomId: "", mission: "Surveillance", startsAt: "", endsAt: "" }); await loadYearContent(selectedYearId); }
+  }
+
+  async function importCsv(file: File | null, kind: "students" | "teachers") {
+    if (!supabase || !selectedYearId || !file) return;
+    const rows = parseCsv(await file.text());
+    if (!rows.length) {
+      setMessage("Le fichier CSV doit contenir une ligne d’en-têtes et au moins une ligne de données.");
+      return;
+    }
+    const studentRecords = rows.filter((row) => row.first_name && row.last_name && row.class_name).map((row) => ({ school_year_id: selectedYearId, first_name: row.first_name, last_name: row.last_name, class_name: row.class_name }));
+    const teacherRecords = rows.filter((row) => row.first_name && row.last_name).map((row) => ({ school_year_id: selectedYearId, civility: row.civility === "Monsieur" ? "Monsieur" : "Madame", first_name: row.first_name, last_name: row.last_name, email: row.email || null }));
+    const records = kind === "students" ? studentRecords : teacherRecords;
+    if (!records.length) {
+      setMessage(kind === "students" ? "Colonnes attendues : first_name,last_name,class_name" : "Colonnes attendues : civility,first_name,last_name,email");
+      return;
+    }
+    setIsLoading(true);
+    const result = kind === "students"
+      ? await supabase.from("students").insert(studentRecords)
+      : await supabase.from("teachers").insert(teacherRecords);
+    const { error } = result;
+    setIsLoading(false);
+    setMessage(error ? error.message : `${records.length} ${kind === "students" ? "élève(s)" : "enseignant(s)"} importé(s).`);
+    if (!error) {
+      if (kind === "students") setStudentCsv(null);
+      else setTeacherCsv(null);
+      await loadYearContent(selectedYearId);
+    }
   }
 
   async function deleteContent(table: "teachers" | "students" | "rooms" | "surveillance_assignments", id: string) {
@@ -368,6 +409,10 @@ export default function AdminPage() {
                       <input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Email (facultatif)" type="email" value={teacherForm.email} onChange={(event) => setTeacherForm((current) => ({ ...current, email: event.target.value }))} />
                       <button className="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white sm:col-span-2" type="submit">Ajouter l’enseignant</button>
                     </form>
+                    <div className="rounded-lg border border-dashed border-blue-300 bg-blue-50 p-3">
+                      <p className="text-xs text-slate-600">Import CSV : <code>civility,first_name,last_name,email</code></p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2"><input accept=".csv,text/csv" type="file" onChange={(event) => setTeacherCsv(event.target.files?.[0] ?? null)} /><button className="rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" disabled={!teacherCsv || isLoading} onClick={() => void importCsv(teacherCsv, "teachers")}>Importer les enseignants</button></div>
+                    </div>
                     <div className="max-h-48 space-y-2 overflow-y-auto">{teachers.map((teacher) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={teacher.id}><span>{teacher.civility} {teacher.first_name} {teacher.last_name}</span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("teachers", teacher.id)}>Supprimer</button></div>)}{!teachers.length ? <p className="text-sm text-slate-500">Aucun enseignant.</p> : null}</div>
                   </section>
 
@@ -379,6 +424,10 @@ export default function AdminPage() {
                       <input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Classe" value={studentForm.className} onChange={(event) => setStudentForm((current) => ({ ...current, className: event.target.value }))} required />
                       <button className="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white sm:col-span-3" type="submit">Ajouter l’élève</button>
                     </form>
+                    <div className="rounded-lg border border-dashed border-blue-300 bg-blue-50 p-3">
+                      <p className="text-xs text-slate-600">Import CSV : <code>first_name,last_name,class_name</code></p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2"><input accept=".csv,text/csv" type="file" onChange={(event) => setStudentCsv(event.target.files?.[0] ?? null)} /><button className="rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" disabled={!studentCsv || isLoading} onClick={() => void importCsv(studentCsv, "students")}>Importer les élèves</button></div>
+                    </div>
                     <div className="max-h-48 space-y-2 overflow-y-auto">{students.map((student) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={student.id}><span>{student.last_name} {student.first_name} <small className="text-slate-500">({student.class_name})</small></span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("students", student.id)}>Supprimer</button></div>)}{!students.length ? <p className="text-sm text-slate-500">Aucun élève.</p> : null}</div>
                   </section>
 
