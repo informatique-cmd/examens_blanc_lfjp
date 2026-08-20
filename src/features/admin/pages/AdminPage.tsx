@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { isSupabaseConfigured, supabase } from "../../../shared/lib/supabase";
@@ -21,6 +21,11 @@ interface Exam {
   is_published: boolean;
 }
 
+interface Teacher { id: string; school_year_id: string; civility: "Madame" | "Monsieur"; first_name: string; last_name: string; email: string | null; }
+interface Student { id: string; school_year_id: string; first_name: string; last_name: string; class_name: string; }
+interface Room { id: string; school_year_id: string; name: string; capacity: number; }
+interface Assignment { id: string; exam_id: string; teacher_id: string; room_id: string | null; mission: string; starts_at: string | null; ends_at: string | null; }
+
 export default function AdminPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,6 +39,14 @@ export default function AdminPage() {
   const [yearDates, setYearDates] = useState({ startsOn: "", endsOn: "" });
   const [exams, setExams] = useState<Exam[]>([]);
   const [examForm, setExamForm] = useState({ title: "", type: "Bac blanc", startsAt: "", endsAt: "" });
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [teacherForm, setTeacherForm] = useState({ civility: "Madame" as "Madame" | "Monsieur", firstName: "", lastName: "", email: "" });
+  const [studentForm, setStudentForm] = useState({ firstName: "", lastName: "", className: "" });
+  const [roomForm, setRoomForm] = useState({ name: "", capacity: "" });
+  const [assignmentForm, setAssignmentForm] = useState({ examId: "", teacherId: "", roomId: "", mission: "Surveillance", startsAt: "", endsAt: "" });
 
   useEffect(() => {
     if (!supabase) return;
@@ -52,13 +65,6 @@ export default function AdminPage() {
   useEffect(() => {
     if (userEmail) void loadYears();
   }, [userEmail]);
-
-  useEffect(() => {
-    const year = years.find((item) => item.id === selectedYearId);
-    if (!year) return;
-    setYearDates({ startsOn: year.starts_on ?? "", endsOn: year.ends_on ?? "" });
-    void loadExams(year.id);
-  }, [selectedYearId, years]);
 
   async function loadYears() {
     if (!supabase) return;
@@ -122,6 +128,75 @@ export default function AdminPage() {
       return;
     }
     setExams(data ?? []);
+  }
+
+  const loadYearContent = useCallback(async (yearId: string) => {
+    if (!supabase) return;
+    const [teachersResult, studentsResult, roomsResult, examsResult] = await Promise.all([
+      supabase.from("teachers").select("id, school_year_id, civility, first_name, last_name, email").eq("school_year_id", yearId).order("last_name"),
+      supabase.from("students").select("id, school_year_id, first_name, last_name, class_name").eq("school_year_id", yearId).order("last_name"),
+      supabase.from("rooms").select("id, school_year_id, name, capacity").eq("school_year_id", yearId).order("name"),
+      supabase.from("exams").select("id").eq("school_year_id", yearId),
+    ]);
+    const examIds = (examsResult.data ?? []).map((exam) => exam.id);
+    const assignmentsResult = examIds.length
+      ? await supabase.from("surveillance_assignments").select("id, exam_id, teacher_id, room_id, mission, starts_at, ends_at").in("exam_id", examIds).order("starts_at")
+      : { data: [], error: null };
+    if (teachersResult.error || studentsResult.error || roomsResult.error || examsResult.error || assignmentsResult.error) {
+      setMessage(teachersResult.error?.message ?? studentsResult.error?.message ?? roomsResult.error?.message ?? examsResult.error?.message ?? assignmentsResult.error?.message ?? "Erreur de chargement.");
+      return;
+    }
+    setTeachers(teachersResult.data ?? []);
+    setStudents(studentsResult.data ?? []);
+    setRooms(roomsResult.data ?? []);
+    setAssignments(assignmentsResult.data ?? []);
+  }, []);
+
+  useEffect(() => {
+    const year = years.find((item) => item.id === selectedYearId);
+    if (!year) return;
+    setYearDates({ startsOn: year.starts_on ?? "", endsOn: year.ends_on ?? "" });
+    void loadExams(year.id);
+    void loadYearContent(year.id);
+  }, [loadYearContent, selectedYearId, years]);
+
+  async function addTeacher(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || !selectedYearId || !teacherForm.firstName.trim() || !teacherForm.lastName.trim()) return;
+    const { error } = await supabase.from("teachers").insert({ school_year_id: selectedYearId, civility: teacherForm.civility, first_name: teacherForm.firstName.trim(), last_name: teacherForm.lastName.trim(), email: teacherForm.email.trim() || null });
+    setMessage(error ? error.message : "Enseignant ajouté.");
+    if (!error) { setTeacherForm({ civility: "Madame", firstName: "", lastName: "", email: "" }); await loadYearContent(selectedYearId); }
+  }
+
+  async function addStudent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || !selectedYearId || !studentForm.firstName.trim() || !studentForm.lastName.trim() || !studentForm.className.trim()) return;
+    const { error } = await supabase.from("students").insert({ school_year_id: selectedYearId, first_name: studentForm.firstName.trim(), last_name: studentForm.lastName.trim(), class_name: studentForm.className.trim() });
+    setMessage(error ? error.message : "Élève ajouté.");
+    if (!error) { setStudentForm({ firstName: "", lastName: "", className: "" }); await loadYearContent(selectedYearId); }
+  }
+
+  async function addRoom(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || !selectedYearId || !roomForm.name.trim()) return;
+    const { error } = await supabase.from("rooms").insert({ school_year_id: selectedYearId, name: roomForm.name.trim(), capacity: Number(roomForm.capacity) || 0 });
+    setMessage(error ? error.message : "Salle ajoutée.");
+    if (!error) { setRoomForm({ name: "", capacity: "" }); await loadYearContent(selectedYearId); }
+  }
+
+  async function addAssignment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || !assignmentForm.examId || !assignmentForm.teacherId || !assignmentForm.mission.trim()) return;
+    const { error } = await supabase.from("surveillance_assignments").insert({ exam_id: assignmentForm.examId, teacher_id: assignmentForm.teacherId, room_id: assignmentForm.roomId || null, mission: assignmentForm.mission.trim(), starts_at: assignmentForm.startsAt ? new Date(assignmentForm.startsAt).toISOString() : null, ends_at: assignmentForm.endsAt ? new Date(assignmentForm.endsAt).toISOString() : null });
+    setMessage(error ? error.message : "Surveillance ajoutée.");
+    if (!error && selectedYearId) { setAssignmentForm({ examId: "", teacherId: "", roomId: "", mission: "Surveillance", startsAt: "", endsAt: "" }); await loadYearContent(selectedYearId); }
+  }
+
+  async function deleteContent(table: "teachers" | "students" | "rooms" | "surveillance_assignments", id: string) {
+    if (!supabase || !selectedYearId || !window.confirm("Supprimer cet élément ?")) return;
+    const { error } = await supabase.from(table).delete().eq("id", id);
+    setMessage(error ? error.message : "Élément supprimé.");
+    if (!error) await loadYearContent(selectedYearId);
   }
 
   async function createExam(event: FormEvent<HTMLFormElement>) {
@@ -281,6 +356,51 @@ export default function AdminPage() {
                     <div className="flex flex-wrap gap-2"><button className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold" onClick={() => void updateExam(exam, { is_published: !exam.is_published })}>{exam.is_published ? "Dépublier" : "Publier"}</button><button className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700" onClick={() => void deleteExam(exam)}>Supprimer</button></div>
                   </article>)}
                   {!exams.length ? <p className="rounded-xl bg-white p-4 text-sm text-slate-500">Aucun examen pour cette année.</p> : null}
+                </div>
+
+                <div className="grid gap-6 xl:grid-cols-2">
+                  <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+                    <div><h3 className="text-lg font-bold text-slate-900">Enseignants</h3><p className="text-sm text-slate-500">Ajoute les personnes qui pourront être affectées aux surveillances.</p></div>
+                    <form className="grid gap-2 sm:grid-cols-2" onSubmit={addTeacher}>
+                      <select className="rounded-lg border border-slate-300 px-3 py-2" value={teacherForm.civility} onChange={(event) => setTeacherForm((current) => ({ ...current, civility: event.target.value as "Madame" | "Monsieur" }))}><option>Madame</option><option>Monsieur</option></select>
+                      <input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Prénom" value={teacherForm.firstName} onChange={(event) => setTeacherForm((current) => ({ ...current, firstName: event.target.value }))} required />
+                      <input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Nom" value={teacherForm.lastName} onChange={(event) => setTeacherForm((current) => ({ ...current, lastName: event.target.value }))} required />
+                      <input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Email (facultatif)" type="email" value={teacherForm.email} onChange={(event) => setTeacherForm((current) => ({ ...current, email: event.target.value }))} />
+                      <button className="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white sm:col-span-2" type="submit">Ajouter l’enseignant</button>
+                    </form>
+                    <div className="max-h-48 space-y-2 overflow-y-auto">{teachers.map((teacher) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={teacher.id}><span>{teacher.civility} {teacher.first_name} {teacher.last_name}</span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("teachers", teacher.id)}>Supprimer</button></div>)}{!teachers.length ? <p className="text-sm text-slate-500">Aucun enseignant.</p> : null}</div>
+                  </section>
+
+                  <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+                    <div><h3 className="text-lg font-bold text-slate-900">Élèves</h3><p className="text-sm text-slate-500">Les élèves sont rattachés à cette année et à leur classe.</p></div>
+                    <form className="grid gap-2 sm:grid-cols-3" onSubmit={addStudent}>
+                      <input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Prénom" value={studentForm.firstName} onChange={(event) => setStudentForm((current) => ({ ...current, firstName: event.target.value }))} required />
+                      <input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Nom" value={studentForm.lastName} onChange={(event) => setStudentForm((current) => ({ ...current, lastName: event.target.value }))} required />
+                      <input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Classe" value={studentForm.className} onChange={(event) => setStudentForm((current) => ({ ...current, className: event.target.value }))} required />
+                      <button className="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white sm:col-span-3" type="submit">Ajouter l’élève</button>
+                    </form>
+                    <div className="max-h-48 space-y-2 overflow-y-auto">{students.map((student) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={student.id}><span>{student.last_name} {student.first_name} <small className="text-slate-500">({student.class_name})</small></span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("students", student.id)}>Supprimer</button></div>)}{!students.length ? <p className="text-sm text-slate-500">Aucun élève.</p> : null}</div>
+                  </section>
+
+                  <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+                    <div><h3 className="text-lg font-bold text-slate-900">Salles</h3><p className="text-sm text-slate-500">Définis les salles et leur capacité.</p></div>
+                    <form className="grid gap-2 sm:grid-cols-3" onSubmit={addRoom}><input className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" placeholder="Salle S12" value={roomForm.name} onChange={(event) => setRoomForm((current) => ({ ...current, name: event.target.value }))} required /><input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Capacité" type="number" min="0" value={roomForm.capacity} onChange={(event) => setRoomForm((current) => ({ ...current, capacity: event.target.value }))} /><button className="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white sm:col-span-3" type="submit">Ajouter la salle</button></form>
+                    <div className="max-h-48 space-y-2 overflow-y-auto">{rooms.map((room) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={room.id}><span>{room.name} <small className="text-slate-500">({room.capacity} places)</small></span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("rooms", room.id)}>Supprimer</button></div>)}{!rooms.length ? <p className="text-sm text-slate-500">Aucune salle.</p> : null}</div>
+                  </section>
+
+                  <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+                    <div><h3 className="text-lg font-bold text-slate-900">Surveillances</h3><p className="text-sm text-slate-500">Affecte un enseignant et une salle à un examen.</p></div>
+                    <form className="grid gap-2 sm:grid-cols-2" onSubmit={addAssignment}>
+                      <select className="rounded-lg border border-slate-300 px-3 py-2" value={assignmentForm.examId} onChange={(event) => setAssignmentForm((current) => ({ ...current, examId: event.target.value }))} required><option value="">Examen</option>{exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.title}</option>)}</select>
+                      <select className="rounded-lg border border-slate-300 px-3 py-2" value={assignmentForm.teacherId} onChange={(event) => setAssignmentForm((current) => ({ ...current, teacherId: event.target.value }))} required><option value="">Enseignant</option>{teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.last_name} {teacher.first_name}</option>)}</select>
+                      <select className="rounded-lg border border-slate-300 px-3 py-2" value={assignmentForm.roomId} onChange={(event) => setAssignmentForm((current) => ({ ...current, roomId: event.target.value }))}><option value="">Salle facultative</option>{rooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}</select>
+                      <input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Mission" value={assignmentForm.mission} onChange={(event) => setAssignmentForm((current) => ({ ...current, mission: event.target.value }))} required />
+                      <input className="rounded-lg border border-slate-300 px-3 py-2" type="datetime-local" value={assignmentForm.startsAt} onChange={(event) => setAssignmentForm((current) => ({ ...current, startsAt: event.target.value }))} />
+                      <input className="rounded-lg border border-slate-300 px-3 py-2" type="datetime-local" value={assignmentForm.endsAt} onChange={(event) => setAssignmentForm((current) => ({ ...current, endsAt: event.target.value }))} />
+                      <button className="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white sm:col-span-2" type="submit">Ajouter la surveillance</button>
+                    </form>
+                    <div className="max-h-48 space-y-2 overflow-y-auto">{assignments.map((assignment) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={assignment.id}><span>{assignment.mission}</span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("surveillance_assignments", assignment.id)}>Supprimer</button></div>)}{!assignments.length ? <p className="text-sm text-slate-500">Aucune surveillance.</p> : null}</div>
+                  </section>
                 </div>
               </section>
             ) : null}
