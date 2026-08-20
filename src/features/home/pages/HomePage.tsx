@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   CalendarDays,
   Calculator,
@@ -13,8 +14,29 @@ import HomeHero from "../components/HomeHero";
 import HomeLayout from "../components/HomeLayout";
 import type { HomeCalloutEntry } from "../constants";
 import { HOME_CALLOUT_ENTRIES, HOME_PAGE_CONTENT } from "../constants";
+import { supabase } from "../../../shared/lib/supabase";
+
+interface PublishedSchoolYear {
+  id: string;
+  label: string;
+}
 
 export default function HomePage() {
+  const [publishedYears, setPublishedYears] = useState<PublishedSchoolYear[]>([]);
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    void supabase
+      .from("school_years")
+      .select("id, label")
+      .eq("is_published", true)
+      .order("label", { ascending: false })
+      .then(({ data }) => {
+        setPublishedYears(data ?? []);
+      });
+  }, []);
+
   const calloutEntries = [...HOME_CALLOUT_ENTRIES].sort((a, b) =>
     new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
@@ -61,6 +83,23 @@ export default function HomePage() {
           );
         })}
       </div>
+
+      {publishedYears.length > 0 ? (
+        <section className="w-full max-w-5xl space-y-4 text-left">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">Données publiées</p>
+            <h2 className="mt-1 text-2xl font-bold text-slate-900">Années scolaires disponibles</h2>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {publishedYears.map((year) => (
+              <article key={year.id} className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                <p className="text-sm font-semibold text-emerald-700">Année publiée</p>
+                <h3 className="mt-2 text-xl font-bold text-slate-900">{year.label}</h3>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </HomeLayout>
   );
 }
