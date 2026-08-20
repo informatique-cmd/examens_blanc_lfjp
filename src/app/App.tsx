@@ -2,6 +2,7 @@ import { Suspense, lazy } from "react";
 import { Route, Routes } from "react-router-dom";
 
 const HomePage = lazy(() => import("../features/home/pages/HomePage"));
+const SchoolYearPage = lazy(() => import("../features/home/pages/SchoolYearPage"));
 const AdminPage = lazy(() => import("../features/admin/pages/AdminPage"));
 const ExamDashboardPage = lazy(
   () => import("../features/exam-dashboard/pages/ExamDashboardPage"),
@@ -42,6 +43,7 @@ export default function App() {
     <Suspense fallback={<div className="p-6 text-center text-slate-500">Chargement…</div>}>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/annees/:yearId" element={<SchoolYearPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/examens-blancs" element={<ExamDashboardPage />} />
         <Route

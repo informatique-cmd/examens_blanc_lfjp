@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   CalendarDays,
   Calculator,
@@ -92,10 +93,11 @@ export default function HomePage() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {publishedYears.map((year) => (
-              <article key={year.id} className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+              <Link to={`/annees/${year.id}`} key={year.id} className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 transition hover:border-emerald-400 hover:bg-emerald-100">
                 <p className="text-sm font-semibold text-emerald-700">Année publiée</p>
                 <h3 className="mt-2 text-xl font-bold text-slate-900">{year.label}</h3>
-              </article>
+                <p className="mt-3 text-sm font-semibold text-emerald-800">Voir les examens →</p>
+              </Link>
             ))}
           </div>
         </section>
