@@ -1,6 +1,6 @@
 # Modèles d'import des données
 
-Les modèles sont disponibles dans `public/templates` et téléchargeables depuis l'espace `/admin`.
+Les modèles sont conservés dans `public/templates` pour préparer les fichiers hors de l'application. L'interface admin affiche uniquement les colonnes attendues et ne contient pas de menu de modèles.
 
 ## Ordre recommandé
 
@@ -18,12 +18,12 @@ Fichier : `eleves-template.csv`
 
 Colonnes obligatoires :
 
-- `first_name` : prénom de l'élève ;
-- `last_name` : nom de famille ;
-- `class_name` : classe, par exemple `1ERE1` ou `TERMINALE2`.
+- `prénom` : prénom de l'élève ;
+- `nom` : nom de famille ;
+- `classe` : classe, par exemple `1ERE1` ou `TERMINALE2`.
 
 ```csv
-first_name,last_name,class_name
+prénom,nom,classe
 Awa,Diallo,1ERE1
 Moussa,Ndiaye,TERMINALE2
 ```
@@ -34,13 +34,13 @@ Fichier : `enseignants-template.csv`
 
 Colonnes :
 
-- `civility` : uniquement `Madame` ou `Monsieur` ;
-- `first_name` : prénom ;
-- `last_name` : nom ;
+- `civilité` : uniquement `Madame` ou `Monsieur` ;
+- `prénom` : prénom ;
+- `nom` : nom ;
 - `email` : facultatif.
 
 ```csv
-civility,first_name,last_name,email
+civilité,prénom,nom,email
 Madame,Claire,Martin,claire.martin@example.com
 Monsieur,Bastien,Capel,bastien.capel@example.com
 ```
@@ -51,12 +51,12 @@ Fichier : `examens-template.csv`
 
 Colonnes :
 
-- `title` : nom affiché de l'examen ;
-- `exam_type` : type, par exemple `Mathematiques`, `EAF` ou `DNB` ;
-- `starts_at` et `ends_at` : format `AAAA-MM-JJTHH:MM` ;
-- `is_published` : `true` ou `false`.
+- `intitulé` : nom affiché de l'examen ;
+- `type` : type, par exemple `Mathématiques`, `EAF` ou `DNB` ;
+- `date_début` et `date_fin` : format `AAAA-MM-JJTHH:MM` ;
+- `publié` : `true` ou `false`.
 
-L'import automatique des examens sera ajouté dans une prochaine étape. Pour l'instant, utilise le formulaire **Ajouter un examen** dans `/admin`.
+L'import des examens est disponible dans la section **Examens** de `/admin`. Le fichier est analysé avant confirmation.
 
 ## Salles
 
@@ -64,10 +64,10 @@ Fichier : `salles-template.csv`
 
 Colonnes :
 
-- `name` : nom de la salle ;
-- `capacity` : capacité numérique.
+- `nom` : nom de la salle ;
+- `capacité` : capacité numérique.
 
-L'ajout se fait actuellement avec le formulaire **Ajouter la salle**.
+L'import des salles est disponible dans la section **Salles** de `/admin`. Le fichier est analysé avant confirmation.
 
 ## Surveillances
 
@@ -75,17 +75,17 @@ Fichier : `surveillances-template.csv`
 
 Colonnes :
 
-- `exam_title` : titre exact de l'examen déjà créé ;
-- `teacher_last_name` et `teacher_first_name` : enseignant déjà enregistré ;
-- `room_name` : salle déjà enregistrée ;
+- `examen` : titre exact de l'examen déjà créé ;
+- `nom_enseignant` et `prénom_enseignant` : enseignant déjà enregistré ;
+- `salle` : salle déjà enregistrée ;
 - `mission` : libellé de la mission ;
-- `starts_at` et `ends_at` : format `AAAA-MM-JJTHH:MM`.
+- `date_début` et `date_fin` : format `AAAA-MM-JJTHH:MM`.
 
-L'ajout se fait actuellement avec le formulaire **Ajouter la surveillance**. L'import automatique sera ajouté ensuite.
+L'import des surveillances est disponible dans la section **Surveillances** de `/admin`. Les examens, enseignants et salles doivent déjà exister dans l'année sélectionnée.
 
 ## Règles importantes
 
-- Conserver exactement les noms des colonnes de la première ligne.
+- Conserver exactement les noms français des colonnes de la première ligne.
 - Ne pas supprimer la ligne d'en-tête.
 - Utiliser un séparateur virgule `,` ou point-virgule `;`.
 - Enregistrer le fichier en CSV UTF-8.
