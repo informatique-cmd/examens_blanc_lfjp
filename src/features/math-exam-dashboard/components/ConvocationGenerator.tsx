@@ -85,7 +85,7 @@ export default function ConvocationGenerator() {
       const label = entry ? `${entry.firstName} ${entry.lastName}` : group.teacher;
       return { value: group.teacher, label };
     });
-  }, [assignedTeacherGroups]);
+  }, [assignedTeacherGroups, teacherDirectoryByShortName]);
 
   const defaultTeacher = teacherOptions[0]?.value ?? "";
   const [selectedTeacher, setSelectedTeacher] = useState<string>(defaultTeacher);
