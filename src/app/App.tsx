@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 
 const HomePage = lazy(() => import("../features/home/pages/HomePage"));
 const SchoolYearPage = lazy(() => import("../features/home/pages/SchoolYearPage"));
+const SchoolExamPage = lazy(() => import("../features/home/pages/SchoolExamPage"));
 const AdminPage = lazy(() => import("../features/admin/pages/AdminPage"));
 const ExamDashboardPage = lazy(
   () => import("../features/exam-dashboard/pages/ExamDashboardPage"),
@@ -44,6 +45,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/annees/:yearId" element={<SchoolYearPage />} />
+        <Route path="/annees/:yearId/examens/:examId" element={<SchoolExamPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/examens-blancs" element={<ExamDashboardPage />} />
         <Route

@@ -46,6 +46,11 @@ export default function AdminPage() {
   const [studentForm, setStudentForm] = useState({ firstName: "", lastName: "", className: "" });
   const [roomForm, setRoomForm] = useState({ name: "", capacity: "" });
   const [assignmentForm, setAssignmentForm] = useState({ examId: "", teacherId: "", roomId: "", mission: "Surveillance", startsAt: "", endsAt: "" });
+  const [editingExamId, setEditingExamId] = useState<string | null>(null);
+  const [editingTeacherId, setEditingTeacherId] = useState<string | null>(null);
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ title: "", type: "", startsAt: "", endsAt: "", civility: "Madame" as "Madame" | "Monsieur", firstName: "", lastName: "", email: "", className: "", name: "", capacity: "" });
 
   useEffect(() => {
     if (!supabase) return;
@@ -233,6 +238,34 @@ export default function AdminPage() {
     if (!error) await loadExams(selectedYearId);
   }
 
+  function startEditExam(exam: Exam) {
+    setEditingExamId(exam.id);
+    setEditForm({ ...editForm, title: exam.title, type: exam.exam_type, startsAt: exam.starts_at ? exam.starts_at.slice(0, 16) : "", endsAt: exam.ends_at ? exam.ends_at.slice(0, 16) : "" });
+  }
+
+  async function saveExamEdit(exam: Exam) {
+    if (!supabase) return;
+    const { error } = await supabase.from("exams").update({ title: editForm.title.trim(), exam_type: editForm.type.trim(), starts_at: editForm.startsAt ? new Date(editForm.startsAt).toISOString() : null, ends_at: editForm.endsAt ? new Date(editForm.endsAt).toISOString() : null }).eq("id", exam.id);
+    setMessage(error ? error.message : "Examen modifié.");
+    if (!error) { setEditingExamId(null); await loadExams(exam.school_year_id); }
+  }
+
+  function startEditTeacher(teacher: Teacher) { setEditingTeacherId(teacher.id); setEditForm({ ...editForm, civility: teacher.civility, firstName: teacher.first_name, lastName: teacher.last_name, email: teacher.email ?? "" }); }
+  function startEditStudent(student: Student) { setEditingStudentId(student.id); setEditForm({ ...editForm, firstName: student.first_name, lastName: student.last_name, className: student.class_name }); }
+  function startEditRoom(room: Room) { setEditingRoomId(room.id); setEditForm({ ...editForm, name: room.name, capacity: String(room.capacity) }); }
+
+  async function saveSimpleEdit(table: "teachers" | "students" | "rooms", id: string) {
+    if (!supabase || !selectedYearId) return;
+    const changes = table === "teachers"
+      ? { civility: editForm.civility, first_name: editForm.firstName.trim(), last_name: editForm.lastName.trim(), email: editForm.email.trim() || null }
+      : table === "students"
+        ? { first_name: editForm.firstName.trim(), last_name: editForm.lastName.trim(), class_name: editForm.className.trim() }
+        : { name: editForm.name.trim(), capacity: Number(editForm.capacity) || 0 };
+    const { error } = await supabase.from(table).update(changes).eq("id", id);
+    setMessage(error ? error.message : "Modification enregistrée.");
+    if (!error) { setEditingTeacherId(null); setEditingStudentId(null); setEditingRoomId(null); await loadYearContent(selectedYearId); }
+  }
+
   async function togglePublication(year: SchoolYear) {
     if (!supabase) return;
     setIsLoading(true);
@@ -354,8 +387,7 @@ export default function AdminPage() {
                   <section id="examens" className="space-y-3">
                   <h3 className="text-lg font-bold text-slate-900">Examens de cette année</h3>
                   {exams.map((exam) => <article className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4" key={exam.id}>
-                    <div><h4 className="font-bold text-slate-900">{exam.title}</h4><p className="text-sm text-slate-500">{exam.exam_type} · {exam.starts_at ? new Date(exam.starts_at).toLocaleString("fr-FR") : "Date non définie"}</p></div>
-                    <div className="flex flex-wrap gap-2"><button className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold" onClick={() => void updateExam(exam, { is_published: !exam.is_published })}>{exam.is_published ? "Dépublier" : "Publier"}</button><button className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700" onClick={() => void deleteExam(exam)}>Supprimer</button></div>
+                    {editingExamId === exam.id ? <div className="grid w-full gap-2 sm:grid-cols-4"><input className="rounded-lg border px-3 py-2" value={editForm.title} onChange={(event) => setEditForm({ ...editForm, title: event.target.value })} /><input className="rounded-lg border px-3 py-2" value={editForm.type} onChange={(event) => setEditForm({ ...editForm, type: event.target.value })} /><input className="rounded-lg border px-3 py-2" type="datetime-local" value={editForm.startsAt} onChange={(event) => setEditForm({ ...editForm, startsAt: event.target.value })} /><input className="rounded-lg border px-3 py-2" type="datetime-local" value={editForm.endsAt} onChange={(event) => setEditForm({ ...editForm, endsAt: event.target.value })} /><div className="flex gap-2 sm:col-span-4"><button className="rounded-lg bg-blue-700 px-3 py-1.5 text-sm font-semibold text-white" onClick={() => void saveExamEdit(exam)}>Enregistrer</button><button className="rounded-lg border px-3 py-1.5 text-sm font-semibold" onClick={() => setEditingExamId(null)}>Annuler</button></div></div> : <><div><h4 className="font-bold text-slate-900">{exam.title}</h4><p className="text-sm text-slate-500">{exam.exam_type} · {exam.starts_at ? new Date(exam.starts_at).toLocaleString("fr-FR") : "Date non définie"}</p></div><div className="flex flex-wrap gap-2"><button className="rounded-lg border border-blue-200 px-3 py-1.5 text-sm font-semibold text-blue-700" onClick={() => startEditExam(exam)}>Modifier</button><button className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold" onClick={() => void updateExam(exam, { is_published: !exam.is_published })}>{exam.is_published ? "Dépublier" : "Publier"}</button><button className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700" onClick={() => void deleteExam(exam)}>Supprimer</button></div></>}
                   </article>)}
                   {!exams.length ? <p className="rounded-xl bg-white p-4 text-sm text-slate-500">Aucun examen pour cette année.</p> : null}
                   </section>
@@ -371,7 +403,7 @@ export default function AdminPage() {
                       <input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Email (facultatif)" type="email" value={teacherForm.email} onChange={(event) => setTeacherForm((current) => ({ ...current, email: event.target.value }))} />
                       <button className="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white sm:col-span-2" type="submit">Ajouter l’enseignant</button>
                     </form>
-                    <div className="max-h-48 space-y-2 overflow-y-auto">{teachers.map((teacher) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={teacher.id}><span>{teacher.civility} {teacher.first_name} {teacher.last_name}</span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("teachers", teacher.id)}>Supprimer</button></div>)}{!teachers.length ? <p className="text-sm text-slate-500">Aucun enseignant.</p> : null}</div>
+                    <div className="max-h-48 space-y-2 overflow-y-auto">{teachers.map((teacher) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={teacher.id}>{editingTeacherId === teacher.id ? <><input className="min-w-0 flex-1 rounded border px-2 py-1" value={editForm.firstName} onChange={(event) => setEditForm({ ...editForm, firstName: event.target.value })} /><input className="min-w-0 flex-1 rounded border px-2 py-1" value={editForm.lastName} onChange={(event) => setEditForm({ ...editForm, lastName: event.target.value })} /><button className="text-xs font-semibold text-blue-700" onClick={() => void saveSimpleEdit("teachers", teacher.id)}>Enregistrer</button><button className="text-xs font-semibold" onClick={() => setEditingTeacherId(null)}>Annuler</button></> : <><span>{teacher.civility} {teacher.first_name} {teacher.last_name}</span><span className="flex gap-2"><button className="text-xs font-semibold text-blue-700" onClick={() => startEditTeacher(teacher)}>Modifier</button><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("teachers", teacher.id)}>Supprimer</button></span></>}</div>)}{!teachers.length ? <p className="text-sm text-slate-500">Aucun enseignant.</p> : null}</div>
                   </section>
 
                   <section id="eleves" className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
@@ -382,13 +414,13 @@ export default function AdminPage() {
                       <input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Classe" value={studentForm.className} onChange={(event) => setStudentForm((current) => ({ ...current, className: event.target.value }))} required />
                       <button className="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white sm:col-span-3" type="submit">Ajouter l’élève</button>
                     </form>
-                    <div className="max-h-48 space-y-2 overflow-y-auto">{students.map((student) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={student.id}><span>{student.last_name} {student.first_name} <small className="text-slate-500">({student.class_name})</small></span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("students", student.id)}>Supprimer</button></div>)}{!students.length ? <p className="text-sm text-slate-500">Aucun élève.</p> : null}</div>
+                    <div className="max-h-48 space-y-2 overflow-y-auto">{students.map((student) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={student.id}>{editingStudentId === student.id ? <><input className="min-w-0 flex-1 rounded border px-2 py-1" value={editForm.firstName} onChange={(event) => setEditForm({ ...editForm, firstName: event.target.value })} /><input className="min-w-0 flex-1 rounded border px-2 py-1" value={editForm.lastName} onChange={(event) => setEditForm({ ...editForm, lastName: event.target.value })} /><input className="w-20 rounded border px-2 py-1" value={editForm.className} onChange={(event) => setEditForm({ ...editForm, className: event.target.value })} /><button className="text-xs font-semibold text-blue-700" onClick={() => void saveSimpleEdit("students", student.id)}>Enregistrer</button></> : <><span>{student.last_name} {student.first_name} <small className="text-slate-500">({student.class_name})</small></span><span className="flex gap-2"><button className="text-xs font-semibold text-blue-700" onClick={() => startEditStudent(student)}>Modifier</button><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("students", student.id)}>Supprimer</button></span></>}</div>)}{!students.length ? <p className="text-sm text-slate-500">Aucun élève.</p> : null}</div>
                   </section>
 
                   <section id="salles" className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
                     <div><h3 className="text-lg font-bold text-slate-900">Salles</h3><p className="text-sm text-slate-500">Définis les salles et leur capacité.</p></div>
                     <form className="grid gap-2 sm:grid-cols-3" onSubmit={addRoom}><input className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" placeholder="Salle S12" value={roomForm.name} onChange={(event) => setRoomForm((current) => ({ ...current, name: event.target.value }))} required /><input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Capacité" type="number" min="0" value={roomForm.capacity} onChange={(event) => setRoomForm((current) => ({ ...current, capacity: event.target.value }))} /><button className="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white sm:col-span-3" type="submit">Ajouter la salle</button></form>
-                    <div className="max-h-48 space-y-2 overflow-y-auto">{rooms.map((room) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={room.id}><span>{room.name} <small className="text-slate-500">({room.capacity} places)</small></span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("rooms", room.id)}>Supprimer</button></div>)}{!rooms.length ? <p className="text-sm text-slate-500">Aucune salle.</p> : null}</div>
+                    <div className="max-h-48 space-y-2 overflow-y-auto">{rooms.map((room) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={room.id}>{editingRoomId === room.id ? <><input className="min-w-0 flex-1 rounded border px-2 py-1" value={editForm.name} onChange={(event) => setEditForm({ ...editForm, name: event.target.value })} /><input className="w-20 rounded border px-2 py-1" type="number" value={editForm.capacity} onChange={(event) => setEditForm({ ...editForm, capacity: event.target.value })} /><button className="text-xs font-semibold text-blue-700" onClick={() => void saveSimpleEdit("rooms", room.id)}>Enregistrer</button></> : <><span>{room.name} <small className="text-slate-500">({room.capacity} places)</small></span><span className="flex gap-2"><button className="text-xs font-semibold text-blue-700" onClick={() => startEditRoom(room)}>Modifier</button><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("rooms", room.id)}>Supprimer</button></span></>}</div>)}{!rooms.length ? <p className="text-sm text-slate-500">Aucune salle.</p> : null}</div>
                   </section>
 
                   <section id="surveillances" className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
