@@ -375,6 +375,11 @@ export default function AdminPage() {
                   <button className="text-sm font-semibold text-slate-600" onClick={() => setSelectedYearId(null)}>Fermer</button>
                 </div>
 
+                <div className="rounded-xl border border-slate-200 bg-white p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-lg font-bold text-slate-900">Modèles de données</h3><p className="text-sm text-slate-500">Télécharge un modèle, remplis-le dans Excel ou LibreOffice, puis importe les élèves ou enseignants.</p></div><a className="text-sm font-semibold text-blue-700 underline" href="/docs/templates-import.md" target="_blank" rel="noreferrer">Voir la notice</a></div>
+                  <div className="mt-4 flex flex-wrap gap-2 text-sm">{[["eleves-template.csv", "Modèle élèves"], ["enseignants-template.csv", "Modèle enseignants"], ["examens-template.csv", "Modèle examens"], ["salles-template.csv", "Modèle salles"], ["surveillances-template.csv", "Modèle surveillances"]].map(([file, label]) => <a className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 font-semibold text-blue-700 hover:bg-blue-100" download href={`/templates/${file}`} key={file}>{label}</a>)}</div>
+                </div>
+
                 <form className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-3" onSubmit={updateYearDates}>
                   <label className="text-sm font-semibold">Date de début<input className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" type="date" value={yearDates.startsOn} onChange={(event) => setYearDates((current) => ({ ...current, startsOn: event.target.value }))} /></label>
                   <label className="text-sm font-semibold">Date de fin<input className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" type="date" value={yearDates.endsOn} onChange={(event) => setYearDates((current) => ({ ...current, endsOn: event.target.value }))} /></label>
@@ -410,7 +415,7 @@ export default function AdminPage() {
                       <button className="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white sm:col-span-2" type="submit">Ajouter l’enseignant</button>
                     </form>
                     <div className="rounded-lg border border-dashed border-blue-300 bg-blue-50 p-3">
-                      <p className="text-xs text-slate-600">Import CSV : <code>civility,first_name,last_name,email</code></p>
+                      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-slate-600">Import CSV : <code>civility,first_name,last_name,email</code></p><a className="text-xs font-semibold text-blue-700 underline" href="/templates/enseignants-template.csv" download>Télécharger le modèle</a></div>
                       <div className="mt-2 flex flex-wrap items-center gap-2"><input accept=".csv,text/csv" type="file" onChange={(event) => setTeacherCsv(event.target.files?.[0] ?? null)} /><button className="rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" disabled={!teacherCsv || isLoading} onClick={() => void importCsv(teacherCsv, "teachers")}>Importer les enseignants</button></div>
                     </div>
                     <div className="max-h-48 space-y-2 overflow-y-auto">{teachers.map((teacher) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={teacher.id}><span>{teacher.civility} {teacher.first_name} {teacher.last_name}</span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("teachers", teacher.id)}>Supprimer</button></div>)}{!teachers.length ? <p className="text-sm text-slate-500">Aucun enseignant.</p> : null}</div>
@@ -425,7 +430,7 @@ export default function AdminPage() {
                       <button className="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white sm:col-span-3" type="submit">Ajouter l’élève</button>
                     </form>
                     <div className="rounded-lg border border-dashed border-blue-300 bg-blue-50 p-3">
-                      <p className="text-xs text-slate-600">Import CSV : <code>first_name,last_name,class_name</code></p>
+                      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-slate-600">Import CSV : <code>first_name,last_name,class_name</code></p><a className="text-xs font-semibold text-blue-700 underline" href="/templates/eleves-template.csv" download>Télécharger le modèle</a></div>
                       <div className="mt-2 flex flex-wrap items-center gap-2"><input accept=".csv,text/csv" type="file" onChange={(event) => setStudentCsv(event.target.files?.[0] ?? null)} /><button className="rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" disabled={!studentCsv || isLoading} onClick={() => void importCsv(studentCsv, "students")}>Importer les élèves</button></div>
                     </div>
                     <div className="max-h-48 space-y-2 overflow-y-auto">{students.map((student) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={student.id}><span>{student.last_name} {student.first_name} <small className="text-slate-500">({student.class_name})</small></span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("students", student.id)}>Supprimer</button></div>)}{!students.length ? <p className="text-sm text-slate-500">Aucun élève.</p> : null}</div>
