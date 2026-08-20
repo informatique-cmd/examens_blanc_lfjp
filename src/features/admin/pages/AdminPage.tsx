@@ -25,14 +25,30 @@ interface Teacher { id: string; school_year_id: string; civility: "Madame" | "Mo
 interface Student { id: string; school_year_id: string; first_name: string; last_name: string; class_name: string; }
 interface Room { id: string; school_year_id: string; name: string; capacity: number; }
 interface Assignment { id: string; exam_id: string; teacher_id: string; room_id: string | null; mission: string; starts_at: string | null; ends_at: string | null; }
+type ImportKind = "students" | "teachers";
+interface ImportPreview { kind: ImportKind; fileName: string; rows: Record<string, string>[]; invalidRows: Array<{ line: number; reason: string }>; }
 
 function parseCsv(text: string): Record<string, string>[] {
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
   if (lines.length < 2) return [];
   const separator = lines[0].includes(";") ? ";" : ",";
-  const headers = lines[0].split(separator).map((header) => header.trim().toLowerCase().replace(/^"|"$/g, ""));
+  const splitLine = (line: string) => {
+    const values: string[] = [];
+    let value = "";
+    let quoted = false;
+    for (let index = 0; index < line.length; index += 1) {
+      const character = line[index];
+      if (character === '"' && line[index + 1] === '"') { value += '"'; index += 1; continue; }
+      if (character === '"') { quoted = !quoted; continue; }
+      if (character === separator && !quoted) { values.push(value.trim()); value = ""; continue; }
+      value += character;
+    }
+    values.push(value.trim());
+    return values;
+  };
+  const headers = splitLine(lines[0]).map((header) => header.toLowerCase());
   return lines.slice(1).map((line) => {
-    const values = line.split(separator).map((value) => value.trim().replace(/^"|"$/g, ""));
+    const values = splitLine(line);
     return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""]));
   });
 }
@@ -60,6 +76,7 @@ export default function AdminPage() {
   const [assignmentForm, setAssignmentForm] = useState({ examId: "", teacherId: "", roomId: "", mission: "Surveillance", startsAt: "", endsAt: "" });
   const [studentCsv, setStudentCsv] = useState<File | null>(null);
   const [teacherCsv, setTeacherCsv] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
 
   useEffect(() => {
     if (!supabase) return;
@@ -205,30 +222,40 @@ export default function AdminPage() {
     if (!error && selectedYearId) { setAssignmentForm({ examId: "", teacherId: "", roomId: "", mission: "Surveillance", startsAt: "", endsAt: "" }); await loadYearContent(selectedYearId); }
   }
 
-  async function importCsv(file: File | null, kind: "students" | "teachers") {
+  async function prepareCsvImport(file: File | null, kind: ImportKind) {
     if (!supabase || !selectedYearId || !file) return;
     const rows = parseCsv(await file.text());
     if (!rows.length) {
       setMessage("Le fichier CSV doit contenir une ligne d’en-têtes et au moins une ligne de données.");
       return;
     }
-    const studentRecords = rows.filter((row) => row.first_name && row.last_name && row.class_name).map((row) => ({ school_year_id: selectedYearId, first_name: row.first_name, last_name: row.last_name, class_name: row.class_name }));
-    const teacherRecords = rows.filter((row) => row.first_name && row.last_name).map((row) => ({ school_year_id: selectedYearId, civility: row.civility === "Monsieur" ? "Monsieur" : "Madame", first_name: row.first_name, last_name: row.last_name, email: row.email || null }));
-    const records = kind === "students" ? studentRecords : teacherRecords;
-    if (!records.length) {
-      setMessage(kind === "students" ? "Colonnes attendues : first_name,last_name,class_name" : "Colonnes attendues : civility,first_name,last_name,email");
-      return;
-    }
+    const seen = new Set<string>();
+    const invalidRows: Array<{ line: number; reason: string }> = [];
+    const validRows = rows.filter((row, index) => {
+      const requiredFields = kind === "students" ? [row.first_name, row.last_name, row.class_name] : [row.first_name, row.last_name];
+      const key = `${row.last_name}|${row.first_name}|${kind === "students" ? row.class_name : row.email}`.toLowerCase();
+      if (requiredFields.some((value) => !value)) { invalidRows.push({ line: index + 2, reason: "Champ obligatoire manquant" }); return false; }
+      if (seen.has(key)) { invalidRows.push({ line: index + 2, reason: "Doublon dans le fichier" }); return false; }
+      seen.add(key);
+      return true;
+    });
+    setImportPreview({ kind, fileName: file.name, rows: validRows, invalidRows });
+    setMessage(`${validRows.length} ligne(s) prête(s) à importer${invalidRows.length ? `, ${invalidRows.length} ligne(s) à corriger` : ""}.`);
+  }
+
+  async function confirmCsvImport() {
+    if (!supabase || !selectedYearId || !importPreview || !importPreview.rows.length) return;
+    const { kind, rows } = importPreview;
+    const studentRecords = rows.map((row) => ({ school_year_id: selectedYearId, first_name: row.first_name, last_name: row.last_name, class_name: row.class_name }));
+    const teacherRecords = rows.map((row) => ({ school_year_id: selectedYearId, civility: row.civility === "Monsieur" ? "Monsieur" : "Madame", first_name: row.first_name, last_name: row.last_name, email: row.email || null }));
     setIsLoading(true);
-    const result = kind === "students"
-      ? await supabase.from("students").insert(studentRecords)
-      : await supabase.from("teachers").insert(teacherRecords);
-    const { error } = result;
+    const result = kind === "students" ? await supabase.from("students").insert(studentRecords) : await supabase.from("teachers").insert(teacherRecords);
     setIsLoading(false);
-    setMessage(error ? error.message : `${records.length} ${kind === "students" ? "élève(s)" : "enseignant(s)"} importé(s).`);
-    if (!error) {
-      if (kind === "students") setStudentCsv(null);
-      else setTeacherCsv(null);
+    setMessage(result.error ? result.error.message : `${rows.length} ${kind === "students" ? "élève(s)" : "enseignant(s)"} importé(s).`);
+    if (!result.error) {
+      setImportPreview(null);
+      setStudentCsv(null);
+      setTeacherCsv(null);
       await loadYearContent(selectedYearId);
     }
   }
@@ -380,6 +407,15 @@ export default function AdminPage() {
                   <div className="mt-4 flex flex-wrap gap-2 text-sm">{[["eleves-template.csv", "Modèle élèves"], ["enseignants-template.csv", "Modèle enseignants"], ["examens-template.csv", "Modèle examens"], ["salles-template.csv", "Modèle salles"], ["surveillances-template.csv", "Modèle surveillances"]].map(([file, label]) => <a className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 font-semibold text-blue-700 hover:bg-blue-100" download href={`/templates/${file}`} key={file}>{label}</a>)}</div>
                 </div>
 
+                {importPreview ? (
+                  <section className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-lg font-bold text-slate-900">Vérification avant import</h3><p className="text-sm text-slate-600">{importPreview.fileName} · {importPreview.rows.length} ligne(s) valide(s) · {importPreview.invalidRows.length} erreur(s)</p></div><button className="text-sm font-semibold text-slate-600" onClick={() => setImportPreview(null)}>Annuler</button></div>
+                    {importPreview.invalidRows.length ? <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"><p className="font-semibold">Lignes ignorées</p>{importPreview.invalidRows.slice(0, 8).map((row) => <p key={row.line}>Ligne {row.line} : {row.reason}</p>)}{importPreview.invalidRows.length > 8 ? <p>... et {importPreview.invalidRows.length - 8} autre(s).</p> : null}</div> : null}
+                    <div className="mt-4 max-h-48 overflow-auto rounded-lg border border-slate-200 bg-white"><table className="min-w-full text-left text-xs"><thead className="bg-slate-100"><tr>{Object.keys(importPreview.rows[0] ?? {}).map((key) => <th className="px-3 py-2" key={key}>{key}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{importPreview.rows.slice(0, 10).map((row, index) => <tr key={`${row.last_name}-${row.first_name}-${index}`}>{Object.keys(importPreview.rows[0] ?? {}).map((key) => <td className="px-3 py-2" key={key}>{row[key]}</td>)}</tr>)}</tbody></table></div>
+                    <button className="mt-4 rounded-lg bg-emerald-700 px-4 py-2.5 font-semibold text-white disabled:opacity-50" disabled={!importPreview.rows.length || isLoading} onClick={() => void confirmCsvImport()}>Confirmer l’import de {importPreview.rows.length} ligne(s)</button>
+                  </section>
+                ) : null}
+
                 <form className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-3" onSubmit={updateYearDates}>
                   <label className="text-sm font-semibold">Date de début<input className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" type="date" value={yearDates.startsOn} onChange={(event) => setYearDates((current) => ({ ...current, startsOn: event.target.value }))} /></label>
                   <label className="text-sm font-semibold">Date de fin<input className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" type="date" value={yearDates.endsOn} onChange={(event) => setYearDates((current) => ({ ...current, endsOn: event.target.value }))} /></label>
@@ -396,16 +432,21 @@ export default function AdminPage() {
                 </form>
 
                 <div className="space-y-3">
+                  <nav className="sticky top-4 z-10 flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur" aria-label="Sections de gestion">
+                    {[['examens', 'Examens'], ['enseignants', 'Enseignants'], ['eleves', 'Élèves'], ['salles', 'Salles'], ['surveillances', 'Surveillances']].map(([id, label]) => <a className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-blue-100 hover:text-blue-700" href={`#${id}`} key={id}>{label}</a>)}
+                  </nav>
+                  <section id="examens" className="space-y-3">
                   <h3 className="text-lg font-bold text-slate-900">Examens de cette année</h3>
                   {exams.map((exam) => <article className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4" key={exam.id}>
                     <div><h4 className="font-bold text-slate-900">{exam.title}</h4><p className="text-sm text-slate-500">{exam.exam_type} · {exam.starts_at ? new Date(exam.starts_at).toLocaleString("fr-FR") : "Date non définie"}</p></div>
                     <div className="flex flex-wrap gap-2"><button className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold" onClick={() => void updateExam(exam, { is_published: !exam.is_published })}>{exam.is_published ? "Dépublier" : "Publier"}</button><button className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700" onClick={() => void deleteExam(exam)}>Supprimer</button></div>
                   </article>)}
                   {!exams.length ? <p className="rounded-xl bg-white p-4 text-sm text-slate-500">Aucun examen pour cette année.</p> : null}
+                  </section>
                 </div>
 
                 <div className="grid gap-6 xl:grid-cols-2">
-                  <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+                  <section id="enseignants" className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
                     <div><h3 className="text-lg font-bold text-slate-900">Enseignants</h3><p className="text-sm text-slate-500">Ajoute les personnes qui pourront être affectées aux surveillances.</p></div>
                     <form className="grid gap-2 sm:grid-cols-2" onSubmit={addTeacher}>
                       <select className="rounded-lg border border-slate-300 px-3 py-2" value={teacherForm.civility} onChange={(event) => setTeacherForm((current) => ({ ...current, civility: event.target.value as "Madame" | "Monsieur" }))}><option>Madame</option><option>Monsieur</option></select>
@@ -416,12 +457,12 @@ export default function AdminPage() {
                     </form>
                     <div className="rounded-lg border border-dashed border-blue-300 bg-blue-50 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-slate-600">Import CSV : <code>civility,first_name,last_name,email</code></p><a className="text-xs font-semibold text-blue-700 underline" href="/templates/enseignants-template.csv" download>Télécharger le modèle</a></div>
-                      <div className="mt-2 flex flex-wrap items-center gap-2"><input accept=".csv,text/csv" type="file" onChange={(event) => setTeacherCsv(event.target.files?.[0] ?? null)} /><button className="rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" disabled={!teacherCsv || isLoading} onClick={() => void importCsv(teacherCsv, "teachers")}>Importer les enseignants</button></div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2"><input accept=".csv,text/csv" type="file" onChange={(event) => setTeacherCsv(event.target.files?.[0] ?? null)} /><button className="rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" disabled={!teacherCsv || isLoading} onClick={() => void prepareCsvImport(teacherCsv, "teachers")}>Analyser le fichier</button></div>
                     </div>
                     <div className="max-h-48 space-y-2 overflow-y-auto">{teachers.map((teacher) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={teacher.id}><span>{teacher.civility} {teacher.first_name} {teacher.last_name}</span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("teachers", teacher.id)}>Supprimer</button></div>)}{!teachers.length ? <p className="text-sm text-slate-500">Aucun enseignant.</p> : null}</div>
                   </section>
 
-                  <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+                  <section id="eleves" className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
                     <div><h3 className="text-lg font-bold text-slate-900">Élèves</h3><p className="text-sm text-slate-500">Les élèves sont rattachés à cette année et à leur classe.</p></div>
                     <form className="grid gap-2 sm:grid-cols-3" onSubmit={addStudent}>
                       <input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Prénom" value={studentForm.firstName} onChange={(event) => setStudentForm((current) => ({ ...current, firstName: event.target.value }))} required />
@@ -431,18 +472,18 @@ export default function AdminPage() {
                     </form>
                     <div className="rounded-lg border border-dashed border-blue-300 bg-blue-50 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-slate-600">Import CSV : <code>first_name,last_name,class_name</code></p><a className="text-xs font-semibold text-blue-700 underline" href="/templates/eleves-template.csv" download>Télécharger le modèle</a></div>
-                      <div className="mt-2 flex flex-wrap items-center gap-2"><input accept=".csv,text/csv" type="file" onChange={(event) => setStudentCsv(event.target.files?.[0] ?? null)} /><button className="rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" disabled={!studentCsv || isLoading} onClick={() => void importCsv(studentCsv, "students")}>Importer les élèves</button></div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2"><input accept=".csv,text/csv" type="file" onChange={(event) => setStudentCsv(event.target.files?.[0] ?? null)} /><button className="rounded-lg bg-blue-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50" disabled={!studentCsv || isLoading} onClick={() => void prepareCsvImport(studentCsv, "students")}>Analyser le fichier</button></div>
                     </div>
                     <div className="max-h-48 space-y-2 overflow-y-auto">{students.map((student) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={student.id}><span>{student.last_name} {student.first_name} <small className="text-slate-500">({student.class_name})</small></span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("students", student.id)}>Supprimer</button></div>)}{!students.length ? <p className="text-sm text-slate-500">Aucun élève.</p> : null}</div>
                   </section>
 
-                  <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+                  <section id="salles" className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
                     <div><h3 className="text-lg font-bold text-slate-900">Salles</h3><p className="text-sm text-slate-500">Définis les salles et leur capacité.</p></div>
                     <form className="grid gap-2 sm:grid-cols-3" onSubmit={addRoom}><input className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" placeholder="Salle S12" value={roomForm.name} onChange={(event) => setRoomForm((current) => ({ ...current, name: event.target.value }))} required /><input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Capacité" type="number" min="0" value={roomForm.capacity} onChange={(event) => setRoomForm((current) => ({ ...current, capacity: event.target.value }))} /><button className="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white sm:col-span-3" type="submit">Ajouter la salle</button></form>
                     <div className="max-h-48 space-y-2 overflow-y-auto">{rooms.map((room) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={room.id}><span>{room.name} <small className="text-slate-500">({room.capacity} places)</small></span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("rooms", room.id)}>Supprimer</button></div>)}{!rooms.length ? <p className="text-sm text-slate-500">Aucune salle.</p> : null}</div>
                   </section>
 
-                  <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+                  <section id="surveillances" className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
                     <div><h3 className="text-lg font-bold text-slate-900">Surveillances</h3><p className="text-sm text-slate-500">Affecte un enseignant et une salle à un examen.</p></div>
                     <form className="grid gap-2 sm:grid-cols-2" onSubmit={addAssignment}>
                       <select className="rounded-lg border border-slate-300 px-3 py-2" value={assignmentForm.examId} onChange={(event) => setAssignmentForm((current) => ({ ...current, examId: event.target.value }))} required><option value="">Examen</option>{exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.title}</option>)}</select>
