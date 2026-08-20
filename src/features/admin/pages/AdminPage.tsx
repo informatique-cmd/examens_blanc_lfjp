@@ -25,6 +25,8 @@ interface Teacher { id: string; school_year_id: string; civility: "Madame" | "Mo
 interface Student { id: string; school_year_id: string; first_name: string; last_name: string; class_name: string; }
 interface Room { id: string; school_year_id: string; name: string; capacity: number; }
 interface Assignment { id: string; exam_id: string; teacher_id: string; room_id: string | null; mission: string; starts_at: string | null; ends_at: string | null; }
+interface CandidatePlacement { id: string; exam_id: string; student_id: string; room_id: string | null; convocation_at: string | null; starts_at: string | null; ends_at: string | null; }
+interface Announcement { id: string; school_year_id: string; title: string; content: string; priority: "information" | "important" | "urgent"; is_published: boolean; }
 export default function AdminPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,6 +44,8 @@ export default function AdminPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [placements, setPlacements] = useState<CandidatePlacement[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [teacherForm, setTeacherForm] = useState({ civility: "Madame" as "Madame" | "Monsieur", firstName: "", lastName: "", email: "" });
   const [studentForm, setStudentForm] = useState({ firstName: "", lastName: "", className: "" });
   const [roomForm, setRoomForm] = useState({ name: "", capacity: "" });
@@ -51,6 +55,8 @@ export default function AdminPage() {
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ title: "", type: "", startsAt: "", endsAt: "", civility: "Madame" as "Madame" | "Monsieur", firstName: "", lastName: "", email: "", className: "", name: "", capacity: "" });
+  const [candidateForm, setCandidateForm] = useState({ examId: "", studentId: "", roomId: "", convocationAt: "", startsAt: "", endsAt: "" });
+  const [announcementForm, setAnnouncementForm] = useState({ title: "", content: "", priority: "information" as "information" | "important" | "urgent" });
 
   useEffect(() => {
     if (!supabase) return;
@@ -146,14 +152,20 @@ export default function AdminPage() {
     const assignmentsResult = examIds.length
       ? await supabase.from("surveillance_assignments").select("id, exam_id, teacher_id, room_id, mission, starts_at, ends_at").in("exam_id", examIds).order("starts_at")
       : { data: [], error: null };
-    if (teachersResult.error || studentsResult.error || roomsResult.error || examsResult.error || assignmentsResult.error) {
-      setMessage(teachersResult.error?.message ?? studentsResult.error?.message ?? roomsResult.error?.message ?? examsResult.error?.message ?? assignmentsResult.error?.message ?? "Erreur de chargement.");
+    const placementsResult = examIds.length
+      ? await supabase.from("exam_candidates").select("id, exam_id, student_id, room_id, convocation_at, starts_at, ends_at").in("exam_id", examIds).order("convocation_at")
+      : { data: [], error: null };
+    const announcementsResult = await supabase.from("announcements").select("id, school_year_id, title, content, priority, is_published").eq("school_year_id", yearId).order("created_at", { ascending: false });
+    if (teachersResult.error || studentsResult.error || roomsResult.error || examsResult.error || assignmentsResult.error || placementsResult.error || announcementsResult.error) {
+      setMessage(teachersResult.error?.message ?? studentsResult.error?.message ?? roomsResult.error?.message ?? examsResult.error?.message ?? assignmentsResult.error?.message ?? placementsResult.error?.message ?? announcementsResult.error?.message ?? "Erreur de chargement.");
       return;
     }
     setTeachers(teachersResult.data ?? []);
     setStudents(studentsResult.data ?? []);
     setRooms(roomsResult.data ?? []);
     setAssignments(assignmentsResult.data ?? []);
+    setPlacements(placementsResult.data ?? []);
+    setAnnouncements(announcementsResult.data ?? []);
   }, []);
 
   useEffect(() => {
@@ -196,7 +208,30 @@ export default function AdminPage() {
     if (!error && selectedYearId) { setAssignmentForm({ examId: "", teacherId: "", roomId: "", mission: "Surveillance", startsAt: "", endsAt: "" }); await loadYearContent(selectedYearId); }
   }
 
-  async function deleteContent(table: "teachers" | "students" | "rooms" | "surveillance_assignments", id: string) {
+  async function addCandidatePlacement(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || !candidateForm.examId || !candidateForm.studentId) return;
+    const { error } = await supabase.from("exam_candidates").insert({ exam_id: candidateForm.examId, student_id: candidateForm.studentId, room_id: candidateForm.roomId || null, convocation_at: candidateForm.convocationAt ? new Date(candidateForm.convocationAt).toISOString() : null, starts_at: candidateForm.startsAt ? new Date(candidateForm.startsAt).toISOString() : null, ends_at: candidateForm.endsAt ? new Date(candidateForm.endsAt).toISOString() : null });
+    setMessage(error ? error.message : "Convocation élève ajoutée.");
+    if (!error && selectedYearId) { setCandidateForm({ examId: "", studentId: "", roomId: "", convocationAt: "", startsAt: "", endsAt: "" }); await loadYearContent(selectedYearId); }
+  }
+
+  async function addAnnouncement(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase || !selectedYearId || !announcementForm.title.trim() || !announcementForm.content.trim()) return;
+    const { error } = await supabase.from("announcements").insert({ school_year_id: selectedYearId, title: announcementForm.title.trim(), content: announcementForm.content.trim(), priority: announcementForm.priority, is_published: false });
+    setMessage(error ? error.message : "Annonce créée en brouillon.");
+    if (!error) { setAnnouncementForm({ title: "", content: "", priority: "information" }); await loadYearContent(selectedYearId); }
+  }
+
+  async function updateAnnouncement(announcement: Announcement, changes: Partial<Announcement>) {
+    if (!supabase || !selectedYearId) return;
+    const { error } = await supabase.from("announcements").update(changes).eq("id", announcement.id);
+    setMessage(error ? error.message : "Annonce mise à jour.");
+    if (!error) await loadYearContent(selectedYearId);
+  }
+
+  async function deleteContent(table: "teachers" | "students" | "rooms" | "surveillance_assignments" | "exam_candidates" | "announcements", id: string) {
     if (!supabase || !selectedYearId || !window.confirm("Supprimer cet élément ?")) return;
     const { error } = await supabase.from(table).delete().eq("id", id);
     setMessage(error ? error.message : "Élément supprimé.");
@@ -382,7 +417,7 @@ export default function AdminPage() {
                 </form>
                 <div className="space-y-3">
                   <nav className="sticky top-4 z-10 flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-sm backdrop-blur" aria-label="Sections de gestion">
-                    {[['examens', 'Examens'], ['enseignants', 'Enseignants'], ['eleves', 'Élèves'], ['salles', 'Salles'], ['surveillances', 'Surveillances']].map(([id, label]) => <a className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-blue-100 hover:text-blue-700" href={`#${id}`} key={id}>{label}</a>)}
+                    {[['examens', 'Examens'], ['enseignants', 'Enseignants'], ['eleves', 'Élèves'], ['salles', 'Salles'], ['convocations', 'Convocations'], ['surveillances', 'Surveillances'], ['annonces', 'Annonces']].map(([id, label]) => <a className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-blue-100 hover:text-blue-700" href={`#${id}`} key={id}>{label}</a>)}
                   </nav>
                   <section id="examens" className="space-y-3">
                   <h3 className="text-lg font-bold text-slate-900">Examens de cette année</h3>
@@ -423,6 +458,20 @@ export default function AdminPage() {
                     <div className="max-h-48 space-y-2 overflow-y-auto">{rooms.map((room) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={room.id}>{editingRoomId === room.id ? <><input className="min-w-0 flex-1 rounded border px-2 py-1" value={editForm.name} onChange={(event) => setEditForm({ ...editForm, name: event.target.value })} /><input className="w-20 rounded border px-2 py-1" type="number" value={editForm.capacity} onChange={(event) => setEditForm({ ...editForm, capacity: event.target.value })} /><button className="text-xs font-semibold text-blue-700" onClick={() => void saveSimpleEdit("rooms", room.id)}>Enregistrer</button></> : <><span>{room.name} <small className="text-slate-500">({room.capacity} places)</small></span><span className="flex gap-2"><button className="text-xs font-semibold text-blue-700" onClick={() => startEditRoom(room)}>Modifier</button><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("rooms", room.id)}>Supprimer</button></span></>}</div>)}{!rooms.length ? <p className="text-sm text-slate-500">Aucune salle.</p> : null}</div>
                   </section>
 
+                  <section id="convocations" className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+                    <div><h3 className="text-lg font-bold text-slate-900">Convocations élèves</h3><p className="text-sm text-slate-500">Affecte un élève à une épreuve, une salle et des horaires.</p></div>
+                    <form className="grid gap-2 sm:grid-cols-2" onSubmit={addCandidatePlacement}>
+                      <select className="rounded-lg border border-slate-300 px-3 py-2" value={candidateForm.examId} onChange={(event) => setCandidateForm((current) => ({ ...current, examId: event.target.value }))} required><option value="">Examen</option>{exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.title}</option>)}</select>
+                      <select className="rounded-lg border border-slate-300 px-3 py-2" value={candidateForm.studentId} onChange={(event) => setCandidateForm((current) => ({ ...current, studentId: event.target.value }))} required><option value="">Élève</option>{students.map((student) => <option key={student.id} value={student.id}>{student.last_name} {student.first_name}</option>)}</select>
+                      <select className="rounded-lg border border-slate-300 px-3 py-2" value={candidateForm.roomId} onChange={(event) => setCandidateForm((current) => ({ ...current, roomId: event.target.value }))}><option value="">Salle</option>{rooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}</select>
+                      <input className="rounded-lg border border-slate-300 px-3 py-2" type="datetime-local" title="Convocation" value={candidateForm.convocationAt} onChange={(event) => setCandidateForm((current) => ({ ...current, convocationAt: event.target.value }))} />
+                      <input className="rounded-lg border border-slate-300 px-3 py-2" type="datetime-local" title="Début" value={candidateForm.startsAt} onChange={(event) => setCandidateForm((current) => ({ ...current, startsAt: event.target.value }))} />
+                      <input className="rounded-lg border border-slate-300 px-3 py-2" type="datetime-local" title="Fin" value={candidateForm.endsAt} onChange={(event) => setCandidateForm((current) => ({ ...current, endsAt: event.target.value }))} />
+                      <button className="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white sm:col-span-2" type="submit">Ajouter la convocation</button>
+                    </form>
+                    <div className="max-h-48 space-y-2 overflow-y-auto">{placements.map((placement) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={placement.id}><span>{students.find((student) => student.id === placement.student_id)?.last_name ?? "Élève"} · {exams.find((exam) => exam.id === placement.exam_id)?.title ?? "Examen"}</span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("exam_candidates", placement.id)}>Supprimer</button></div>)}{!placements.length ? <p className="text-sm text-slate-500">Aucune convocation.</p> : null}</div>
+                  </section>
+
                   <section id="surveillances" className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
                     <div><h3 className="text-lg font-bold text-slate-900">Surveillances</h3><p className="text-sm text-slate-500">Affecte un enseignant et une salle à un examen.</p></div>
                     <form className="grid gap-2 sm:grid-cols-2" onSubmit={addAssignment}>
@@ -435,6 +484,12 @@ export default function AdminPage() {
                       <button className="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white sm:col-span-2" type="submit">Ajouter la surveillance</button>
                     </form>
                     <div className="max-h-48 space-y-2 overflow-y-auto">{assignments.map((assignment) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={assignment.id}><span>{assignment.mission}</span><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("surveillance_assignments", assignment.id)}>Supprimer</button></div>)}{!assignments.length ? <p className="text-sm text-slate-500">Aucune surveillance.</p> : null}</div>
+                  </section>
+
+                  <section id="annonces" className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+                    <div><h3 className="text-lg font-bold text-slate-900">Annonces et consignes</h3><p className="text-sm text-slate-500">Crée une annonce, vérifie-la, puis publie-la sur la page publique.</p></div>
+                    <form className="space-y-2" onSubmit={addAnnouncement}><input className="w-full rounded-lg border border-slate-300 px-3 py-2" placeholder="Titre de l’annonce" value={announcementForm.title} onChange={(event) => setAnnouncementForm((current) => ({ ...current, title: event.target.value }))} required /><textarea className="min-h-24 w-full rounded-lg border border-slate-300 px-3 py-2" placeholder="Consigne ou information" value={announcementForm.content} onChange={(event) => setAnnouncementForm((current) => ({ ...current, content: event.target.value }))} required /><div className="flex gap-2"><select className="rounded-lg border border-slate-300 px-3 py-2" value={announcementForm.priority} onChange={(event) => setAnnouncementForm((current) => ({ ...current, priority: event.target.value as "information" | "important" | "urgent" }))}><option value="information">Information</option><option value="important">Important</option><option value="urgent">Urgent</option></select><button className="rounded-lg bg-blue-700 px-3 py-2 font-semibold text-white" type="submit">Créer le brouillon</button></div></form>
+                    <div className="max-h-48 space-y-2 overflow-y-auto">{announcements.map((announcement) => <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm" key={announcement.id}><span><strong>{announcement.title}</strong> · {announcement.is_published ? "Publiée" : "Brouillon"}</span><span className="flex gap-2"><button className="text-xs font-semibold text-blue-700" onClick={() => void updateAnnouncement(announcement, { is_published: !announcement.is_published })}>{announcement.is_published ? "Dépublier" : "Publier"}</button><button className="text-xs font-semibold text-red-700" onClick={() => void deleteContent("announcements", announcement.id)}>Supprimer</button></span></div>)}</div>
                   </section>
                 </div>
               </section>

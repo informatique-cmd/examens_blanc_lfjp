@@ -4,16 +4,17 @@
 
 - client Supabase optionnel dans `src/shared/lib/supabase.ts`;
 - variables attendues dans `.env.example`;
-- schéma SQL dans `supabase/migrations/20260820000000_initial_exam_management.sql`;
+- schéma SQL dans `supabase/migrations/20260820000000_initial_exam_management.sql` et `supabase/migrations/20260820000001_exam_content.sql`;
 - séparation des données par année scolaire;
 - authentification administrateur via Supabase Auth;
 - RLS : lecture des années publiées, écriture réservée aux administrateurs;
-- suppression en cascade d'une année et de ses examens, élèves, enseignants, salles et surveillances.
+- suppression en cascade d'une année et de ses examens, élèves, enseignants, salles et surveillances;
+- convocations élèves, aménagements et annonces publiables.
 
 ## Installation
 
 1. Créer un projet sur https://supabase.com/dashboard.
-2. Ouvrir **SQL Editor** et exécuter le fichier SQL de migration.
+2. Ouvrir **SQL Editor** et exécuter les deux fichiers SQL de migration, dans l'ordre : `20260820000000_initial_exam_management.sql`, puis `20260820000001_exam_content.sql`.
 3. Dans **Authentication > Users**, créer le compte administrateur.
 4. Copier l'UUID de cet utilisateur.
 5. Ajouter son UUID dans `public.admin_users` :

@@ -12,6 +12,9 @@ interface Student { id: string; first_name: string; last_name: string; class_nam
 interface Teacher { id: string; civility: string; first_name: string; last_name: string; }
 interface Room { id: string; name: string; capacity: number; }
 interface Assignment { id: string; exam_id: string; teacher_id: string; room_id: string | null; mission: string; starts_at: string | null; ends_at: string | null; }
+interface CandidatePlacement { id: string; exam_id: string; student_id: string; room_id: string | null; convocation_at: string | null; starts_at: string | null; ends_at: string | null; }
+interface Accommodation { id: string; student_id: string | null; title: string; details: string; is_confirmed: boolean; }
+interface Announcement { id: string; title: string; content: string; priority: string; }
 
 const dateFormatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeStyle: "short" });
 
@@ -37,6 +40,9 @@ export default function SchoolYearPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [placements, setPlacements] = useState<CandidatePlacement[]>([]);
+  const [accommodations, setAccommodations] = useState<Accommodation[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState<"overview" | "planning">("overview");
@@ -46,19 +52,24 @@ export default function SchoolYearPage() {
     const client = supabase;
 
     async function loadPublishedYear() {
-      const [yearResult, examsResult, studentsResult, teachersResult, roomsResult] = await Promise.all([
+      const [yearResult, examsResult, studentsResult, teachersResult, roomsResult, accommodationsResult, announcementsResult] = await Promise.all([
         client.from("school_years").select("id, label, starts_on, ends_on, is_published").eq("id", yearId).eq("is_published", true).maybeSingle(),
         client.from("exams").select("id, title, exam_type, starts_at, ends_at, is_published").eq("school_year_id", yearId).eq("is_published", true).order("starts_at", { ascending: true }),
         client.from("students").select("id, first_name, last_name, class_name").eq("school_year_id", yearId).order("last_name"),
         client.from("teachers").select("id, civility, first_name, last_name").eq("school_year_id", yearId).order("last_name"),
         client.from("rooms").select("id, name, capacity").eq("school_year_id", yearId).order("name"),
+        client.from("accommodations").select("id, student_id, title, details, is_confirmed").eq("school_year_id", yearId),
+        client.from("announcements").select("id, title, content, priority").eq("school_year_id", yearId).eq("is_published", true).order("created_at", { ascending: false }),
       ]);
       const examIds = (examsResult.data ?? []).map((exam) => exam.id);
       const assignmentsResult = examIds.length
         ? await client.from("surveillance_assignments").select("id, exam_id, teacher_id, room_id, mission, starts_at, ends_at").in("exam_id", examIds).order("starts_at")
         : { data: [], error: null };
+      const placementsResult = examIds.length
+        ? await client.from("exam_candidates").select("id, exam_id, student_id, room_id, convocation_at, starts_at, ends_at").in("exam_id", examIds).order("convocation_at")
+        : { data: [], error: null };
 
-      const error = yearResult.error ?? examsResult.error ?? studentsResult.error ?? teachersResult.error ?? roomsResult.error ?? assignmentsResult.error;
+      const error = yearResult.error ?? examsResult.error ?? studentsResult.error ?? teachersResult.error ?? roomsResult.error ?? accommodationsResult.error ?? announcementsResult.error ?? assignmentsResult.error ?? placementsResult.error;
       if (error) {
         setMessage(error.message);
       } else {
@@ -68,6 +79,9 @@ export default function SchoolYearPage() {
         setTeachers(teachersResult.data ?? []);
         setRooms(roomsResult.data ?? []);
         setAssignments(assignmentsResult.data ?? []);
+        setPlacements(placementsResult.data ?? []);
+        setAccommodations(accommodationsResult.data ?? []);
+        setAnnouncements(announcementsResult.data ?? []);
       }
       setIsLoading(false);
     }
@@ -89,6 +103,8 @@ export default function SchoolYearPage() {
     { icon: DoorOpen, value: String(rooms.length), label: "Salles" },
     { icon: CalendarDays, value: year.starts_on ?? "-", label: "Début de session" },
     { icon: Clock3, value: lastExamDate ? formatDate(lastExamDate) : "-", label: "Fin du dernier examen" },
+    { icon: ClipboardList, value: String(placements.length), label: "Convocations" },
+    { icon: Users, value: String(accommodations.length), label: "Aménagements" },
   ];
 
   return (
@@ -108,7 +124,7 @@ export default function SchoolYearPage() {
         <div className="mt-6 space-y-4"><h2 className="text-2xl font-bold text-slate-900">{activeTab === "overview" ? "Organisation des examens" : "Planning des surveillances"}</h2><p className="text-slate-600">Données publiées par l’administration pour l’année {year.label}.</p>
           {activeTab === "overview" ? <div className="space-y-4">
             {exams.length ? exams.map((exam) => <Link className="block rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:border-blue-300 hover:bg-blue-50" key={exam.id} to={`/annees/${year.id}/examens/${exam.id}`}><div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-sm font-semibold uppercase tracking-wide text-blue-700">{exam.exam_type}</p><h3 className="mt-1 text-xl font-bold text-slate-900">{exam.title}</h3></div><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">Publié</span></div><div className="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-2"><p><strong className="text-slate-900">Début :</strong> {formatDate(exam.starts_at)}</p><p><strong className="text-slate-900">Fin :</strong> {formatDate(exam.ends_at)}</p></div><p className="mt-4 text-sm font-semibold text-blue-700">Ouvrir le planning →</p></Link>) : <p className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-600">Aucun examen n’est encore publié pour cette année.</p>}
-            <div className="grid gap-6 pt-3 lg:grid-cols-3"><div><h3 className="font-bold text-slate-900">Élèves</h3><div className="mt-2 max-h-48 space-y-1 overflow-y-auto text-sm text-slate-600">{students.map((student) => <p key={student.id}>{student.last_name} {student.first_name} <span className="text-slate-400">· {student.class_name}</span></p>)}{!students.length ? <p>Aucun élève publié.</p> : null}</div></div><div><h3 className="font-bold text-slate-900">Enseignants</h3><div className="mt-2 max-h-48 space-y-1 overflow-y-auto text-sm text-slate-600">{teachers.map((teacher) => <p key={teacher.id}>{teacher.civility} {teacher.last_name} {teacher.first_name}</p>)}{!teachers.length ? <p>Aucun enseignant publié.</p> : null}</div></div><div><h3 className="font-bold text-slate-900">Salles</h3><div className="mt-2 space-y-1 text-sm text-slate-600">{rooms.map((room) => <p key={room.id}>{room.name} <span className="text-slate-400">· {room.capacity} places</span></p>)}{!rooms.length ? <p>Aucune salle publiée.</p> : null}</div></div></div>
+            <div className="grid gap-6 pt-3 lg:grid-cols-4"><div><h3 className="font-bold text-slate-900">Élèves</h3><div className="mt-2 max-h-48 space-y-1 overflow-y-auto text-sm text-slate-600">{students.map((student) => <p key={student.id}>{student.last_name} {student.first_name} <span className="text-slate-400">· {student.class_name}</span></p>)}{!students.length ? <p>Aucun élève publié.</p> : null}</div></div><div><h3 className="font-bold text-slate-900">Enseignants</h3><div className="mt-2 max-h-48 space-y-1 overflow-y-auto text-sm text-slate-600">{teachers.map((teacher) => <p key={teacher.id}>{teacher.civility} {teacher.last_name} {teacher.first_name}</p>)}{!teachers.length ? <p>Aucun enseignant publié.</p> : null}</div></div><div><h3 className="font-bold text-slate-900">Salles</h3><div className="mt-2 space-y-1 text-sm text-slate-600">{rooms.map((room) => <p key={room.id}>{room.name} <span className="text-slate-400">· {room.capacity} places</span></p>)}{!rooms.length ? <p>Aucune salle publiée.</p> : null}</div></div><div><h3 className="font-bold text-slate-900">Annonces</h3><div className="mt-2 space-y-2 text-sm text-slate-600">{announcements.map((announcement) => <div className="rounded-lg bg-amber-50 p-2" key={announcement.id}><p className="font-semibold text-slate-900">{announcement.title}</p><p>{announcement.content}</p></div>)}{!announcements.length ? <p>Aucune annonce publiée.</p> : null}</div></div></div>
           </div> : assignments.length ? assignments.map((assignment) => <article className="rounded-2xl border border-slate-200 bg-slate-50 p-5" key={assignment.id}><p className="text-sm font-semibold uppercase tracking-wide text-blue-700">{examById.get(assignment.exam_id)?.title ?? "Examen"}</p><h3 className="mt-1 text-xl font-bold text-slate-900">{assignment.mission}</h3><div className="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-3"><p><strong className="text-slate-900">Enseignant :</strong> {teacherById.get(assignment.teacher_id)?.last_name ?? "-"}</p><p><strong className="text-slate-900">Salle :</strong> {roomById.get(assignment.room_id ?? "")?.name ?? "-"}</p><p><strong className="text-slate-900">Horaire :</strong> {formatDate(assignment.starts_at)}</p></div></article>) : <p className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-600">Aucune surveillance publiée pour cette année.</p>}
         </div>
       </section>
