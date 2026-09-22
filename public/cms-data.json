@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-09-22T14:10:24.505Z",
+  "updatedAt": "2026-09-22T14:11:10.488Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Espace examens blancs LFJP",
@@ -25,7 +25,7 @@
       "to": "/examens-blancs",
       "iconLabel": null,
       "subtitle": "",
-      "title": "Baccalauréat blanc 1ère et TerminaleSSS",
+      "title": "Baccalauréat blanc 1ère et Terminale",
       "dateLabel": "10, 11 et 12 décembre 2025",
       "date": "2025-12-10",
       "footerLabel": "Accéder à l'organisation complète",
