@@ -1,4 +1,4 @@
-// Fichier généré automatiquement par le CMS LFJP le 22/09/2026 à 23:40:40
+// Fichier généré automatiquement par le CMS LFJP le 22/09/2026 à 23:42:29
 // Ce fichier est déployé automatiquement sur Vercel lors de chaque commit GitHub.
 
 export const HOME_PAGE_CONTENT = {
@@ -17,12 +17,12 @@ export type HomeCalloutCategory = "general" | "math" | "oral" | "surveillance";
 
 export interface HomeCalloutEntry {
   to: string;
-  iconLabel?: string | null;
-  subtitle?: string | null;
+  iconLabel: string;
+  subtitle: string;
   title: string;
-  dateLabel?: string | null;
-  date?: string | null;
-  footerLabel?: string | null;
+  dateLabel: string;
+  date: string;
+  footerLabel: string;
   category: HomeCalloutCategory;
 }
 
