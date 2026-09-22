@@ -1,0 +1,449 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-09-22T12:31:40.824Z",
+  "siteInfo": {
+    "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
+    "subtitle": "Espace examens blancs LFJP",
+    "description": "Cet espace réunit l'ensemble des informations pratiques nécessaires pour préparer, coordonner et faire vivre les épreuves. Vous y trouverez les documents, convocations, affectations de salles et les consignes indispensables pour guider sereinement chaque étape du déroulement des examens blancs.",
+    "schoolYear": "2025-2026",
+    "logos": [
+      {
+        "src": "https://i.imgur.com/0YmGlXO.png",
+        "alt": "Logo de l'AEFE"
+      }
+    ],
+    "bannerAlert": {
+      "enabled": true,
+      "title": "Consigne d'organisation des épreuves",
+      "message": "Veuillez vous présenter 15 minutes avant le début de chaque épreuve muni de votre convocation et d'une pièce d'identité.",
+      "type": "info"
+    }
+  },
+  "callouts": [
+    {
+      "id": "callout-1",
+      "to": "/examens-blancs",
+      "iconLabel": "Accéder à l'organisation des examens blancs",
+      "subtitle": "",
+      "title": "Baccalauréat blanc 1ère et Terminale",
+      "dateLabel": "10, 11 et 12 décembre 2025",
+      "date": "2025-12-10",
+      "footerLabel": "Accéder à l'organisation complète",
+      "category": "general",
+      "isPublished": true,
+      "order": 1
+    },
+    {
+      "id": "callout-2",
+      "to": "/examens-blancs/dnb-blanc-zao-2026-02-03",
+      "iconLabel": "Organisation du DNB blanc",
+      "subtitle": "",
+      "title": "DNB blanc",
+      "dateLabel": "3 et 4 février 2026",
+      "date": "2026-02-03",
+      "footerLabel": "Consulter plannings et surveillances",
+      "category": "general",
+      "isPublished": true,
+      "order": 2
+    },
+    {
+      "id": "callout-3",
+      "to": "/examens-blancs/mathematiques-2026-02-13",
+      "iconLabel": "Consulter l'organisation du bac blanc de maths 1ère",
+      "subtitle": "",
+      "title": "Bac blanc de maths 1ère",
+      "dateLabel": "13 février 2026",
+      "date": "2026-02-13",
+      "footerLabel": "Accéder à l'organisation complète",
+      "category": "math",
+      "isPublished": true,
+      "order": 3
+    },
+    {
+      "id": "callout-4",
+      "to": "/examens-blancs/eaf-2026-04-07",
+      "iconLabel": "Accéder à l'organisation du baccalauréat blanc 1ère et Terminale",
+      "subtitle": "",
+      "title": "Baccalauréat blanc 1ère et Terminale",
+      "dateLabel": "7 au 10 avril 2026",
+      "date": "2026-04-07",
+      "footerLabel": "Accéder à l'organisation complète",
+      "category": "general",
+      "isPublished": true,
+      "order": 4
+    },
+    {
+      "id": "callout-5",
+      "to": "/examens-blancs/oraux-eaf-2026-04",
+      "iconLabel": "Consulter l'organisation des oraux blancs de français",
+      "subtitle": "",
+      "title": "Oraux blancs EAF 1ère",
+      "dateLabel": "13, 14 et 15 avril 2026",
+      "date": "2026-04-13",
+      "footerLabel": "Accéder au planning détaillé",
+      "category": "oral",
+      "isPublished": true,
+      "order": 5
+    },
+    {
+      "id": "callout-6",
+      "to": "/examens-blancs/grand-oral-2026-04-17",
+      "iconLabel": "Consulter l'organisation du Grand Oral Blanc",
+      "subtitle": "",
+      "title": "Grand Oral Blanc",
+      "dateLabel": "Vendredi 17 avril 2026",
+      "date": "2026-04-17",
+      "footerLabel": "Accéder au planning détaillé",
+      "category": "oral",
+      "isPublished": true,
+      "order": 6
+    },
+    {
+      "id": "callout-7",
+      "to": "/examens-blancs/oraux-eaf-2026-05",
+      "iconLabel": "Consulter l'organisation des oraux blancs de français",
+      "subtitle": "",
+      "title": "Oraux blancs EAF 1ère",
+      "dateLabel": "11, 12 et 13 mai 2026",
+      "date": "2026-05-11",
+      "footerLabel": "Accéder au planning détaillé",
+      "category": "oral",
+      "isPublished": true,
+      "order": 7
+    },
+    {
+      "id": "callout-8",
+      "to": "https://bastiencapel.github.io/OralDNB2026/",
+      "iconLabel": "Consulter l'organisation des oraux du DNB",
+      "subtitle": "",
+      "title": "Oraux du DNB",
+      "dateLabel": "20 mai 2026",
+      "date": "2026-05-20",
+      "footerLabel": "Accéder au planning détaillé",
+      "category": "oral",
+      "isPublished": true,
+      "order": 8
+    },
+    {
+      "id": "callout-9",
+      "to": "/examens-blancs/mathematiques-2026-05-23",
+      "iconLabel": "Consulter l'organisation du bac blanc de maths 1ère",
+      "subtitle": "",
+      "title": "Bac blanc de maths 1ère",
+      "dateLabel": "23 mai 2026",
+      "date": "2026-05-23",
+      "footerLabel": "Accéder à l'organisation complète",
+      "category": "math",
+      "isPublished": true,
+      "order": 9
+    },
+    {
+      "id": "callout-10",
+      "to": "/examens-blancs/oraux-eaf-2026-06",
+      "iconLabel": "Consulter l'organisation des oraux de français",
+      "subtitle": "",
+      "title": "Oral de français",
+      "dateLabel": "1er au 5 juin 2026",
+      "date": "2026-06-01",
+      "footerLabel": "Accéder à la liste des élèves",
+      "category": "oral",
+      "isPublished": true,
+      "order": 10
+    },
+    {
+      "id": "callout-11",
+      "to": "/surveillances-bac-dnb",
+      "iconLabel": "Consulter le planning des surveillances BAC et DNB",
+      "subtitle": "",
+      "title": "Surveillances BAC et DNB",
+      "dateLabel": "Session Juin 2026",
+      "date": "2026-06-08",
+      "footerLabel": "Accéder au planning détaillé",
+      "category": "surveillance",
+      "isPublished": true,
+      "order": 11
+    }
+  ],
+  "announcements": [
+    {
+      "id": "ann-1",
+      "title": "Rappel des horaires de convocation",
+      "content": "Les candidats doivent se présenter 15 minutes avant l'heure indiquée sur la convocation avec leur pièce d'identité et leur matériel obligatoire.",
+      "priority": "important",
+      "target": "all",
+      "isPublished": true,
+      "date": "2026-02-01"
+    },
+    {
+      "id": "ann-2",
+      "title": "Calculatrices autorisées en mode examen",
+      "content": "Pour les épreuves de mathématiques et de sciences, les calculatrices doivent obligatoirement être activées en mode examen dès l'entrée en salle.",
+      "priority": "information",
+      "target": "bac",
+      "isPublished": true,
+      "date": "2026-02-10"
+    },
+    {
+      "id": "ann-3",
+      "title": "Émargement des feuilles de surveillance",
+      "content": "Mesdames et Messieurs les enseignants surveillants sont priés de remettre les pochettes d'émargement au secrétariat des examens dès la fin de l'épreuve.",
+      "priority": "urgent",
+      "target": "teachers",
+      "isPublished": true,
+      "date": "2026-02-12"
+    }
+  ],
+  "exams": [
+    {
+      "id": "exam-1",
+      "title": "Baccalauréat blanc 1ère et Terminale (Session Décembre)",
+      "examType": "Baccalauréat blanc",
+      "targetLevel": "1ère & Terminale",
+      "period": "10, 11 et 12 décembre 2025",
+      "startsAt": "2025-12-10T08:00",
+      "endsAt": "2025-12-12T17:00",
+      "description": "Épreuves écrites complètes toutes spécialités pour les élèves de première et terminale.",
+      "status": "Terminé"
+    },
+    {
+      "id": "exam-2",
+      "title": "DNB blanc ZAO",
+      "examType": "DNB blanc",
+      "targetLevel": "3ème",
+      "period": "3 et 4 février 2026",
+      "startsAt": "2026-02-03T08:00",
+      "endsAt": "2026-02-04T16:30",
+      "description": "Épreuves écrites de français, mathématiques, histoire-géo et sciences pour les classes de troisième.",
+      "status": "Terminé"
+    },
+    {
+      "id": "exam-3",
+      "title": "Bac blanc de Mathématiques 1ère (Février)",
+      "examType": "Spécialité Mathématiques",
+      "targetLevel": "1ère Spé Maths",
+      "period": "13 février 2026",
+      "startsAt": "2026-02-13T08:00",
+      "endsAt": "2026-02-13T10:00",
+      "description": "Épreuve anticipée de spécialité mathématiques première.",
+      "status": "Terminé"
+    },
+    {
+      "id": "exam-4",
+      "title": "Baccalauréat blanc 1ère et Terminale (Session Avril)",
+      "examType": "Baccalauréat blanc",
+      "targetLevel": "1ère & Terminale",
+      "period": "7 au 10 avril 2026",
+      "startsAt": "2026-04-07T08:00",
+      "endsAt": "2026-04-10T17:00",
+      "description": "Épreuves blanches de printemps et EAF anticipées.",
+      "status": "Prévu"
+    },
+    {
+      "id": "exam-5",
+      "title": "Oraux blancs EAF 1ère (Session Avril)",
+      "examType": "Épreuves anticipées orales",
+      "targetLevel": "1ère",
+      "period": "13, 14 et 15 avril 2026",
+      "startsAt": "2026-04-13T08:00",
+      "endsAt": "2026-04-15T18:00",
+      "description": "Passations individuelles devant les examinateurs de français.",
+      "status": "Prévu"
+    },
+    {
+      "id": "exam-6",
+      "title": "Grand Oral Blanc",
+      "examType": "Grand Oral",
+      "targetLevel": "Terminale",
+      "period": "Vendredi 17 avril 2026",
+      "startsAt": "2026-04-17T08:00",
+      "endsAt": "2026-04-17T17:00",
+      "description": "Entraînement officiel au Grand Oral avec jury pluri-disciplinaire.",
+      "status": "Prévu"
+    },
+    {
+      "id": "exam-7",
+      "title": "Oraux du DNB",
+      "examType": "Épreuve orale DNB",
+      "targetLevel": "3ème",
+      "period": "20 mai 2026",
+      "startsAt": "2026-05-20T08:00",
+      "endsAt": "2026-05-20T17:00",
+      "description": "Soutenance de projet devant le jury pour les élèves de troisième.",
+      "status": "Prévu"
+    }
+  ],
+  "rooms": [
+    {
+      "id": "room-1",
+      "name": "Salle S12",
+      "capacity": 24,
+      "building": "Bâtiment Secondaire",
+      "notes": "Sujets écrits généraux"
+    },
+    {
+      "id": "room-2",
+      "name": "Salle S14",
+      "capacity": 28,
+      "building": "Bâtiment Secondaire",
+      "notes": "Configuration examen standard"
+    },
+    {
+      "id": "room-3",
+      "name": "Salle Informatique 1",
+      "capacity": 18,
+      "building": "Bâtiment Scientifique",
+      "notes": "Postes informatiques équipés"
+    },
+    {
+      "id": "room-4",
+      "name": "Salle Polyvalente",
+      "capacity": 65,
+      "building": "Rez-de-chaussée",
+      "notes": "Grande capacité épreuves communes"
+    },
+    {
+      "id": "room-5",
+      "name": "Salle S04 (Tiers-Temps)",
+      "capacity": 12,
+      "building": "Bâtiment Administratif",
+      "notes": "Espace calme aménagements et PAI"
+    },
+    {
+      "id": "room-6",
+      "name": "Salle S08 (Oral)",
+      "capacity": 4,
+      "building": "Étage 1",
+      "notes": "Jury individuel d'oral"
+    }
+  ],
+  "teachers": [
+    {
+      "id": "tea-1",
+      "civility": "Madame",
+      "firstName": "Fatou",
+      "lastName": "Diop",
+      "subject": "Lettres modernes",
+      "email": "fatou.diop@lfjpsaly.org"
+    },
+    {
+      "id": "tea-2",
+      "civility": "Monsieur",
+      "firstName": "Bastien",
+      "lastName": "Capel",
+      "subject": "Mathématiques",
+      "email": "bastien.capel@lfjpsaly.org"
+    },
+    {
+      "id": "tea-3",
+      "civility": "Madame",
+      "firstName": "Aïda",
+      "lastName": "Sow",
+      "subject": "Histoire-Géographie",
+      "email": "aida.sow@lfjpsaly.org"
+    },
+    {
+      "id": "tea-4",
+      "civility": "Monsieur",
+      "firstName": "David",
+      "lastName": "Lemoine",
+      "subject": "Sciences Physiques",
+      "email": "david.lemoine@lfjpsaly.org"
+    },
+    {
+      "id": "tea-5",
+      "civility": "Madame",
+      "firstName": "Sophie",
+      "lastName": "Diallo",
+      "subject": "SVT",
+      "email": "sophie.diallo@lfjpsaly.org"
+    },
+    {
+      "id": "tea-6",
+      "civility": "Monsieur",
+      "firstName": "Cheikh",
+      "lastName": "Ndiaye",
+      "subject": "Philosophie",
+      "email": "cheikh.ndiaye@lfjpsaly.org"
+    }
+  ],
+  "surveillances": [
+    {
+      "id": "surv-1",
+      "examTitle": "Baccalauréat blanc 1ère et Terminale",
+      "teacherName": "M. Bastien Capel",
+      "roomName": "Salle S12",
+      "date": "2026-04-07",
+      "timeSlot": "08h00 - 12h00",
+      "mission": "Surveillance principale"
+    },
+    {
+      "id": "surv-2",
+      "examTitle": "Baccalauréat blanc 1ère et Terminale",
+      "teacherName": "Mme Sophie Diallo",
+      "roomName": "Salle S14",
+      "date": "2026-04-07",
+      "timeSlot": "08h00 - 12h00",
+      "mission": "Surveillance principale"
+    },
+    {
+      "id": "surv-3",
+      "examTitle": "Baccalauréat blanc 1ère et Terminale",
+      "teacherName": "M. David Lemoine",
+      "roomName": "Salle Polyvalente",
+      "date": "2026-04-07",
+      "timeSlot": "13h30 - 17h30",
+      "mission": "Surveillance & Distribution"
+    },
+    {
+      "id": "surv-4",
+      "examTitle": "Bac blanc de maths 1ère",
+      "teacherName": "Mme Aïda Sow",
+      "roomName": "Salle S04 (Tiers-Temps)",
+      "date": "2026-04-08",
+      "timeSlot": "08h00 - 11h00",
+      "mission": "Surveillance aménagements"
+    }
+  ],
+  "candidates": [
+    {
+      "id": "cand-1",
+      "firstName": "Moussa",
+      "lastName": "Ba",
+      "className": "Terminale G1",
+      "examName": "Bac blanc 2026",
+      "roomName": "Salle S12",
+      "convocationTime": "07h45",
+      "accommodation": "Aucun"
+    },
+    {
+      "id": "cand-2",
+      "firstName": "Aminata",
+      "lastName": "Cissé",
+      "className": "Terminale G1",
+      "examName": "Bac blanc 2026",
+      "roomName": "Salle S12",
+      "convocationTime": "07h45",
+      "accommodation": "Aucun"
+    },
+    {
+      "id": "cand-3",
+      "firstName": "Lucas",
+      "lastName": "Dupont",
+      "className": "1ère G2",
+      "examName": "Bac blanc 2026",
+      "roomName": "Salle S04 (Tiers-Temps)",
+      "convocationTime": "07h30",
+      "accommodation": "Tiers-temps accordé"
+    },
+    {
+      "id": "cand-4",
+      "firstName": "Mariama",
+      "lastName": "Faye",
+      "className": "3ème A",
+      "examName": "DNB blanc",
+      "roomName": "Salle S14",
+      "convocationTime": "07h45",
+      "accommodation": "Aucun"
+    }
+  ]
+}
