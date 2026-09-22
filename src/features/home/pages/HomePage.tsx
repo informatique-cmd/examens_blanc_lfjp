@@ -66,7 +66,7 @@ export default function HomePage() {
     .filter((entry) => entry.isPublished)
     .sort((a, b) => {
       if (a.order !== b.order) return a.order - b.order;
-      return new Date(a.date).getTime() - new Date(b.date).getTime();
+      return new Date(a.date || "").getTime() - new Date(b.date || "").getTime();
     });
 
   const iconByCategory: Record<HomeCalloutCategory, LucideIcon> = {
@@ -133,7 +133,7 @@ export default function HomePage() {
               subtitle={entry.subtitle}
               title={entry.title}
               footerLabel={entry.footerLabel}
-              meta={<HomeEventMeta icon={CalendarDays} label={entry.dateLabel} description="" />}
+              meta={<HomeEventMeta icon={CalendarDays} label={entry.dateLabel || ""} description="" />}
               iconBackgroundClassName={
                 entry.to === "/examens-blancs/oraux-dnb-2026-05-20" ||
                 entry.to === "/surveillances-bac-dnb"
