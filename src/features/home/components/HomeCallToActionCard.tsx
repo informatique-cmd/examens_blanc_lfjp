@@ -5,10 +5,10 @@ import type { LucideIcon } from "lucide-react";
 interface HomeCallToActionCardProps {
   to: string;
   icon: LucideIcon;
-  iconLabel: string;
+  iconLabel?: string | null;
   title: string;
-  subtitle?: string;
-  footerLabel: string;
+  subtitle?: string | null;
+  footerLabel?: string | null;
   meta?: ReactNode;
   iconBackgroundClassName?: string;
 }
@@ -19,11 +19,12 @@ export default function HomeCallToActionCard({
   iconLabel,
   title,
   subtitle,
-  footerLabel,
+  footerLabel = "Accéder à l'organisation complète",
   meta,
   iconBackgroundClassName = "bg-gradient-to-br from-sky-500 to-indigo-500",
 }: HomeCallToActionCardProps) {
   const isExternal = to.startsWith("http://") || to.startsWith("https://");
+  const labelText = iconLabel || title;
 
   const cardContent = (
     <>
@@ -60,14 +61,14 @@ export default function HomeCallToActionCard({
 
   if (isExternal) {
     return (
-      <a href={to} className={className} aria-label={iconLabel}>
+      <a href={to} className={className} aria-label={labelText}>
         {cardContent}
       </a>
     );
   }
 
   return (
-    <Link to={to} className={className} aria-label={iconLabel}>
+    <Link to={to} className={className} aria-label={labelText}>
       {cardContent}
     </Link>
   );
