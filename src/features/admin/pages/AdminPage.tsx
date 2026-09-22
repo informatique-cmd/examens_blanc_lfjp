@@ -992,14 +992,14 @@ export default function AdminPage() {
                       e.preventDefault();
                       const form = e.currentTarget;
                       const formData = new FormData(form);
-                      const title = formData.get("title") as string;
-                      const subtitle = formData.get("subtitle") as string;
-                      const dateLabel = formData.get("dateLabel") as string;
-                      const date = formData.get("date") as string;
-                      const to = formData.get("to") as string;
-                      const footerLabel = formData.get("footerLabel") as string;
-                      const iconLabel = formData.get("iconLabel") as string;
-                      const category = formData.get("category") as CmsCallout["category"];
+                      const title = (formData.get("title") as string) || "";
+                      const subtitle = (formData.get("subtitle") as string) || "";
+                      const dateLabel = (formData.get("dateLabel") as string) || "";
+                      const date = (formData.get("date") as string) || "";
+                      const to = (formData.get("to") as string) || "/";
+                      const footerLabel = (formData.get("footerLabel") as string) || "Accéder à l'organisation complète";
+                      const iconLabel = (formData.get("iconLabel") as string) || editingCallout?.iconLabel || `Accéder à ${title}`;
+                      const category = (formData.get("category") as CmsCallout["category"]) || "general";
                       const isPublished = formData.get("isPublished") === "on";
 
                       if (editingCallout) {
@@ -1014,7 +1014,7 @@ export default function AdminPage() {
                           category,
                           isPublished,
                         });
-                        showNotification("Programmation mise à jour ! Pensez à cliquer sur 'Pousser vers Vercel'.");
+                        showNotification("Programmation mise à jour ! Pensez à synchroniser avec GitHub & Vercel.");
                       } else {
                         addCallout({
                           title,
@@ -1023,7 +1023,7 @@ export default function AdminPage() {
                           date,
                           to,
                           footerLabel,
-                          iconLabel: iconLabel || `Accéder à ${title}`,
+                          iconLabel,
                           category,
                           isPublished,
                         });
@@ -1152,7 +1152,7 @@ export default function AdminPage() {
                   .filter((c) =>
                     searchQuery
                       ? c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        c.dateLabel.toLowerCase().includes(searchQuery.toLowerCase())
+                        (c.dateLabel || "").toLowerCase().includes(searchQuery.toLowerCase())
                       : true
                   )
                   .map((callout, idx) => (
