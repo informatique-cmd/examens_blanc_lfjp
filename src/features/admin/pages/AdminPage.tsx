@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Calendar,
@@ -20,24 +20,20 @@ import {
   Eye,
   ExternalLink,
   Download,
-  Copy,
   RotateCcw,
-  Sparkles,
   Layers,
   Search,
-  Lock,
   LogOut,
   GitBranch,
   Github,
   Loader2,
   CheckCircle,
-  HelpCircle,
-  RefreshCw,
+  ClipboardPaste,
+  ChevronDown,
 } from "lucide-react";
 
 import {
   useCmsData,
-  generateConstantsTsCode,
   exportCmsDataJson,
   importCmsDataJson,
   type CmsCallout,
@@ -64,8 +60,7 @@ type ActiveTab =
   | "rooms"
   | "teachers"
   | "surveillances"
-  | "candidates"
-  | "deploy";
+  | "candidates";
 
 export default function AdminPage() {
   const {
@@ -104,17 +99,52 @@ export default function AdminPage() {
     token: githubToken,
     login: loginGitHub,
     logout: logoutGitHub,
-    updateConfig: updateGitHubConfig,
   } = useGitHubAuth();
+
+  // Navigation hook for redirect
+  const navigate = useNavigate();
 
   // Login form state
   const [loginTokenInput, setLoginTokenInput] = useState(githubToken || "");
-  const [loginOwnerInput, setLoginOwnerInput] = useState(githubConfig.owner);
-  const [loginRepoInput, setLoginRepoInput] = useState(githubConfig.repo);
-  const [loginBranchInput, setLoginBranchInput] = useState(githubConfig.branch);
+  const [loginOwnerInput, setLoginOwnerInput] = useState(githubConfig.owner || "informatique-cmd");
+  const [loginRepoInput, setLoginRepoInput] = useState(githubConfig.repo || "examens_blanc_lfjp");
+  const [loginBranchInput, setLoginBranchInput] = useState(githubConfig.branch || "main");
   const [showToken, setShowToken] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [hasOpenedGitHub, setHasOpenedGitHub] = useState(false);
+  const [showAdvancedConfig, setShowAdvancedConfig] = useState(false);
+
+  // Logout handler with immediate home redirect
+  const handleLogout = () => {
+    logoutGitHub();
+    navigate("/");
+  };
+
+  // Open GitHub OAuth / Token page in popup/tab
+  const handleStartGitHubConnect = () => {
+    setHasOpenedGitHub(true);
+    setLoginError(null);
+    window.open(
+      "https://github.com/settings/tokens/new?scopes=repo&description=LFJP+Admin+CMS",
+      "_blank"
+    );
+  };
+
+  // Paste token from clipboard
+  const handlePasteClipboard = async () => {
+    try {
+      if (navigator.clipboard?.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim()) {
+          setLoginTokenInput(text.trim());
+          showNotification("Jeton collé depuis le presse-papier !");
+        }
+      }
+    } catch {
+      // Ignore if permission denied
+    }
+  };
 
   // Sync / Push modal state
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
@@ -158,7 +188,6 @@ export default function AdminPage() {
 
   // Form local state for Site Info
   const [siteInfoForm, setSiteInfoForm] = useState(cmsData.siteInfo);
-  const [codeCopied, setCodeCopied] = useState(false);
 
   const showNotification = (msg: string) => {
     setNotification(msg);
@@ -168,20 +197,26 @@ export default function AdminPage() {
   };
 
   // Handle GitHub Login
-  const handleLoginSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleLoginSubmit = async (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    const tokenToUse = loginTokenInput.trim();
+    if (!tokenToUse) {
+      setLoginError("Veuillez saisir ou coller votre jeton GitHub.");
+      return;
+    }
+
     setIsLoggingIn(true);
     setLoginError(null);
 
-    const result = await loginGitHub(loginTokenInput, {
-      owner: loginOwnerInput,
-      repo: loginRepoInput,
-      branch: loginBranchInput,
+    const result = await loginGitHub(tokenToUse, {
+      owner: loginOwnerInput.trim() || "informatique-cmd",
+      repo: loginRepoInput.trim() || "examens_blanc_lfjp",
+      branch: loginBranchInput.trim() || "main",
     });
 
     setIsLoggingIn(false);
     if (!result.success) {
-      setLoginError(result.error || "Impossible de se connecter à GitHub.");
+      setLoginError(result.error || "Impossible de se connecter à GitHub avec cette clé.");
     } else {
       showNotification(`Connexion réussie ! Bienvenue ${result.user?.name || result.user?.login}.`);
     }
@@ -211,15 +246,6 @@ export default function AdminPage() {
     e.preventDefault();
     updateSiteInfo(siteInfoForm);
     showNotification("Informations générales du site enregistrées avec succès !");
-  };
-
-  // Copy code helper
-  const handleCopyCode = () => {
-    const code = generateConstantsTsCode(cmsData);
-    navigator.clipboard.writeText(code);
-    setCodeCopied(true);
-    showNotification("Code TypeScript copié dans le presse-papier !");
-    setTimeout(() => setCodeCopied(false), 3000);
   };
 
   // Download JSON helper
@@ -254,18 +280,17 @@ export default function AdminPage() {
     reader.readAsText(file);
   };
 
-  // Navigation tabs
+  // Navigation tabs (single update button is in the top bar)
   const tabs = [
     { id: "overview" as const, label: "Tableau de bord", icon: LayoutDashboard },
-    { id: "programmations" as const, label: "Programmations (Accueil)", icon: Calendar },
-    { id: "siteInfo" as const, label: "Identité & Textes", icon: FileText },
+    { id: "programmations" as const, label: "Programmations", icon: Calendar },
+    { id: "siteInfo" as const, label: "Identité du site", icon: FileText },
     { id: "announcements" as const, label: "Annonces & Consignes", icon: Bell },
-    { id: "exams" as const, label: "Épreuves & Calendrier", icon: Layers },
+    { id: "exams" as const, label: "Épreuves", icon: Layers },
     { id: "rooms" as const, label: "Salles d'examen", icon: DoorOpen },
-    { id: "teachers" as const, label: "Enseignants & Équipe", icon: Users },
+    { id: "teachers" as const, label: "Enseignants", icon: Users },
     { id: "surveillances" as const, label: "Surveillances", icon: Shield },
-    { id: "candidates" as const, label: "Candidats & Convocations", icon: GraduationCap },
-    { id: "deploy" as const, label: "Déploiement GitHub & Vercel", icon: UploadCloud },
+    { id: "candidates" as const, label: "Candidats", icon: GraduationCap },
   ];
 
   // -------------------------------------------------------------
@@ -277,23 +302,22 @@ export default function AdminPage() {
         <div className="w-full max-w-md">
           {/* School Badge & Header */}
           <div className="text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/30">
-              <Shield className="h-7 w-7" />
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-700 text-white font-bold text-lg shadow-sm">
+              LFJP
             </div>
             <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">
-              Administration CMS — LFJP
+              Portail d'Administration
             </h1>
             <p className="mt-1 text-sm text-slate-600">
-              Lycée Français Jacques Prévert de Saly
+              Lycée Français Jacques Prévert de Saly • Réseau AEFE
             </p>
-            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-              <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
-              <span>Synchronisation GitHub & Vercel 100% Gratuite</span>
+            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">
+              <span>Gestion des examens blancs & DNB</span>
             </div>
           </div>
 
           {/* Login Card */}
-          <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-7 shadow-xl">
+          <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-7 shadow-lg">
             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white">
                 <Github className="h-5 w-5" />
@@ -301,128 +325,148 @@ export default function AdminPage() {
               <div>
                 <h2 className="text-base font-bold text-slate-900">Connexion avec GitHub</h2>
                 <p className="text-xs text-slate-500">
-                  Accès réservé aux administrateurs du lycée
+                  Accès réservé aux administrateurs autorisés
                 </p>
               </div>
             </div>
 
             {loginError && (
               <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-800">
-                <p className="font-bold">Erreur de connexion</p>
+                <p className="font-bold">Erreur d'authentification</p>
                 <p className="mt-0.5">{loginError}</p>
               </div>
             )}
 
-            <form onSubmit={handleLoginSubmit} className="mt-5 space-y-4">
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700">
-                    Jeton d'accès personnel GitHub (Token) *
-                  </label>
+            <div className="mt-5 space-y-4">
+              {/* Single direct GitHub button */}
+              <button
+                type="button"
+                id="btn-login-github"
+                onClick={handleStartGitHubConnect}
+                className="flex w-full items-center justify-center gap-3 rounded-2xl bg-slate-900 px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.99]"
+              >
+                <Github className="h-5 w-5" />
+                <span>Se connecter avec GitHub</span>
+              </button>
+
+              <div className="relative flex items-center justify-center">
+                <div className="border-t border-slate-200 w-full" />
+                <span className="bg-white px-3 text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                  ou saisie de votre clé
+                </span>
+              </div>
+
+              {hasOpenedGitHub && (
+                <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3.5 text-xs text-slate-700 space-y-1">
+                  <p className="font-semibold text-blue-900 flex items-center gap-1.5">
+                    <CheckCircle2 className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                    <span>Fenêtre GitHub ouverte</span>
+                  </p>
+                  <p className="text-slate-600">
+                    Connectez-vous à votre compte sur GitHub, puis cliquez sur <strong>Generate token</strong> en bas pour générer votre clé. Collez-la ci-dessous :
+                  </p>
+                </div>
+              )}
+
+              <form onSubmit={handleLoginSubmit} className="space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-700">
+                      Jeton d'accès personnel GitHub (Token)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handlePasteClipboard}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-800"
+                    >
+                      <ClipboardPaste className="h-3 w-3" />
+                      <span>Coller depuis le presse-papier</span>
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showToken ? "text" : "password"}
+                      value={loginTokenInput}
+                      onChange={(e) => setLoginTokenInput(e.target.value)}
+                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                      className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-mono text-slate-900 shadow-xs focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowToken(!showToken)}
+                      className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-600"
+                    >
+                      {showToken ? "Masquer" : "Afficher"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Collapsible advanced repo configuration */}
+                <div>
                   <button
                     type="button"
-                    onClick={() => setShowToken(!showToken)}
-                    className="text-xs font-semibold text-blue-600 hover:text-blue-800"
+                    onClick={() => setShowAdvancedConfig(!showAdvancedConfig)}
+                    className="flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-slate-800"
                   >
-                    {showToken ? "Masquer" : "Afficher"}
+                    <ChevronDown className={`h-3 w-3 transition-transform ${showAdvancedConfig ? "rotate-180" : ""}`} />
+                    <span>Paramètres du dépôt ({loginOwnerInput}/{loginRepoInput})</span>
                   </button>
-                </div>
-                <div className="relative">
-                  <input
-                    type={showToken ? "text" : "password"}
-                    required
-                    value={loginTokenInput}
-                    onChange={(e) => setLoginTokenInput(e.target.value)}
-                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-mono text-slate-900 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
-                  />
-                  <Lock className="pointer-events-none absolute right-3.5 top-3 h-4 w-4 text-slate-400" />
-                </div>
-                <p className="text-xs text-slate-500">
-                  Jeton personnel GitHub avec l'autorisation <code>repo</code> (ou <code>contents: write</code>).
-                </p>
-              </div>
 
-              {/* Dépôt cible */}
-              <div className="grid grid-cols-3 gap-2.5 rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5 text-xs">
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Propriétaire</label>
-                  <input
-                    type="text"
-                    required
-                    value={loginOwnerInput}
-                    onChange={(e) => setLoginOwnerInput(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-xs focus:border-blue-500 focus:outline-none"
-                  />
+                  {showAdvancedConfig && (
+                    <div className="mt-2 grid grid-cols-3 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                      <div>
+                        <label className="font-semibold text-slate-600">Propriétaire</label>
+                        <input
+                          type="text"
+                          value={loginOwnerInput}
+                          onChange={(e) => setLoginOwnerInput(e.target.value)}
+                          className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold text-slate-600">Dépôt</label>
+                        <input
+                          type="text"
+                          value={loginRepoInput}
+                          onChange={(e) => setLoginRepoInput(e.target.value)}
+                          className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-semibold text-slate-600">Branche</label>
+                        <input
+                          type="text"
+                          value={loginBranchInput}
+                          onChange={(e) => setLoginBranchInput(e.target.value)}
+                          className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Dépôt</label>
-                  <input
-                    type="text"
-                    required
-                    value={loginRepoInput}
-                    onChange={(e) => setLoginRepoInput(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-xs focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700">Branche</label>
-                  <input
-                    type="text"
-                    required
-                    value={loginBranchInput}
-                    onChange={(e) => setLoginBranchInput(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-xs focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-              </div>
 
-              {/* Quick token generator link */}
-              <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-900">
-                <p className="font-bold flex items-center gap-1.5 text-blue-800">
-                  <HelpCircle className="h-4 w-4" />
-                  <span>Comment obtenir votre jeton en 30 secondes ?</span>
-                </p>
-                <ol className="mt-1.5 list-decimal pl-4 space-y-1 text-slate-600">
-                  <li>Cliquez sur le lien ci-dessous (la permission <code>repo</code> est pré-cochée).</li>
-                  <li>Cliquez sur <strong>Generate token</strong> en bas de page GitHub.</li>
-                  <li>Copiez le jeton et collez-le dans le champ ci-dessus.</li>
-                </ol>
-                <a
-                  href="https://github.com/settings/tokens/new?scopes=repo&description=LFJP+Examens+CMS"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-2.5 inline-flex items-center gap-1 font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+                <button
+                  type="submit"
+                  disabled={isLoggingIn || !loginTokenInput.trim()}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-blue-800 disabled:opacity-50"
                 >
-                  <span>Créer mon jeton GitHub en 1 clic →</span>
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isLoggingIn}
-                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-slate-800 disabled:opacity-50"
-              >
-                {isLoggingIn ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Vérification de l'accès GitHub...</span>
-                  </>
-                ) : (
-                  <>
-                    <Github className="h-4 w-4" />
-                    <span>Se connecter avec GitHub</span>
-                  </>
-                )}
-              </button>
-            </form>
+                  {isLoggingIn ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Vérification de l'accès...</span>
+                    </>
+                  ) : (
+                    <span>Valider et accéder à l'administration</span>
+                  )}
+                </button>
+              </form>
+            </div>
           </div>
 
           <div className="mt-6 text-center">
             <Link
               to="/"
-              className="text-xs font-semibold text-slate-500 hover:text-slate-800"
+              className="text-xs font-medium text-slate-500 hover:text-slate-800 transition"
             >
               ← Retour au site public des examens
             </Link>
@@ -438,15 +482,15 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800">
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3 shadow-sm">
+      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3 shadow-xs">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow">
-            <Shield className="h-5 w-5" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-700 text-white font-bold text-sm shadow-xs">
+            LFJP
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-slate-900">CMS Examens LFJP</h1>
-              <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+              <h1 className="text-base font-bold text-slate-900">Administration Examens LFJP</h1>
+              <span className="rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
                 {cmsData.siteInfo.schoolYear}
               </span>
             </div>
@@ -469,7 +513,7 @@ export default function AdminPage() {
               <img
                 src={githubUser.avatar_url}
                 alt={githubUser.login}
-                className="h-6 w-6 rounded-full border border-slate-300"
+                className="h-5 w-5 rounded-full border border-slate-300"
               />
               <span className="font-semibold text-slate-800">@{githubUser.login}</span>
             </div>
@@ -479,36 +523,35 @@ export default function AdminPage() {
             to="/"
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-blue-700"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-blue-700"
           >
-            <Eye className="h-4 w-4" />
+            <Eye className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Voir le site</span>
-            <ExternalLink className="h-3 w-3 opacity-60" />
+            <ExternalLink className="h-3 w-3 opacity-50" />
           </Link>
 
-          {/* MAIN ACTION: PUSH TO GITHUB & VERCEL */}
+          {/* LE BOUTON UNIQUE DE SYNCHRONISATION GITHUB & VERCEL */}
           <button
+            id="btn-single-sync-github-vercel"
             onClick={() => {
               setSyncResult(null);
               setIsSyncModalOpen(true);
             }}
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-blue-700"
+            className="flex items-center gap-2 rounded-xl bg-blue-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-blue-800 active:scale-[0.98]"
           >
             <UploadCloud className="h-4 w-4" />
-            <span>Mettre à jour Vercel / GitHub</span>
+            <span>Mettre à jour GitHub & Vercel</span>
           </button>
 
-          {/* Logout */}
+          {/* Bouton Déconnexion avec redirection automatique vers l'accueil */}
           <button
-            onClick={() => {
-              if (confirm("Voulez-vous vous déconnecter de l'administration ?")) {
-                logoutGitHub();
-              }
-            }}
-            title="Se déconnecter"
-            className="flex items-center rounded-lg border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-100 hover:text-red-600"
+            id="btn-logout-admin"
+            onClick={handleLogout}
+            title="Se déconnecter et retourner au site"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-3.5 w-3.5 text-slate-500" />
+            <span className="hidden sm:inline">Déconnexion</span>
           </button>
         </div>
       </header>
@@ -702,21 +745,7 @@ export default function AdminPage() {
             })}
           </nav>
 
-          {/* Quick sync shortcut button in sidebar */}
           <div className="mt-6 border-t border-slate-100 pt-4">
-            <button
-              onClick={() => {
-                setSyncResult(null);
-                setIsSyncModalOpen(true);
-              }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-3 py-2.5 text-xs font-bold text-white shadow transition hover:bg-blue-700"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              <span>Pousser vers Vercel</span>
-            </button>
-          </div>
-
-          <div className="mt-4">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
               <div className="flex items-center gap-1.5 font-bold text-slate-800">
                 <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
@@ -768,35 +797,31 @@ export default function AdminPage() {
               </div>
 
               {/* Status Banner */}
-              <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50/50 p-5 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow">
-                    <Github className="h-5 w-5" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-700 text-white font-bold text-sm shadow-xs">
+                    LFJP
                   </div>
                   <div>
                     <p className="font-bold text-slate-900">
                       Dépôt GitHub connecté : {githubConfig.owner}/{githubConfig.repo}
                     </p>
                     <p className="text-xs text-slate-600">
-                      Toutes les modifications sont synchronisables en un clic sur Vercel sans aucun service payant.
+                      Branche de publication : <code className="font-semibold text-blue-700">{githubConfig.branch}</code> • Synchronisation Vercel directe sans service payant
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => {
-                    setSyncResult(null);
-                    setIsSyncModalOpen(true);
-                  }}
-                  className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow transition hover:bg-blue-700"
-                >
-                  <UploadCloud className="h-4 w-4" />
-                  <span>Mettre à jour Vercel maintenant</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                    <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Synchronisé avec Vercel</span>
+                  </span>
+                </div>
               </div>
 
               {/* Metrics Grid */}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
                   <div className="flex items-center justify-between text-slate-500">
                     <span className="text-xs font-semibold uppercase tracking-wider">Programmations</span>
                     <Calendar className="h-5 w-5 text-blue-600" />
@@ -807,7 +832,7 @@ export default function AdminPage() {
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
                   <div className="flex items-center justify-between text-slate-500">
                     <span className="text-xs font-semibold uppercase tracking-wider">Épreuves prévues</span>
                     <Layers className="h-5 w-5 text-indigo-600" />
@@ -816,7 +841,7 @@ export default function AdminPage() {
                   <p className="mt-1 text-xs text-slate-500">Bac, DNB et Épreuves orales</p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
                   <div className="flex items-center justify-between text-slate-500">
                     <span className="text-xs font-semibold uppercase tracking-wider">Salles disponibles</span>
                     <DoorOpen className="h-5 w-5 text-emerald-600" />
@@ -827,7 +852,7 @@ export default function AdminPage() {
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
                   <div className="flex items-center justify-between text-slate-500">
                     <span className="text-xs font-semibold uppercase tracking-wider">Surveillances</span>
                     <Shield className="h-5 w-5 text-amber-600" />
@@ -840,7 +865,7 @@ export default function AdminPage() {
               {/* Quick Summary Cards */}
               <div className="grid gap-6 lg:grid-cols-2">
                 {/* Programmations summary */}
-                <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
                   <div className="flex items-center justify-between">
                     <h3 className="text-base font-bold text-slate-900">Programmations d'examens (Accueil)</h3>
                     <button
@@ -874,48 +899,38 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* GitHub & Vercel Sync Summary */}
-                <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                {/* Backup & Export Panel */}
+                <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-base font-bold text-slate-900">Synchronisation Vercel</h3>
-                    <button
-                      onClick={() => setActiveTab("deploy")}
-                      className="text-xs font-semibold text-blue-600 hover:text-blue-800"
-                    >
-                      Paramètres →
-                    </button>
+                    <h3 className="text-base font-bold text-slate-900">Sauvegarde & Restauration Locale</h3>
+                    <span className="text-xs text-slate-400">Format JSON</span>
                   </div>
-                  <div className="space-y-3 text-xs text-slate-600">
-                    <div className="flex items-center justify-between border-b pb-2">
-                      <span className="text-slate-500">Dépôt GitHub</span>
-                      <span className="font-mono font-bold text-slate-800">
-                        {githubConfig.owner}/{githubConfig.repo}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between border-b pb-2">
-                      <span className="text-slate-500">Branche de déploiement</span>
-                      <span className="font-mono font-bold text-emerald-700">{githubConfig.branch}</span>
-                    </div>
-                    <div className="flex items-center justify-between border-b pb-2">
-                      <span className="text-slate-500">Connecté avec</span>
-                      <span className="font-bold text-slate-800">@{githubUser?.login}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Coût d'hébergement & base de données</span>
-                      <span className="font-bold text-emerald-700">100% Gratuit (0€)</span>
-                    </div>
-                  </div>
-                  <div className="pt-2">
+                  <p className="text-xs text-slate-600">
+                    Vous pouvez à tout moment exporter l'intégralité des données en fichier JSON ou restaurer une version précédente.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 pt-1">
                     <button
-                      onClick={() => {
-                        setSyncResult(null);
-                        setIsSyncModalOpen(true);
-                      }}
-                      className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white shadow hover:bg-blue-700"
+                      onClick={handleDownloadJson}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50"
                     >
-                      <UploadCloud className="h-4 w-4" />
-                      <span>Publier les changements sur Vercel</span>
+                      <Download className="h-4 w-4 text-emerald-600" />
+                      <span>Télécharger JSON</span>
                     </button>
+                    <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50">
+                      <UploadCloud className="h-4 w-4 text-blue-600" />
+                      <span>Importer JSON</span>
+                      <input type="file" accept=".json" onChange={handleImportJson} className="hidden" />
+                    </label>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Dépôt GitHub :</span>
+                      <span className="font-mono text-slate-700">{githubConfig.owner}/{githubConfig.repo}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Compte connecté :</span>
+                      <span className="font-semibold text-slate-800">@{githubUser?.login}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -934,18 +949,8 @@ export default function AdminPage() {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => {
-                      setSyncResult(null);
-                      setIsSyncModalOpen(true);
-                    }}
-                    className="flex items-center gap-1.5 rounded-lg border border-blue-600 bg-blue-50 px-3.5 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100"
-                  >
-                    <UploadCloud className="h-4 w-4" />
-                    <span>Pousser sur Vercel</span>
-                  </button>
-                  <button
                     onClick={() => setIsAddingCallout(true)}
-                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-blue-700"
+                    className="flex items-center gap-1.5 rounded-lg bg-blue-700 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-800"
                   >
                     <Plus className="h-4 w-4" />
                     <span>Ajouter une programmation</span>
@@ -2614,152 +2619,6 @@ export default function AdminPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-            </div>
-          )}
-
-          {/* TAB: DEPLOY GITHUB & VERCEL */}
-          {activeTab === "deploy" && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900">Déploiement GitHub & Vercel (100% Gratuit)</h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  Votre CMS est directement connecté à votre dépôt GitHub. Chaque commit déclenche automatiquement le déploiement sur Vercel sans passer par Supabase.
-                </p>
-              </div>
-
-              {/* Main Push Banner */}
-              <div className="rounded-3xl border border-blue-200 bg-gradient-to-br from-blue-50 via-indigo-50/40 to-slate-50 p-6 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-800">
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Synchronisation Automatique
-                    </span>
-                    <h3 className="mt-2 text-xl font-bold text-slate-900">
-                      Publier vos modifications sur Vercel
-                    </h3>
-                    <p className="mt-1 text-xs text-slate-600">
-                      Génère le code, crée un commit sur votre dépôt GitHub{" "}
-                      <code>{githubConfig.owner}/{githubConfig.repo}</code> et Vercel met à jour le site instantanément.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSyncResult(null);
-                      setIsSyncModalOpen(true);
-                    }}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition hover:bg-blue-700"
-                  >
-                    <UploadCloud className="h-5 w-5" />
-                    <span>Mettre à jour Vercel maintenant</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Configuration Settings */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-                <h3 className="text-base font-bold text-slate-900 border-b pb-2">
-                  Paramètres du dépôt GitHub connecté
-                </h3>
-
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Propriétaire GitHub</label>
-                    <input
-                      type="text"
-                      value={githubConfig.owner}
-                      onChange={(e) => updateGitHubConfig({ owner: e.target.value })}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Nom du dépôt</label>
-                    <input
-                      type="text"
-                      value={githubConfig.repo}
-                      onChange={(e) => updateGitHubConfig({ repo: e.target.value })}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700">Branche de déploiement</label>
-                    <input
-                      type="text"
-                      value={githubConfig.branch}
-                      onChange={(e) => updateGitHubConfig({ branch: e.target.value })}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2 flex items-center justify-between text-xs text-slate-500">
-                  <span>Connecté en tant que <strong>@{githubUser?.login}</strong></span>
-                  <button
-                    onClick={() => {
-                      if (confirm("Se déconnecter de GitHub ?")) logoutGitHub();
-                    }}
-                    className="text-red-600 hover:underline"
-                  >
-                    Changer de compte GitHub / Se déconnecter
-                  </button>
-                </div>
-              </div>
-
-              {/* Backup & Manual Export */}
-              <div className="grid gap-6 sm:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-                    <Download className="h-5 w-5" />
-                  </div>
-                  <h3 className="mt-4 text-base font-bold text-slate-900">Télécharger une sauvegarde</h3>
-                  <p className="mt-1 text-xs text-slate-600">
-                    Exportez l'intégralité de vos examens, textes, salles et plannings dans un fichier JSON.
-                  </p>
-                  <button
-                    onClick={handleDownloadJson}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-                  >
-                    <Download className="h-4 w-4" />
-                    <span>Télécharger JSON</span>
-                  </button>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700">
-                    <UploadCloud className="h-5 w-5" />
-                  </div>
-                  <h3 className="mt-4 text-base font-bold text-slate-900">Restaurer une sauvegarde</h3>
-                  <p className="mt-1 text-xs text-slate-600">
-                    Restaurez une sauvegarde précédente ou importez des données depuis un autre poste.
-                  </p>
-                  <label className="mt-4 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-100">
-                    <UploadCloud className="h-4 w-4" />
-                    <span>Importer un fichier JSON</span>
-                    <input type="file" accept=".json" onChange={handleImportJson} className="hidden" />
-                  </label>
-                </div>
-              </div>
-
-              {/* Code Copy Option */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-900 p-6 text-slate-100 shadow-sm">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <span className="text-xs font-semibold text-slate-400">
-                    Code TypeScript généré pour <code>src/features/home/constants.ts</code>
-                  </span>
-                  <button
-                    onClick={handleCopyCode}
-                    className="flex items-center gap-1 text-xs font-semibold text-sky-400 hover:text-sky-300"
-                  >
-                    {codeCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                    <span>{codeCopied ? "Copié !" : "Copier le code"}</span>
-                  </button>
-                </div>
-                <pre className="mt-4 max-h-56 overflow-y-auto text-xs font-mono leading-relaxed text-slate-300">
-                  {generateConstantsTsCode(cmsData)}
-                </pre>
               </div>
             </div>
           )}
