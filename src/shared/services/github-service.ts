@@ -4,7 +4,6 @@ import { generateConstantsTsCode, exportCmsDataJson, type CmsData } from "./cms-
 // Import project files as raw strings to synchronize codebase to GitHub & Vercel
 import appTsxRaw from "../../app/App.tsx?raw";
 import homePageRaw from "../../features/home/pages/HomePage.tsx?raw";
-import homeCallToActionCardRaw from "../../features/home/components/HomeCallToActionCard.tsx?raw";
 import schoolYearPageRaw from "../../features/home/pages/SchoolYearPage.tsx?raw";
 import schoolExamPageRaw from "../../features/home/pages/SchoolExamPage.tsx?raw";
 import adminPageRaw from "../../features/admin/pages/AdminPage.tsx?raw";
@@ -376,16 +375,6 @@ export async function pushCmsChangesToGitHub({
       path: "src/features/home/pages/HomePage.tsx",
       content: homePageRaw,
       message: "feat(home): intégration du bouton administration et du CMS",
-      token: auth.token,
-    });
-
-    await commitFileToGitHub({
-      owner,
-      repo,
-      branch,
-      path: "src/features/home/components/HomeCallToActionCard.tsx",
-      content: homeCallToActionCardRaw,
-      message: "feat(home): cartes d'action avec gestion sécurisée des types",
       token: auth.token,
     });
 
