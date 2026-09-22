@@ -1,4 +1,4 @@
-// Fichier généré automatiquement par le CMS LFJP le 22/09/2026 à 13:52:34
+// Fichier généré automatiquement par le CMS LFJP le 22/09/2026 à 14:11:16
 // Ce fichier est déployé automatiquement sur Vercel lors de chaque commit GitHub.
 
 export const HOME_PAGE_CONTENT = {
@@ -29,9 +29,9 @@ export interface HomeCalloutEntry {
 export const HOME_CALLOUT_ENTRIES: HomeCalloutEntry[] = [
   {
     "to": "/examens-blancs",
-    "iconLabel": "Accéder à l'organisation des examens blancs",
+    "iconLabel": null,
     "subtitle": "",
-    "title": "Baccalauréat blanc 1ère et Terminale",
+    "title": "Baccalauréat blanc 1ère et TerminaleSSS",
     "dateLabel": "10, 11 et 12 décembre 2025",
     "date": "2025-12-10",
     "footerLabel": "Accéder à l'organisation complète",
