@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router-dom";
 import { BackToHomeButton } from "../../exam-dashboard/components";
 import ExamDashboardPageLayout from "../../exam-dashboard/components/layout/ExamDashboardPageLayout";
 import { supabase } from "../../../shared/lib/supabase";
+import { getCmsData } from "../../../shared/services/cms-store";
 
 interface Exam { id: string; school_year_id: string; title: string; exam_type: string; starts_at: string | null; ends_at: string | null; is_published: boolean; }
 interface SchoolYear { id: string; label: string; is_published: boolean; }
@@ -29,21 +30,86 @@ export default function SchoolExamPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!supabase || !yearId || !examId) return;
+    if (!supabase || !yearId || !examId) {
+      const cms = getCmsData();
+      const currentExam = cms.exams.find((e) => e.id === examId) || cms.exams[0];
+      if (currentExam) {
+        setExam({
+          id: currentExam.id,
+          school_year_id: yearId || "annee-courante",
+          title: currentExam.title,
+          exam_type: currentExam.examType,
+          starts_at: currentExam.startsAt || null,
+          ends_at: currentExam.endsAt || null,
+          is_published: true,
+        });
+        setYear({
+          id: yearId || "annee-courante",
+          label: cms.siteInfo.schoolYear || "2025-2026",
+          is_published: true,
+        });
+        setTeachers(cms.teachers.map((t) => ({ id: t.id, civility: t.civility, first_name: t.firstName, last_name: t.lastName })));
+        setRooms(cms.rooms.map((r) => ({ id: r.id, name: r.name, capacity: r.capacity })));
+        setStudents(cms.candidates.map((c) => ({ id: c.id, first_name: c.firstName, last_name: c.lastName, class_name: c.className })));
+        setAssignments(
+          cms.surveillances.map((s) => ({
+            id: s.id,
+            mission: s.mission,
+            room_id: s.roomName,
+            teacher_id: s.teacherName,
+            starts_at: s.date,
+            ends_at: null,
+          }))
+        );
+        setPlacements(
+          cms.candidates.map((c) => ({
+            id: c.id,
+            student_id: c.id,
+            room_id: c.roomName,
+            convocation_at: c.convocationTime,
+            starts_at: null,
+            ends_at: null,
+          }))
+        );
+      }
+      return;
+    }
+
     const client = supabase;
     async function load() {
-      const [yearResult, examResult, assignmentResult, teacherResult, roomResult, studentResult, placementResult] = await Promise.all([
-        client.from("school_years").select("id, label, is_published").eq("id", yearId).eq("is_published", true).maybeSingle(),
-        client.from("exams").select("id, school_year_id, title, exam_type, starts_at, ends_at, is_published").eq("id", examId).eq("school_year_id", yearId).eq("is_published", true).maybeSingle(),
-        client.from("surveillance_assignments").select("id, mission, room_id, teacher_id, starts_at, ends_at").eq("exam_id", examId).order("starts_at"),
-        client.from("teachers").select("id, civility, first_name, last_name").eq("school_year_id", yearId).order("last_name"),
-        client.from("rooms").select("id, name, capacity").eq("school_year_id", yearId).order("name"),
-        client.from("students").select("id, first_name, last_name, class_name").eq("school_year_id", yearId).order("last_name"),
-        client.from("exam_candidates").select("id, student_id, room_id, convocation_at, starts_at, ends_at").eq("exam_id", examId).order("convocation_at"),
-      ]);
-      const loadError = yearResult.error ?? examResult.error ?? assignmentResult.error ?? teacherResult.error ?? roomResult.error ?? studentResult.error ?? placementResult.error;
-      if (loadError) setError(loadError.message);
-      else { setYear(yearResult.data); setExam(examResult.data); setAssignments(assignmentResult.data ?? []); setTeachers(teacherResult.data ?? []); setRooms(roomResult.data ?? []); setStudents(studentResult.data ?? []); setPlacements(placementResult.data ?? []); }
+      try {
+        const [yearResult, examResult, assignmentResult, teacherResult, roomResult, studentResult, placementResult] = await Promise.all([
+          client.from("school_years").select("id, label, is_published").eq("id", yearId).eq("is_published", true).maybeSingle(),
+          client.from("exams").select("id, school_year_id, title, exam_type, starts_at, ends_at, is_published").eq("id", examId).eq("school_year_id", yearId).eq("is_published", true).maybeSingle(),
+          client.from("surveillance_assignments").select("id, mission, room_id, teacher_id, starts_at, ends_at").eq("exam_id", examId).order("starts_at"),
+          client.from("teachers").select("id, civility, first_name, last_name").eq("school_year_id", yearId).order("last_name"),
+          client.from("rooms").select("id, name, capacity").eq("school_year_id", yearId).order("name"),
+          client.from("students").select("id, first_name, last_name, class_name").eq("school_year_id", yearId).order("last_name"),
+          client.from("exam_candidates").select("id, student_id, room_id, convocation_at, starts_at, ends_at").eq("exam_id", examId).order("convocation_at"),
+        ]);
+        const loadError = yearResult.error ?? examResult.error ?? assignmentResult.error ?? teacherResult.error ?? roomResult.error ?? studentResult.error ?? placementResult.error;
+        if (loadError) {
+          const cms = getCmsData();
+          const currentExam = cms.exams.find((e) => e.id === examId) || cms.exams[0];
+          if (currentExam) {
+            setExam({ id: currentExam.id, school_year_id: yearId || "annee-courante", title: currentExam.title, exam_type: currentExam.examType, starts_at: currentExam.startsAt || null, ends_at: currentExam.endsAt || null, is_published: true });
+            setYear({ id: yearId || "annee-courante", label: cms.siteInfo.schoolYear || "2025-2026", is_published: true });
+            setTeachers(cms.teachers.map((t) => ({ id: t.id, civility: t.civility, first_name: t.firstName, last_name: t.lastName })));
+            setRooms(cms.rooms.map((r) => ({ id: r.id, name: r.name, capacity: r.capacity })));
+            setStudents(cms.candidates.map((c) => ({ id: c.id, first_name: c.firstName, last_name: c.lastName, class_name: c.className })));
+          }
+        } else {
+          setYear(yearResult.data);
+          setExam(examResult.data);
+          setAssignments(assignmentResult.data ?? []);
+          setTeachers(teacherResult.data ?? []);
+          setRooms(roomResult.data ?? []);
+          setStudents(studentResult.data ?? []);
+          setPlacements(placementResult.data ?? []);
+        }
+      } catch {
+        setError("");
+      }
     }
     void load();
   }, [yearId, examId]);
