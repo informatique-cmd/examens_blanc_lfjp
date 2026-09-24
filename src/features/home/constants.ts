@@ -1,4 +1,4 @@
-// Fichier généré automatiquement par le CMS LFJP le 24/09/2026 à 12:44:33
+// Fichier généré automatiquement par le CMS LFJP le 24/09/2026 à 12:46:47
 // Ce fichier est déployé automatiquement sur Vercel lors de chaque commit GitHub.
 
 export const HOME_PAGE_CONTENT = {
@@ -136,5 +136,15 @@ export const HOME_CALLOUT_ENTRIES: HomeCalloutEntry[] = [
     "date": "2026-06-08",
     "footerLabel": "Accéder au planning détaillé",
     "category": "surveillance"
+  },
+  {
+    "to": "/examens-blancs",
+    "iconLabel": "Accéder à TEST",
+    "subtitle": "Session 2027",
+    "title": "TEST",
+    "dateLabel": "7 au 10 Avril 2027",
+    "date": "2026-04-07",
+    "footerLabel": "Accéder à l'organisation complète",
+    "category": "general"
   }
 ];
