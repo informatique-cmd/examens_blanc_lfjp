@@ -4,6 +4,7 @@ import { generateConstantsTsCode, exportCmsDataJson, type CmsData } from "./cms-
 // Import project files as raw strings to synchronize codebase to GitHub & Vercel
 import appTsxRaw from "../../app/App.tsx?raw";
 import homePageRaw from "../../features/home/pages/HomePage.tsx?raw";
+import homeCallToActionCardRaw from "../../features/home/components/HomeCallToActionCard.tsx?raw";
 import schoolYearPageRaw from "../../features/home/pages/SchoolYearPage.tsx?raw";
 import schoolExamPageRaw from "../../features/home/pages/SchoolExamPage.tsx?raw";
 import adminPageRaw from "../../features/admin/pages/AdminPage.tsx?raw";
@@ -172,6 +173,130 @@ async function commitFileToGitHub({
 }
 
 /**
+ * Commits multiple files atomically in a single Git commit using GitHub's Git Data API
+ */
+async function commitMultipleFilesToGitHub({
+  owner,
+  repo,
+  branch,
+  files,
+  message,
+  token,
+}: {
+  owner: string;
+  repo: string;
+  branch: string;
+  files: Array<{ path: string; content: string }>;
+  message: string;
+  token: string;
+}): Promise<{ commitSha: string; commitUrl: string }> {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    "Content-Type": "application/json",
+  };
+
+  // 1. Get latest commit SHA on target branch
+  const refRes = await fetch(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(
+      repo
+    )}/git/ref/heads/${encodeURIComponent(branch)}`,
+    { headers }
+  );
+  if (!refRes.ok) {
+    throw new Error(`Impossible de trouver la branche ${branch} (Code HTTP ${refRes.status})`);
+  }
+  const refData = await refRes.json();
+  const latestCommitSha = refData.object.sha;
+
+  // 2. Get tree SHA of the latest commit
+  const commitRes = await fetch(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(
+      repo
+    )}/git/commits/${latestCommitSha}`,
+    { headers }
+  );
+  if (!commitRes.ok) {
+    throw new Error(`Impossible de lire le commit parent (${commitRes.status})`);
+  }
+  const commitData = await commitRes.json();
+  const baseTreeSha = commitData.tree.sha;
+
+  // 3. Create a new tree with all files
+  const treeRes = await fetch(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(
+      repo
+    )}/git/trees`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        base_tree: baseTreeSha,
+        tree: files.map((f) => ({
+          path: f.path,
+          mode: "100644",
+          type: "blob",
+          content: f.content,
+        })),
+      }),
+    }
+  );
+  if (!treeRes.ok) {
+    const err = await treeRes.json().catch(() => ({}));
+    throw new Error(err.message || `Erreur de création de l'arborescence Git (${treeRes.status})`);
+  }
+  const treeData = await treeRes.json();
+  const newTreeSha = treeData.sha;
+
+  // 4. Create new commit pointing to tree
+  const newCommitRes = await fetch(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(
+      repo
+    )}/git/commits`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        message,
+        tree: newTreeSha,
+        parents: [latestCommitSha],
+      }),
+    }
+  );
+  if (!newCommitRes.ok) {
+    const err = await newCommitRes.json().catch(() => ({}));
+    throw new Error(err.message || `Erreur de création du commit (${newCommitRes.status})`);
+  }
+  const newCommitData = await newCommitRes.json();
+  const newCommitSha = newCommitData.sha;
+
+  // 5. Update branch ref
+  const updateRefRes = await fetch(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(
+      repo
+    )}/git/refs/heads/${encodeURIComponent(branch)}`,
+    {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({
+        sha: newCommitSha,
+        force: false,
+      }),
+    }
+  );
+  if (!updateRefRes.ok) {
+    const err = await updateRefRes.json().catch(() => ({}));
+    throw new Error(err.message || `Erreur de mise à jour de la branche (${updateRefRes.status})`);
+  }
+
+  return {
+    commitSha: newCommitSha,
+    commitUrl: `https://github.com/${owner}/${repo}/commit/${newCommitSha}`,
+  };
+}
+
+/**
  * Verify GitHub token and retrieve user profile & repo permissions
  */
 export async function verifyAndLoginGitHub(
@@ -299,122 +424,73 @@ export async function pushCmsChangesToGitHub({
     `feat(cms): mise à jour du contenu des examens LFJP (${new Date().toLocaleDateString("fr-FR")} à ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })})`;
 
   try {
-    onProgress?.("Génération des fichiers de configuration...");
+    onProgress?.("Préparation et vérification des fichiers...");
     const tsCode = generateConstantsTsCode(cmsData);
     const jsonCode = exportCmsDataJson(cmsData);
 
-    onProgress?.("Sauvegarde de la base de données dans public/cms-data.json...");
-    await commitFileToGitHub({
-      owner,
-      repo,
-      branch,
-      path: "public/cms-data.json",
-      content: jsonCode,
-      message: `data(cms): sauvegarde des données JSON LFJP`,
-      token: auth.token,
-    });
+    const filesToSync: Array<{ path: string; content: string }> = [
+      { path: "src/shared/services/cms-store.ts", content: cmsStoreRaw },
+      { path: "src/features/home/constants.ts", content: tsCode },
+      { path: "src/app/App.tsx", content: appTsxRaw },
+      { path: "src/features/home/pages/HomePage.tsx", content: homePageRaw },
+      { path: "src/features/admin/pages/AdminPage.tsx", content: adminPageRaw },
+      { path: "src/shared/services/github-service.ts", content: githubServiceRaw },
+      { path: "src/features/home/components/HomeCallToActionCard.tsx", content: homeCallToActionCardRaw },
+      { path: "src/features/home/pages/SchoolYearPage.tsx", content: schoolYearPageRaw },
+      { path: "src/features/home/pages/SchoolExamPage.tsx", content: schoolExamPageRaw },
+      { path: "public/cms-data.json", content: jsonCode },
+      {
+        path: "vercel.json",
+        content: JSON.stringify({ rewrites: [{ source: "/(.*)", destination: "/index.html" }] }, null, 2),
+      },
+    ];
 
-    onProgress?.("Synchronisation des constantes src/features/home/constants.ts...");
-    const constantsResult = await commitFileToGitHub({
-      owner,
-      repo,
-      branch,
-      path: "src/features/home/constants.ts",
-      content: tsCode,
-      message: msg,
-      token: auth.token,
-    });
+    // Attempt 1: Atomic commit of all files in a single Git commit (best performance and zero Vercel intermediate build errors)
+    try {
+      onProgress?.("Déploiement atomique de tous les fichiers vers GitHub...");
+      const result = await commitMultipleFilesToGitHub({
+        owner,
+        repo,
+        branch,
+        files: filesToSync,
+        message: msg,
+        token: auth.token,
+      });
 
-    onProgress?.("Synchronisation du CMS Admin src/features/admin/pages/AdminPage.tsx...");
-    await commitFileToGitHub({
-      owner,
-      repo,
-      branch,
-      path: "src/features/admin/pages/AdminPage.tsx",
-      content: adminPageRaw,
-      message: "feat(admin): ajout du panneau d'administration CMS LFJP",
-      token: auth.token,
-    });
+      onProgress?.("Déploiement atomique réussi ! Vercel lance le nouveau build.");
+      return {
+        success: true,
+        commitSha: result.commitSha,
+        commitUrl: result.commitUrl,
+      };
+    } catch {
+      // Fallback: Sequential commit if Git Data Tree API is restricted
+      onProgress?.("Déploiement standard vers GitHub en cours...");
+      let lastSha = "";
+      let lastUrl = "";
 
-    onProgress?.("Synchronisation des services CMS & GitHub...");
-    await commitFileToGitHub({
-      owner,
-      repo,
-      branch,
-      path: "src/shared/services/cms-store.ts",
-      content: cmsStoreRaw,
-      message: "feat(cms): magasin de données CMS autonome",
-      token: auth.token,
-    });
+      for (const file of filesToSync) {
+        onProgress?.(`Envoi de ${file.path}...`);
+        const res = await commitFileToGitHub({
+          owner,
+          repo,
+          branch,
+          path: file.path,
+          content: file.content,
+          message: msg,
+          token: auth.token,
+        });
+        lastSha = res.commitSha;
+        lastUrl = res.commitUrl;
+      }
 
-    await commitFileToGitHub({
-      owner,
-      repo,
-      branch,
-      path: "src/shared/services/github-service.ts",
-      content: githubServiceRaw,
-      message: "feat(github): synchronisation automatique GitHub et Vercel",
-      token: auth.token,
-    });
-
-    onProgress?.("Synchronisation de la navigation et des pages...");
-    await commitFileToGitHub({
-      owner,
-      repo,
-      branch,
-      path: "src/app/App.tsx",
-      content: appTsxRaw,
-      message: "feat(router): configuration des routes d'administration",
-      token: auth.token,
-    });
-
-    await commitFileToGitHub({
-      owner,
-      repo,
-      branch,
-      path: "src/features/home/pages/HomePage.tsx",
-      content: homePageRaw,
-      message: "feat(home): intégration du bouton administration et du CMS",
-      token: auth.token,
-    });
-
-    await commitFileToGitHub({
-      owner,
-      repo,
-      branch,
-      path: "src/features/home/pages/SchoolYearPage.tsx",
-      content: schoolYearPageRaw,
-      message: "feat(years): affichage autonome sans dépendance payante",
-      token: auth.token,
-    });
-
-    await commitFileToGitHub({
-      owner,
-      repo,
-      branch,
-      path: "src/features/home/pages/SchoolExamPage.tsx",
-      content: schoolExamPageRaw,
-      message: "feat(exams): affichage autonome des épreuves",
-      token: auth.token,
-    });
-
-    await commitFileToGitHub({
-      owner,
-      repo,
-      branch,
-      path: "vercel.json",
-      content: JSON.stringify({ rewrites: [{ source: "/(.*)", destination: "/index.html" }] }, null, 2),
-      message: "chore(vercel): configuration des routes SPA",
-      token: auth.token,
-    });
-
-    onProgress?.("Synchronisation réussie ! Vercel redéploie le site automatiquement.");
-
-    return {
-      success: true,
-      commitSha: constantsResult.commitSha,
-      commitUrl: constantsResult.commitUrl,
-    };
+      onProgress?.("Synchronisation réussie ! Vercel redéploie le site automatiquement.");
+      return {
+        success: true,
+        commitSha: lastSha,
+        commitUrl: lastUrl,
+      };
+    }
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Erreur inconnue lors du commit GitHub";
     return {

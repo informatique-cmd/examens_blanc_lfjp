@@ -1,0 +1,8 @@
+{
+  "name": "Examens Blancs LFJP",
+  "description": "Application de gestion et consultation des examens blancs, convocations, surveillances et affectations du Lycée Français Jacques Prévert.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,5 +1,5 @@
 %PDF-1.3
-%ºß¬à
+%ï¿½ß¬ï¿½
 3 0 obj
 <</Type /Page
 /Parent 1 0 R
@@ -37,14 +37,14 @@ BT
 13.7999999999999989 TL
 0.886 0.91 0.941 rg
 48. 579.8899999999999864 Td
-(Présentation fonctionnelle et technique) Tj
+(Prï¿½sentation fonctionnelle et technique) Tj
 ET
 BT
 /F1 12 Tf
 13.7999999999999989 TL
 0.886 0.91 0.941 rg
 48. 557.8899999999999864 Td
-(Document généré le 20 août 2026) Tj
+(Document gï¿½nï¿½rï¿½ le 20 aoï¿½t 2026) Tj
 ET
 0.38 0.65 0.98 RG
 48. 529.8899999999999864 m
@@ -55,7 +55,7 @@ BT
 11.5 TL
 0.796 0.835 0.882 rg
 48. 497.8899999999999864 Td
-(Portail de consultation des plannings, salles, élèves, surveillances et convocations.) Tj
+(Portail de consultation des plannings, salles, ï¿½lï¿½ves, surveillances et convocations.) Tj
 ET
 BT
 /F1 8 Tf
@@ -93,15 +93,15 @@ BT
 25.2999999999999972 TL
 0.059 0.09 0.165 rg
 48. 793.8899999999999864 Td
-(1. Présentation générale) Tj
+(1. Prï¿½sentation gï¿½nï¿½rale) Tj
 ET
 BT
 /F1 10 Tf
 13.5 TL
 0.2 0.255 0.333 rg
 48. 763.8899999999999864 Td
-(L'application Examens blancs LFJP est un portail web destiné à centraliser l'organisation des examens blancs et) Tj
-T* (de plusieurs épreuves de l'établissement. Elle permet aux enseignants et responsables d'accéder rapidement) Tj
+(L'application Examens blancs LFJP est un portail web destinï¿½ ï¿½ centraliser l'organisation des examens blancs et) Tj
+T* (de plusieurs ï¿½preuves de l'ï¿½tablissement. Elle permet aux enseignants et responsables d'accï¿½der rapidement) Tj
 T* (aux informations utiles depuis une seule interface.) Tj
 ET
 BT
@@ -109,7 +109,7 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 711.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -123,21 +123,21 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 692.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 692.8899999999999864 Td
-(Visualiser les salles, les élèves et les affectations.) Tj
+(Visualiser les salles, les ï¿½lï¿½ves et les affectations.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 673.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -151,21 +151,21 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 654.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 654.8899999999999864 Td
-(Générer des convocations et des documents PDF.) Tj
+(Gï¿½nï¿½rer des convocations et des documents PDF.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 635.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -186,9 +186,9 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 594.8899999999999864 Td
-(L'application fonctionne entièrement côté navigateur. Les données sont actuellement stockées dans des fichiers) Tj
-T* (TypeScript intégrés au projet. Il n'y a pas de serveur applicatif, d'authentification ou de base de données) Tj
-T* (connectée.) Tj
+(L'application fonctionne entiï¿½rement cï¿½tï¿½ navigateur. Les donnï¿½es sont actuellement stockï¿½es dans des fichiers) Tj
+T* (TypeScript intï¿½grï¿½s au projet. Il n'y a pas de serveur applicatif, d'authentification ou de base de donnï¿½es) Tj
+T* (connectï¿½e.) Tj
 ET
 BT
 /F2 14 Tf
@@ -202,7 +202,7 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 520.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -216,21 +216,21 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 501.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 501.8899999999999864 Td
-(Vite pour le développement et la compilation de production.) Tj
+(Vite pour le dï¿½veloppement et la compilation de production.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 482.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -244,7 +244,7 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 463.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -258,21 +258,21 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 444.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 444.8899999999999864 Td
-(Lucide React pour les icônes.) Tj
+(Lucide React pour les icï¿½nes.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 425.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -300,8 +300,8 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 354.8899999999999864 Td
-(L'utilisateur arrive sur une page d'accueil présentant l'espace examens et une série de cartes classées par date.) Tj
-T* (Chaque carte ouvre la page correspondant à une épreuve ou à un planning.) Tj
+(L'utilisateur arrive sur une page d'accueil prï¿½sentant l'espace examens et une sï¿½rie de cartes classï¿½es par date.) Tj
+T* (Chaque carte ouvre la page correspondant ï¿½ une ï¿½preuve ou ï¿½ un planning.) Tj
 ET
 0.95 0.96 0.98 rg
 52. 328.8899999999999864 m
@@ -338,8 +338,8 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 216.8899999999999864 Td
-(Les pages d'examen affichent un en-tête avec le titre, la date et les indicateurs clés, puis des vues adaptées au) Tj
-T* (besoin : organisation complète, planning par enseignant ou jury, planning par salle, élèves et convocations.) Tj
+(Les pages d'examen affichent un en-tï¿½te avec le titre, la date et les indicateurs clï¿½s, puis des vues adaptï¿½es au) Tj
+T* (besoin : organisation complï¿½te, planning par enseignant ou jury, planning par salle, ï¿½lï¿½ves et convocations.) Tj
 ET
 BT
 /F2 14 Tf
@@ -353,7 +353,7 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 156.8899999999999864 Td
-(Les tableaux de bord utilisent des onglets accessibles au clavier. Les flèches gauche et droite changent d'onglet,) Tj
+(Les tableaux de bord utilisent des onglets accessibles au clavier. Les flï¿½ches gauche et droite changent d'onglet,) Tj
 T* (tandis que les touches Home et End permettent d'aller au premier ou au dernier onglet.) Tj
 ET
 BT
@@ -406,35 +406,35 @@ BT
 9.1999999999999993 TL
 0.392 0.455 0.545 rg
 48. 793.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 8 Tf
 10.4000000000000004 TL
 0.392 0.455 0.545 rg
 62. 793.8899999999999864 Td
-(Configuration des salles et capacités.) Tj
+(Configuration des salles et capacitï¿½s.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 774.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 774.8899999999999864 Td
-(Liste des élèves de Première et Terminale.) Tj
+(Liste des ï¿½lï¿½ves de Premiï¿½re et Terminale.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 755.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -448,43 +448,43 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 736.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 736.8899999999999864 Td
-(État des salles et informations pratiques.) Tj
+(ï¿½tat des salles et informations pratiques.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 717.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 717.8899999999999864 Td
-(Génération de convocations.) Tj
+(Gï¿½nï¿½ration de convocations.) Tj
 ET
 BT
 /F2 14 Tf
 16.0999999999999979 TL
 0.118 0.251 0.686 rg
 48. 698.8899999999999864 Td
-(Examens de mathématiques et DNB) Tj
+(Examens de mathï¿½matiques et DNB) Tj
 ET
 BT
 /F1 10 Tf
 13.5 TL
 0.2 0.255 0.333 rg
 48. 676.8899999999999864 Td
-(Les pages de mathématiques réutilisent une même structure. Seules les données changent selon l'examen :) Tj
-T* (date, élèves, salles, enseignants, épreuves et horaires.) Tj
+(Les pages de mathï¿½matiques rï¿½utilisent une mï¿½me structure. Seules les donnï¿½es changent selon l'examen :) Tj
+T* (date, ï¿½lï¿½ves, salles, enseignants, ï¿½preuves et horaires.) Tj
 ET
 BT
 /F2 14 Tf
@@ -498,7 +498,7 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 616.8899999999999864 Td
-(Ces modules sont construits autour de listes de candidats. Les candidats peuvent être regroupés par date, jury) Tj
+(Ces modules sont construits autour de listes de candidats. Les candidats peuvent ï¿½tre regroupï¿½s par date, jury) Tj
 T* (ou salle. Les tableaux affichent les horaires de convocation, les horaires de passage, les classes et les salles.) Tj
 ET
 BT
@@ -514,8 +514,8 @@ BT
 0.2 0.255 0.333 rg
 48. 556.8899999999999864 Td
 (Le module de surveillance permet de basculer entre les plannings BAC et DNB, de rechercher un surveillant et) Tj
-T* (de produire une convocation individuelle. L'heure de présence est calculée automatiquement 30 minutes avant le) Tj
-T* (début de l'épreuve.) Tj
+T* (de produire une convocation individuelle. L'heure de prï¿½sence est calculï¿½e automatiquement 30 minutes avant le) Tj
+T* (dï¿½but de l'ï¿½preuve.) Tj
 ET
 BT
 /F2 22 Tf
@@ -529,45 +529,45 @@ BT
 16.0999999999999979 TL
 0.118 0.251 0.686 rg
 48. 474.8899999999999864 Td
-(Point d'entrée et routes) Tj
+(Point d'entrï¿½e et routes) Tj
 ET
 BT
 /F1 10 Tf
 13.5 TL
 0.2 0.255 0.333 rg
 48. 452.8899999999999864 Td
-(Le fichier src/main.tsx monte React et BrowserRouter. Le fichier src/app/App.tsx déclare les routes et charge les) Tj
-T* (pages avec lazy\(\) afin de réduire le chargement initial.) Tj
+(Le fichier src/main.tsx monte React et BrowserRouter. Le fichier src/app/App.tsx dï¿½clare les routes et charge les) Tj
+T* (pages avec lazy\(\) afin de rï¿½duire le chargement initial.) Tj
 ET
 BT
 /F2 14 Tf
 16.0999999999999979 TL
 0.118 0.251 0.686 rg
 48. 414.8899999999999864 Td
-(Organisation par fonctionnalités) Tj
+(Organisation par fonctionnalitï¿½s) Tj
 ET
 BT
 /F1 10 Tf
 13.5 TL
 0.2 0.255 0.333 rg
 48. 392.8899999999999864 Td
-(Le code est organisé par domaine dans src/features. Chaque fonctionnalité regroupe ses pages, composants,) Tj
-T* (données, hooks, contextes, services et utilitaires. Les composants génériques sont placés dans src/shared.) Tj
+(Le code est organisï¿½ par domaine dans src/features. Chaque fonctionnalitï¿½ regroupe ses pages, composants,) Tj
+T* (donnï¿½es, hooks, contextes, services et utilitaires. Les composants gï¿½nï¿½riques sont placï¿½s dans src/shared.) Tj
 ET
 BT
 /F2 14 Tf
 16.0999999999999979 TL
 0.118 0.251 0.686 rg
 48. 354.8899999999999864 Td
-(Gestion d'état) Tj
+(Gestion d'ï¿½tat) Tj
 ET
 BT
 /F1 10 Tf
 13.5 TL
 0.2 0.255 0.333 rg
 48. 332.8899999999999864 Td
-(L'état d'interface est local aux composants React. Les tableaux de bord utilisent des Contexts pour partager) Tj
-T* (l'onglet actif, le conteneur de rendu et le jeu de données de l'examen. Les données ne sont pas persistées dans) Tj
+(L'ï¿½tat d'interface est local aux composants React. Les tableaux de bord utilisent des Contexts pour partager) Tj
+T* (l'onglet actif, le conteneur de rendu et le jeu de donnï¿½es de l'examen. Les donnï¿½es ne sont pas persistï¿½es dans) Tj
 T* (localStorage.) Tj
 ET
 BT
@@ -575,15 +575,15 @@ BT
 16.0999999999999979 TL
 0.118 0.251 0.686 rg
 48. 280.8899999999999864 Td
-(Données) Tj
+(Donnï¿½es) Tj
 ET
 BT
 /F1 10 Tf
 13.5 TL
 0.2 0.255 0.333 rg
 48. 258.8899999999999864 Td
-(Les données de l'établissement sont déclarées comme constantes TypeScript : annuaire des enseignants,) Tj
-T* (élèves, salles, horaires, jurys et missions. Pour modifier une organisation, il faut donc modifier le code source) Tj
+(Les donnï¿½es de l'ï¿½tablissement sont dï¿½clarï¿½es comme constantes TypeScript : annuaire des enseignants,) Tj
+T* (ï¿½lï¿½ves, salles, horaires, jurys et missions. Pour modifier une organisation, il faut donc modifier le code source) Tj
 T* (puis reconstruire l'application.) Tj
 ET
 BT
@@ -605,8 +605,8 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 154.8899999999999864 Td
-(Les exports PDF sont générés directement dans le navigateur avec jsPDF. Les tableaux sont dessinés ligne par) Tj
-T* (ligne, avec gestion des retours à la ligne et des pages multiples.) Tj
+(Les exports PDF sont gï¿½nï¿½rï¿½s directement dans le navigateur avec jsPDF. Les tableaux sont dessinï¿½s ligne par) Tj
+T* (ligne, avec gestion des retours ï¿½ la ligne et des pages multiples.) Tj
 ET
 BT
 /F2 14 Tf
@@ -620,7 +620,7 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 94.8899999999999864 Td
-(Les pages d'oraux créent un fichier CSV avec séparateur point-virgule, encodage UTF-8 et marqueur BOM afin) Tj
+(Les pages d'oraux crï¿½ent un fichier CSV avec sï¿½parateur point-virgule, encodage UTF-8 et marqueur BOM afin) Tj
 T* (de faciliter l'ouverture dans Excel.) Tj
 ET
 BT
@@ -666,8 +666,8 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 771.8899999999999864 Td
-(Le module de surveillance peut ouvrir une fenêtre d'impression dédiée. html2canvas est également utilisé pour) Tj
-T* (transformer certains éléments HTML en image avant création du PDF.) Tj
+(Le module de surveillance peut ouvrir une fenï¿½tre d'impression dï¿½diï¿½e. html2canvas est ï¿½galement utilisï¿½ pour) Tj
+T* (transformer certains ï¿½lï¿½ments HTML en image avant crï¿½ation du PDF.) Tj
 ET
 BT
 /F2 14 Tf
@@ -681,21 +681,21 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 711.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 711.8899999999999864 Td
-(Les documents reflètent les données intégrées au moment de la compilation.) Tj
+(Les documents reflï¿½tent les donnï¿½es intï¿½grï¿½es au moment de la compilation.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 692.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -709,28 +709,28 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 673.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 673.8899999999999864 Td
-(Les bloqueurs de fenêtres contextuelles peuvent empêcher l'impression.) Tj
+(Les bloqueurs de fenï¿½tres contextuelles peuvent empï¿½cher l'impression.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 654.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 654.8899999999999864 Td
-(Les exports ne constituent pas une sauvegarde centralisée.) Tj
+(Les exports ne constituent pas une sauvegarde centralisï¿½e.) Tj
 ET
 BT
 /F2 22 Tf
@@ -773,8 +773,8 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 513.8899999999999864 Td
-(Le build de production a été vérifié avec succès. ESLint ne s'exécute pas avec la configuration actuelle, car) Tj
-T* (ESLint 9 attend un fichier eslint.config.js alors que le projet possède encore une configuration .eslintrc.cjs.) Tj
+(Le build de production a ï¿½tï¿½ vï¿½rifiï¿½ avec succï¿½s. ESLint ne s'exï¿½cute pas avec la configuration actuelle, car) Tj
+T* (ESLint 9 attend un fichier eslint.config.js alors que le projet possï¿½de encore une configuration .eslintrc.cjs.) Tj
 ET
 BT
 /F2 14 Tf
@@ -788,50 +788,50 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 453.8899999999999864 Td
-(Le dépôt GitHub est : https://github.com/informatique-cmd/examens_blanc_lfjp. La branche locale main est) Tj
-T* (synchronisée avec origin/main.) Tj
+(Le dï¿½pï¿½t GitHub est : https://github.com/informatique-cmd/examens_blanc_lfjp. La branche locale main est) Tj
+T* (synchronisï¿½e avec origin/main.) Tj
 ET
 BT
 /F2 22 Tf
 25.2999999999999972 TL
 0.059 0.09 0.165 rg
 48. 415.8899999999999864 Td
-(7. Points d'amélioration) Tj
+(7. Points d'amï¿½lioration) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 385.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 385.8899999999999864 Td
-(Ajouter une base de données ou un CMS pour modifier les plannings sans changer le code.) Tj
+(Ajouter une base de donnï¿½es ou un CMS pour modifier les plannings sans changer le code.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 366.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 366.8899999999999864 Td
-(Ajouter une authentification et des droits d'accès, car l'application contient des données nominatives.) Tj
+(Ajouter une authentification et des droits d'accï¿½s, car l'application contient des donnï¿½es nominatives.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 347.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -845,7 +845,7 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 328.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -859,49 +859,49 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 309.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 309.8899999999999864 Td
-(Résoudre le conflit de versions ESLint et réduire les vulnérabilités npm.) Tj
+(Rï¿½soudre le conflit de versions ESLint et rï¿½duire les vulnï¿½rabilitï¿½s npm.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 290.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 290.8899999999999864 Td
-(Héberger localement les logos, le cachet et les autres ressources nécessaires.) Tj
+(Hï¿½berger localement les logos, le cachet et les autres ressources nï¿½cessaires.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 271.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 271.8899999999999864 Td
-(Prévoir une gestion des erreurs pour les exports et les liens externes.) Tj
+(Prï¿½voir une gestion des erreurs pour les exports et les liens externes.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 252.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -922,10 +922,10 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 211.8899999999999864 Td
-(L'application est déjà un portail opérationnel de consultation et de génération de documents pour les examens.) Tj
-T* (Son architecture par fonctionnalités et ses jeux de données typés facilitent l'ajout de nouvelles sessions. Le) Tj
-T* (principal changement de niveau serait de remplacer les données statiques par une source administrable et) Tj
-T* (sécurisée.) Tj
+(L'application est dï¿½jï¿½ un portail opï¿½rationnel de consultation et de gï¿½nï¿½ration de documents pour les examens.) Tj
+T* (Son architecture par fonctionnalitï¿½s et ses jeux de donnï¿½es typï¿½s facilitent l'ajout de nouvelles sessions. Le) Tj
+T* (principal changement de niveau serait de remplacer les donnï¿½es statiques par une source administrable et) Tj
+T* (sï¿½curisï¿½e.) Tj
 ET
 BT
 /F1 8 Tf

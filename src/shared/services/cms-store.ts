@@ -22,12 +22,12 @@ export interface SiteInfo {
 export interface CmsCallout {
   id: string;
   to: string;
-  iconLabel: string;
-  subtitle: string;
+  iconLabel?: string | null;
+  subtitle?: string | null;
   title: string;
-  dateLabel: string;
-  date: string;
-  footerLabel: string;
+  dateLabel?: string | null;
+  date?: string | null;
+  footerLabel?: string | null;
   category: HomeCalloutCategory;
   isPublished: boolean;
   order: number;
@@ -301,7 +301,19 @@ export function getCmsData(): CmsData {
         },
       },
       callouts: Array.isArray(parsed.callouts) && parsed.callouts.length > 0
-        ? parsed.callouts
+        ? parsed.callouts.map((c, i) => ({
+            id: c.id || `callout-${i + 1}`,
+            to: c.to || "/",
+            iconLabel: c.iconLabel || `Accéder à ${c.title || "l'examen"}`,
+            subtitle: c.subtitle || "",
+            title: c.title || "Examen",
+            dateLabel: c.dateLabel || "",
+            date: c.date || "",
+            footerLabel: c.footerLabel || "Accéder à l'organisation complète",
+            category: c.category || "general",
+            isPublished: c.isPublished !== false,
+            order: typeof c.order === "number" ? c.order : i + 1,
+          }))
         : DEFAULT_CMS_DATA.callouts,
       announcements: Array.isArray(parsed.announcements)
         ? parsed.announcements
@@ -376,10 +388,10 @@ export function generateConstantsTsCode(data: CmsData): string {
 
 export const HOME_PAGE_CONTENT = ${JSON.stringify(
     {
-      logos: data.siteInfo.logos,
-      subtitle: data.siteInfo.subtitle,
-      title: data.siteInfo.title,
-      description: data.siteInfo.description,
+      logos: data.siteInfo?.logos || [],
+      subtitle: data.siteInfo?.subtitle ?? "",
+      title: data.siteInfo?.title ?? "",
+      description: data.siteInfo?.description ?? "",
     },
     null,
     2
@@ -399,18 +411,18 @@ export interface HomeCalloutEntry {
 }
 
 export const HOME_CALLOUT_ENTRIES: HomeCalloutEntry[] = ${JSON.stringify(
-    data.callouts
+    (data.callouts || [])
       .filter((c) => c.isPublished)
-      .sort((a, b) => a.order - b.order)
+      .sort((a, b) => (a.order || 0) - (b.order || 0))
       .map((c) => ({
-        to: c.to,
-        iconLabel: c.iconLabel,
-        subtitle: c.subtitle,
-        title: c.title,
-        dateLabel: c.dateLabel,
-        date: c.date,
-        footerLabel: c.footerLabel,
-        category: c.category,
+        to: c.to || "/",
+        iconLabel: c.iconLabel || `Accéder à ${c.title || "l'examen"}`,
+        subtitle: c.subtitle || "",
+        title: c.title || "Examen",
+        dateLabel: c.dateLabel || "",
+        date: c.date || "",
+        footerLabel: c.footerLabel || "Accéder à l'organisation complète",
+        category: c.category || "general",
       })),
     null,
     2

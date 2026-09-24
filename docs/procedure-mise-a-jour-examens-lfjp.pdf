@@ -1,5 +1,5 @@
 %PDF-1.3
-%ºß¬à
+%ï¿½ß¬ï¿½
 3 0 obj
 <</Type /Page
 /Parent 1 0 R
@@ -23,7 +23,7 @@ BT
 31.0499999999999972 TL
 1. g
 48. 661.8899999999999864 Td
-(Procédure de mise à jour) Tj
+(Procï¿½dure de mise ï¿½ jour) Tj
 ET
 BT
 /F2 20 Tf
@@ -37,14 +37,14 @@ BT
 13.7999999999999989 TL
 0.886 0.91 0.941 rg
 48. 579.8899999999999864 Td
-(Préparer une nouvelle année, publier et déployer) Tj
+(Prï¿½parer une nouvelle annï¿½e, publier et dï¿½ployer) Tj
 ET
 BT
 /F1 12 Tf
 13.7999999999999989 TL
 0.886 0.91 0.941 rg
 48. 557.8899999999999864 Td
-(Version de référence : 20 août 2026) Tj
+(Version de rï¿½fï¿½rence : 20 aoï¿½t 2026) Tj
 ET
 0.38 0.65 0.98 RG
 48. 529.8899999999999864 m
@@ -55,14 +55,14 @@ BT
 11.5 TL
 0.796 0.835 0.882 rg
 48. 497.8899999999999864 Td
-(Procédure destinée à la personne qui maintient les données et publie l'application.) Tj
+(Procï¿½dure destinï¿½e ï¿½ la personne qui maintient les donnï¿½es et publie l'application.) Tj
 ET
 BT
 /F1 8 Tf
 9.1999999999999993 TL
 0.392 0.455 0.545 rg
 48. 24. Td
-(Procédure de mise à jour - Examens blancs LFJP) Tj
+(Procï¿½dure de mise ï¿½ jour - Examens blancs LFJP) Tj
 ET
 BT
 /F1 8 Tf
@@ -100,8 +100,8 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 763.8899999999999864 Td
-(Cette application contient des données statiques dans des fichiers TypeScript. Pour préparer une nouvelle) Tj
-T* (session, il faut modifier les données, vérifier les liens et les dates, tester la compilation, puis publier le commit sur) Tj
+(Cette application contient des donnï¿½es statiques dans des fichiers TypeScript. Pour prï¿½parer une nouvelle) Tj
+T* (session, il faut modifier les donnï¿½es, vï¿½rifier les liens et les dates, tester la compilation, puis publier le commit sur) Tj
 T* (GitHub. Vercel reconstruira ensuite automatiquement l'application.) Tj
 ET
 BT
@@ -109,70 +109,70 @@ BT
 16.0999999999999979 TL
 0.118 0.251 0.686 rg
 48. 711.8899999999999864 Td
-(À préparer) Tj
+(ï¿½ prï¿½parer) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 689.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 689.8899999999999864 Td
-(Les dates officielles des épreuves.) Tj
+(Les dates officielles des ï¿½preuves.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 670.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 670.8899999999999864 Td
-(Les listes d'élèves et leurs classes.) Tj
+(Les listes d'ï¿½lï¿½ves et leurs classes.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 651.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 651.8899999999999864 Td
-(La liste actualisée des enseignants.) Tj
+(La liste actualisï¿½e des enseignants.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 632.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 632.8899999999999864 Td
-(Les salles, capacités et aménagements.) Tj
+(Les salles, capacitï¿½s et amï¿½nagements.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 613.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -186,28 +186,28 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 594.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 594.8899999999999864 Td
-(Les informations à afficher sur l'accueil.) Tj
+(Les informations ï¿½ afficher sur l'accueil.) Tj
 ET
 BT
 /F2 14 Tf
 16.0999999999999979 TL
 0.118 0.251 0.686 rg
 48. 575.8899999999999864 Td
-(Règle importante) Tj
+(Rï¿½gle importante) Tj
 ET
 BT
 /F1 10 Tf
 13.5 TL
 0.2 0.255 0.333 rg
 48. 553.8899999999999864 Td
-(Ne modifiez jamais le dossier dist : il est généré automatiquement. Travaillez dans src, puis laissez Vite) Tj
+(Ne modifiez jamais le dossier dist : il est gï¿½nï¿½rï¿½ automatiquement. Travaillez dans src, puis laissez Vite) Tj
 T* (reconstruire dist.) Tj
 ET
 BT
@@ -215,7 +215,7 @@ BT
 25.2999999999999972 TL
 0.059 0.09 0.165 rg
 48. 515.8899999999999864 Td
-(2. Mettre à jour l'accueil) Tj
+(2. Mettre ï¿½ jour l'accueil) Tj
 ET
 0.12 0.25 0.69 rg
 72. 489.8899999999999864 m
@@ -257,7 +257,7 @@ BT
 13. TL
 0.2 0.255 0.333 rg
 82. 459.8899999999999864 Td
-(Modifier les titres, dates, libellés et liens des cartes d'examens dans HOME_CALLOUT_ENTRIES.) Tj
+(Modifier les titres, dates, libellï¿½s et liens des cartes d'examens dans HOME_CALLOUT_ENTRIES.) Tj
 ET
 0.12 0.25 0.69 rg
 72. 437.8899999999999864 m
@@ -299,7 +299,7 @@ BT
 13. TL
 0.2 0.255 0.333 rg
 82. 407.8899999999999864 Td
-(Vérifier que chaque lien correspond à une route réellement déclarée dans src/app/App.tsx.) Tj
+(Vï¿½rifier que chaque lien correspond ï¿½ une route rï¿½ellement dï¿½clarï¿½e dans src/app/App.tsx.) Tj
 ET
 0.95 0.96 0.98 rg
 52. 393.8899999999999864 m
@@ -318,9 +318,9 @@ BT
 11.25 TL
 0.118 0.161 0.231 rg
 58. 381.8899999999999864 Td
-(dateLabel: "12, 13 et 14 décembre 2026",) Tj
+(dateLabel: "12, 13 et 14 dï¿½cembre 2026",) Tj
 T* (date: "2026-12-12",) Tj
-T* (title: "Baccalauréat blanc 2026",) Tj
+T* (title: "Baccalaurï¿½at blanc 2026",) Tj
 ET
 BT
 /F2 14 Tf
@@ -334,7 +334,7 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 305.8899999999999864 Td
-(Créer une constante HomeCalloutEntry, l'ajouter dans HOME_CALLOUT_ENTRIES, puis créer la page) Tj
+(Crï¿½er une constante HomeCalloutEntry, l'ajouter dans HOME_CALLOUT_ENTRIES, puis crï¿½er la page) Tj
 T* (correspondante si la route n'existe pas encore.) Tj
 ET
 BT
@@ -342,7 +342,7 @@ BT
 25.2999999999999972 TL
 0.059 0.09 0.165 rg
 48. 267.8899999999999864 Td
-(3. Mettre à jour les données) Tj
+(3. Mettre ï¿½ jour les donnï¿½es) Tj
 ET
 BT
 /F2 14 Tf
@@ -357,22 +357,22 @@ BT
 0.2 0.255 0.333 rg
 48. 215.8899999999999864 Td
 (Modifier src/features/exam-dashboard/data/dashboard-data.ts. Ce fichier contient notamment les enseignants,) Tj
-T* (élèves, salles, missions de surveillance, horaires, indicateurs et aménagements.) Tj
+T* (ï¿½lï¿½ves, salles, missions de surveillance, horaires, indicateurs et amï¿½nagements.) Tj
 ET
 BT
 /F2 14 Tf
 16.0999999999999979 TL
 0.118 0.251 0.686 rg
 48. 177.8899999999999864 Td
-(Mathématiques et DNB) Tj
+(Mathï¿½matiques et DNB) Tj
 ET
 BT
 /F1 10 Tf
 13.5 TL
 0.2 0.255 0.333 rg
 48. 155.8899999999999864 Td
-(Modifier ou créer un fichier dans src/features/math-exam-dashboard/data/datasets. Le jeu de données doit) Tj
-T* (respecter MathExamDashboardData : en-tête, indicateurs, enseignants, surveillance, salles et onglets.) Tj
+(Modifier ou crï¿½er un fichier dans src/features/math-exam-dashboard/data/datasets. Le jeu de donnï¿½es doit) Tj
+T* (respecter MathExamDashboardData : en-tï¿½te, indicateurs, enseignants, surveillance, salles et onglets.) Tj
 ET
 BT
 /F2 14 Tf
@@ -387,14 +387,14 @@ BT
 0.2 0.255 0.333 rg
 48. 95.8899999999999864 Td
 (Modifier les candidats dans les dossiers src/features/french-oral-exam-202604, french-oral-exam-202605,) Tj
-T* (french-oral-exam-202606 ou grand-oral-exam-202604. Vérifier les dates ISO, heures, classes, jurys et salles.) Tj
+T* (french-oral-exam-202606 ou grand-oral-exam-202604. Vï¿½rifier les dates ISO, heures, classes, jurys et salles.) Tj
 ET
 BT
 /F1 8 Tf
 9.1999999999999993 TL
 0.392 0.455 0.545 rg
 48. 24. Td
-(Procédure de mise à jour - Examens blancs LFJP) Tj
+(Procï¿½dure de mise ï¿½ jour - Examens blancs LFJP) Tj
 ET
 BT
 /F1 8 Tf
@@ -432,78 +432,78 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 771.8899999999999864 Td
-(Modifier src/features/bac-dnb-surveillance/data/scheduleData.ts. Vérifier les colonnes d'épreuves, les horaires et) Tj
-T* (les noms des surveillants. L'heure de présence est calculée automatiquement 30 minutes avant l'épreuve.) Tj
+(Modifier src/features/bac-dnb-surveillance/data/scheduleData.ts. Vï¿½rifier les colonnes d'ï¿½preuves, les horaires et) Tj
+T* (les noms des surveillants. L'heure de prï¿½sence est calculï¿½e automatiquement 30 minutes avant l'ï¿½preuve.) Tj
 ET
 BT
 /F2 14 Tf
 16.0999999999999979 TL
 0.118 0.251 0.686 rg
 48. 733.8899999999999864 Td
-(Contrôles de cohérence) Tj
+(Contrï¿½les de cohï¿½rence) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 711.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 711.8899999999999864 Td
-(Chaque salle utilisée existe dans la liste des salles.) Tj
+(Chaque salle utilisï¿½e existe dans la liste des salles.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 692.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 692.8899999999999864 Td
-(Chaque enseignant utilisé existe dans l'annuaire.) Tj
+(Chaque enseignant utilisï¿½ existe dans l'annuaire.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 673.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 673.8899999999999864 Td
-(Les dates sont au format YYYY-MM-DD lorsqu'elles sont utilisées pour le tri.) Tj
+(Les dates sont au format YYYY-MM-DD lorsqu'elles sont utilisï¿½es pour le tri.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 654.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 654.8899999999999864 Td
-(Les horaires de convocation précèdent les horaires de passage.) Tj
+(Les horaires de convocation prï¿½cï¿½dent les horaires de passage.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 635.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -538,7 +538,7 @@ BT
 13. TL
 0.2 0.255 0.333 rg
 82. 586.8899999999999864 Td
-(Ouvrir un terminal à la racine du projet.) Tj
+(Ouvrir un terminal ï¿½ la racine du projet.) Tj
 ET
 0.12 0.25 0.69 rg
 72. 564.8899999999999864 m
@@ -559,7 +559,7 @@ BT
 13. TL
 0.2 0.255 0.333 rg
 82. 560.8899999999999864 Td
-(Installer les dépendances avec npm install.) Tj
+(Installer les dï¿½pendances avec npm install.) Tj
 ET
 0.12 0.25 0.69 rg
 72. 538.8899999999999864 m
@@ -601,7 +601,7 @@ BT
 13. TL
 0.2 0.255 0.333 rg
 82. 508.8899999999999864 Td
-(Lancer npm run build et vérifier que la compilation réussit.) Tj
+(Lancer npm run build et vï¿½rifier que la compilation rï¿½ussit.) Tj
 ET
 0.12 0.25 0.69 rg
 72. 486.8899999999999864 m
@@ -622,7 +622,7 @@ BT
 13. TL
 0.2 0.255 0.333 rg
 82. 482.8899999999999864 Td
-(Lancer npm run dev, ouvrir l'adresse affichée et tester les pages modifiées.) Tj
+(Lancer npm run dev, ouvrir l'adresse affichï¿½e et tester les pages modifiï¿½es.) Tj
 ET
 0.95 0.96 0.98 rg
 52. 468.8899999999999864 m
@@ -658,7 +658,7 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 368.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -672,21 +672,21 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 349.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 349.8899999999999864 Td
-(Cliquer sur chaque carte modifiée.) Tj
+(Cliquer sur chaque carte modifiï¿½e.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 330.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -700,7 +700,7 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 311.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -714,7 +714,7 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 292.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -728,14 +728,14 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 273.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 273.8899999999999864 Td
-(Vérifier l'affichage sur ordinateur et mobile.) Tj
+(Vï¿½rifier l'affichage sur ordinateur et mobile.) Tj
 ET
 BT
 /F2 22 Tf
@@ -749,7 +749,7 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 224.8899999999999864 Td
-(Une fois les tests terminés, vérifier les fichiers modifiés avant de créer le commit.) Tj
+(Une fois les tests terminï¿½s, vï¿½rifier les fichiers modifiï¿½s avant de crï¿½er le commit.) Tj
 ET
 0.95 0.96 0.98 rg
 52. 212.8899999999999864 m
@@ -779,21 +779,21 @@ BT
 0.2 0.255 0.333 rg
 48. 134.8899999999999864 Td
 (Le push doit se terminer par une confirmation d'envoi vers origin/main. Si Git signale un conflit ou un rejet, ne) Tj
-T* (forcez pas le push : récupérez d'abord les changements distants avec git pull.) Tj
+T* (forcez pas le push : rï¿½cupï¿½rez d'abord les changements distants avec git pull.) Tj
 ET
 BT
 /F2 14 Tf
 16.0999999999999979 TL
 0.118 0.251 0.686 rg
 48. 96.8899999999999864 Td
-(Vérification après publication) Tj
+(Vï¿½rification aprï¿½s publication) Tj
 ET
 BT
 /F1 8 Tf
 9.1999999999999993 TL
 0.392 0.455 0.545 rg
 48. 24. Td
-(Procédure de mise à jour - Examens blancs LFJP) Tj
+(Procï¿½dure de mise ï¿½ jour - Examens blancs LFJP) Tj
 ET
 BT
 /F1 8 Tf
@@ -844,15 +844,15 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 751.8899999999999864 Td
-(Le résultat attendu est une branche main synchronisée avec origin/main et aucun fichier non suivi ou modifié non) Tj
-T* (prévu.) Tj
+(Le rï¿½sultat attendu est une branche main synchronisï¿½e avec origin/main et aucun fichier non suivi ou modifiï¿½ non) Tj
+T* (prï¿½vu.) Tj
 ET
 BT
 /F2 22 Tf
 25.2999999999999972 TL
 0.059 0.09 0.165 rg
 48. 713.8899999999999864 Td
-(6. Déployer avec Vercel) Tj
+(6. Dï¿½ployer avec Vercel) Tj
 ET
 0.12 0.25 0.69 rg
 72. 687.8899999999999864 m
@@ -873,7 +873,7 @@ BT
 13. TL
 0.2 0.255 0.333 rg
 82. 683.8899999999999864 Td
-(Ouvrir le projet Vercel relié au dépôt) Tj
+(Ouvrir le projet Vercel reliï¿½ au dï¿½pï¿½t) Tj
 T* (GitHub.) Tj
 ET
 0.12 0.25 0.69 rg
@@ -895,7 +895,7 @@ BT
 13. TL
 0.2 0.255 0.333 rg
 82. 643.8899999999999864 Td
-(Vérifier que la branche de production est main.) Tj
+(Vï¿½rifier que la branche de production est main.) Tj
 ET
 0.12 0.25 0.69 rg
 72. 621.8899999999999864 m
@@ -916,7 +916,7 @@ BT
 13. TL
 0.2 0.255 0.333 rg
 82. 617.8899999999999864 Td
-(Vérifier que le Framework est Vite, la commande npm run build et le dossier de sortie dist.) Tj
+(Vï¿½rifier que le Framework est Vite, la commande npm run build et le dossier de sortie dist.) Tj
 ET
 0.12 0.25 0.69 rg
 72. 595.8899999999999864 m
@@ -937,7 +937,7 @@ BT
 13. TL
 0.2 0.255 0.333 rg
 82. 591.8899999999999864 Td
-(Lancer Redeploy ou attendre le déploiement automatique du nouveau commit.) Tj
+(Lancer Redeploy ou attendre le dï¿½ploiement automatique du nouveau commit.) Tj
 ET
 0.12 0.25 0.69 rg
 72. 569.8899999999999864 m
@@ -972,8 +972,8 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 517.8899999999999864 Td
-(Le fichier vercel.json contient une réécriture vers index.html. Il est nécessaire pour que les routes React) Tj
-T* (fonctionnent lors d'un accès direct ou après un rechargement de page.) Tj
+(Le fichier vercel.json contient une rï¿½ï¿½criture vers index.html. Il est nï¿½cessaire pour que les routes React) Tj
+T* (fonctionnent lors d'un accï¿½s direct ou aprï¿½s un rechargement de page.) Tj
 ET
 BT
 /F2 14 Tf
@@ -987,8 +987,8 @@ BT
 13.5 TL
 0.2 0.255 0.333 rg
 48. 457.8899999999999864 Td
-(Si Vercel affiche ERESOLVE, vérifier que package.json et package-lock.json sont bien commités ensemble. Le) Tj
-T* (projet utilise ESLint 8 et TypeScript 5.5.4 pour rester compatible avec les outils TypeScript utilisés par) Tj
+(Si Vercel affiche ERESOLVE, vï¿½rifier que package.json et package-lock.json sont bien commitï¿½s ensemble. Le) Tj
+T* (projet utilise ESLint 8 et TypeScript 5.5.4 pour rester compatible avec les outils TypeScript utilisï¿½s par) Tj
 T* (l'application.) Tj
 ET
 BT
@@ -1003,21 +1003,21 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 383.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 383.8899999999999864 Td
-(Lire la première erreur réelle, pas seulement le résumé final.) Tj
+(Lire la premiï¿½re erreur rï¿½elle, pas seulement le rï¿½sumï¿½ final.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 364.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -1031,21 +1031,21 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 345.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 345.8899999999999864 Td
-(Corriger le fichier indiqué par le message.) Tj
+(Corriger le fichier indiquï¿½ par le message.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 326.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -1059,14 +1059,14 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 307.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 307.8899999999999864 Td
-(Relancer le déploiement Vercel.) Tj
+(Relancer le dï¿½ploiement Vercel.) Tj
 ET
 BT
 /F2 22 Tf
@@ -1080,21 +1080,21 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 258.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 258.8899999999999864 Td
-(Les dates de l'accueil sont actualisées.) Tj
+(Les dates de l'accueil sont actualisï¿½es.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 239.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -1108,77 +1108,77 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 220.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 220.8899999999999864 Td
-(Les listes d'élèves sont actualisées.) Tj
+(Les listes d'ï¿½lï¿½ves sont actualisï¿½es.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 201.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 201.8899999999999864 Td
-(L'annuaire des enseignants est actualisé.) Tj
+(L'annuaire des enseignants est actualisï¿½.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 182.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 182.8899999999999864 Td
-(Les salles et capacités sont vérifiées.) Tj
+(Les salles et capacitï¿½s sont vï¿½rifiï¿½es.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 163.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 163.8899999999999864 Td
-(Les surveillances et convocations sont vérifiées.) Tj
+(Les surveillances et convocations sont vï¿½rifiï¿½es.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 144.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 144.8899999999999864 Td
-(Les exports PDF et CSV ont été testés.) Tj
+(Les exports PDF et CSV ont ï¿½tï¿½ testï¿½s.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 125.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -1192,7 +1192,7 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 106.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
@@ -1206,21 +1206,21 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 87.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 87.8899999999999864 Td
-(Le commit est envoyé sur main.) Tj
+(Le commit est envoyï¿½ sur main.) Tj
 ET
 BT
 /F1 8 Tf
 9.1999999999999993 TL
 0.392 0.455 0.545 rg
 48. 24. Td
-(Procédure de mise à jour - Examens blancs LFJP) Tj
+(Procï¿½dure de mise ï¿½ jour - Examens blancs LFJP) Tj
 ET
 BT
 /F1 8 Tf
@@ -1251,51 +1251,51 @@ BT
 11.5 TL
 0.2 0.255 0.333 rg
 48. 793.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 793.8899999999999864 Td
-(Vercel affiche un déploiement réussi.) Tj
+(Vercel affiche un dï¿½ploiement rï¿½ussi.) Tj
 ET
 BT
 /F1 10 Tf
 11.5 TL
 0.2 0.255 0.333 rg
 48. 774.8899999999999864 Td
-(•) Tj
+(ï¿½) Tj
 ET
 BT
 /F1 10 Tf
 13. TL
 0.2 0.255 0.333 rg
 62. 774.8899999999999864 Td
-(Le site en ligne a été testé après déploiement.) Tj
+(Le site en ligne a ï¿½tï¿½ testï¿½ aprï¿½s dï¿½ploiement.) Tj
 ET
 BT
 /F2 14 Tf
 16.0999999999999979 TL
 0.118 0.251 0.686 rg
 48. 755.8899999999999864 Td
-(Évolution recommandée) Tj
+(ï¿½volution recommandï¿½e) Tj
 ET
 BT
 /F1 10 Tf
 13.5 TL
 0.2 0.255 0.333 rg
 48. 733.8899999999999864 Td
-(À terme, déplacer les données dans une base de données ou un outil d'administration permettrait de modifier les) Tj
-T* (sessions sans toucher au code. En attendant, cette procédure garantit une mise à jour contrôlée et réversible) Tj
-T* (grâce à Git.) Tj
+(ï¿½ terme, dï¿½placer les donnï¿½es dans une base de donnï¿½es ou un outil d'administration permettrait de modifier les) Tj
+T* (sessions sans toucher au code. En attendant, cette procï¿½dure garantit une mise ï¿½ jour contrï¿½lï¿½e et rï¿½versible) Tj
+T* (grï¿½ce ï¿½ Git.) Tj
 ET
 BT
 /F1 8 Tf
 9.1999999999999993 TL
 0.392 0.455 0.545 rg
 48. 24. Td
-(Procédure de mise à jour - Examens blancs LFJP) Tj
+(Procï¿½dure de mise ï¿½ jour - Examens blancs LFJP) Tj
 ET
 BT
 /F1 8 Tf
