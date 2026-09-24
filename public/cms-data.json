@@ -162,6 +162,19 @@
       "category": "surveillance",
       "isPublished": true,
       "order": 11
+    },
+    {
+      "title": "TEST",
+      "subtitle": "Session 2027",
+      "dateLabel": "7 au 10 Avril 2027",
+      "date": "2026-04-07",
+      "to": "/examens-blancs",
+      "footerLabel": "Accéder à l'organisation complète",
+      "iconLabel": "Accéder à TEST",
+      "category": "general",
+      "isPublished": true,
+      "id": "callout-1790253997323",
+      "order": 12
     }
   ],
   "announcements": [
