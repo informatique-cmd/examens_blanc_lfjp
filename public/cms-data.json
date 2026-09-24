@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-09-22T14:13:07.944Z",
+  "updatedAt": "2026-09-24T12:46:37.323Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Espace examens blancs LFJP",
@@ -13,7 +13,7 @@
       }
     ],
     "bannerAlert": {
-      "enabled": false,
+      "enabled": true,
       "title": "Consigne d'organisation des épreuves",
       "message": "Veuillez vous présenter 15 minutes avant le début de chaque épreuve muni de votre convocation et d'une pièce d'identité.",
       "type": "info"
