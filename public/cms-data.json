@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-09-24T12:49:08.443Z",
+  "updatedAt": "2026-10-26T18:17:34.647Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Espace examens blancs LFJP",
@@ -13,7 +13,7 @@
       }
     ],
     "bannerAlert": {
-      "enabled": true,
+      "enabled": false,
       "title": "Consigne d'organisation des épreuves",
       "message": "Veuillez vous présenter 15 minutes avant le début de chaque épreuve muni de votre convocation et d'une pièce d'identité.",
       "type": "info"
@@ -25,7 +25,7 @@
       "to": "/examens-blancs",
       "iconLabel": "Accéder à Baccalauréat blanc 1ère et Terminale",
       "subtitle": "",
-      "title": "Baccalauréat blanc 1ère et Terminale",
+      "title": "Baccalauréat blanc 1ère et Terminales",
       "dateLabel": "10, 11 et 12 décembre 2025",
       "date": "2025-12-10",
       "footerLabel": "Accéder à l'organisation complète",
@@ -162,32 +162,6 @@
       "category": "surveillance",
       "isPublished": true,
       "order": 11
-    },
-    {
-      "id": "callout-1790253997323",
-      "to": "/examens-blancs",
-      "iconLabel": "Accéder à TEST",
-      "subtitle": "Session 2027",
-      "title": "TEST",
-      "dateLabel": "7 au 10 Avril 2027",
-      "date": "2026-04-07",
-      "footerLabel": "Accéder à l'organisation complète",
-      "category": "general",
-      "isPublished": true,
-      "order": 12
-    },
-    {
-      "title": "EXAM",
-      "subtitle": "",
-      "dateLabel": "7 au 10",
-      "date": "2026-04-07",
-      "to": "/examens-blancs",
-      "footerLabel": "Accéder à l'organisation complète",
-      "iconLabel": "Accéder à EXAM",
-      "category": "general",
-      "isPublished": true,
-      "id": "callout-1790334198532",
-      "order": 13
     }
   ],
   "announcements": [
@@ -197,7 +171,7 @@
       "content": "Les candidats doivent se présenter 15 minutes avant l'heure indiquée sur la convocation avec leur pièce d'identité et leur matériel obligatoire.",
       "priority": "important",
       "target": "all",
-      "isPublished": true,
+      "isPublished": false,
       "date": "2026-02-01"
     },
     {
@@ -206,7 +180,7 @@
       "content": "Pour les épreuves de mathématiques et de sciences, les calculatrices doivent obligatoirement être activées en mode examen dès l'entrée en salle.",
       "priority": "information",
       "target": "bac",
-      "isPublished": true,
+      "isPublished": false,
       "date": "2026-02-10"
     },
     {
@@ -215,7 +189,7 @@
       "content": "Mesdames et Messieurs les enseignants surveillants sont priés de remettre les pochettes d'émargement au secrétariat des examens dès la fin de l'épreuve.",
       "priority": "urgent",
       "target": "teachers",
-      "isPublished": true,
+      "isPublished": false,
       "date": "2026-02-12"
     }
   ],
