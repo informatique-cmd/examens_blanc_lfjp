@@ -53,6 +53,7 @@ export interface CmsExam {
   endsAt: string;
   description: string;
   status: "Prévu" | "En cours" | "Terminé" | "Archivé";
+  isPublished?: boolean;
 }
 
 export interface CmsRoom {
@@ -91,6 +92,8 @@ export interface CmsCandidate {
   roomName: string;
   convocationTime: string;
   accommodation: string;
+  tableNumber?: string;
+  anonymatNumber?: string;
 }
 
 export interface CmsData {
@@ -318,7 +321,9 @@ export function getCmsData(): CmsData {
       announcements: Array.isArray(parsed.announcements)
         ? parsed.announcements
         : DEFAULT_CMS_DATA.announcements,
-      exams: Array.isArray(parsed.exams) ? parsed.exams : DEFAULT_CMS_DATA.exams,
+      exams: Array.isArray(parsed.exams)
+        ? parsed.exams.map((e) => ({ ...e, isPublished: e.isPublished !== false }))
+        : DEFAULT_CMS_DATA.exams.map((e) => ({ ...e, isPublished: true })),
       rooms: Array.isArray(parsed.rooms) ? parsed.rooms : DEFAULT_CMS_DATA.rooms,
       teachers: Array.isArray(parsed.teachers) ? parsed.teachers : DEFAULT_CMS_DATA.teachers,
       surveillances: Array.isArray(parsed.surveillances) ? parsed.surveillances : DEFAULT_CMS_DATA.surveillances,
@@ -515,6 +520,28 @@ export function useCmsData() {
     setData(next);
   };
 
+  const duplicateCallout = (id: string): CmsCallout | null => {
+    const original = data.callouts.find((c) => c.id === id);
+    if (!original) return null;
+    const originalIndex = data.callouts.findIndex((c) => c.id === id);
+    const newId = `callout-${Date.now()}`;
+    const duplicated: CmsCallout = {
+      ...original,
+      id: newId,
+      title: `${original.title} (Copie)`,
+      order: original.order + 1,
+    };
+    const nextCallouts = [...data.callouts];
+    nextCallouts.splice(originalIndex + 1, 0, duplicated);
+    nextCallouts.forEach((c, idx) => {
+      c.order = idx + 1;
+    });
+    const next: CmsData = { ...data, callouts: nextCallouts };
+    saveCmsData(next);
+    setData(next);
+    return duplicated;
+  };
+
   // Announcements
   const addAnnouncement = (item: Omit<CmsAnnouncement, "id">) => {
     const newItem: CmsAnnouncement = { ...item, id: `ann-${Date.now()}` };
@@ -565,6 +592,22 @@ export function useCmsData() {
     };
     saveCmsData(next);
     setData(next);
+  };
+
+  const duplicateExam = (id: string): CmsExam | null => {
+    const original = data.exams.find((e) => e.id === id);
+    if (!original) return null;
+    const newId = `exam-${Date.now()}`;
+    const duplicated: CmsExam = {
+      ...original,
+      id: newId,
+      title: `${original.title} (Copie)`,
+      status: "Prévu",
+    };
+    const next: CmsData = { ...data, exams: [...data.exams, duplicated] };
+    saveCmsData(next);
+    setData(next);
+    return duplicated;
   };
 
   // Rooms
@@ -645,6 +688,20 @@ export function useCmsData() {
     setData(next);
   };
 
+  const duplicateSurveillance = (id: string): CmsSurveillance | null => {
+    const original = data.surveillances.find((s) => s.id === id);
+    if (!original) return null;
+    const newId = `surv-${Date.now()}`;
+    const duplicated: CmsSurveillance = {
+      ...original,
+      id: newId,
+    };
+    const next: CmsData = { ...data, surveillances: [...data.surveillances, duplicated] };
+    saveCmsData(next);
+    setData(next);
+    return duplicated;
+  };
+
   // Candidates
   const addCandidate = (item: Omit<CmsCandidate, "id">) => {
     const newItem: CmsCandidate = { ...item, id: `cand-${Date.now()}` };
@@ -671,6 +728,17 @@ export function useCmsData() {
     setData(next);
   };
 
+  const setCandidates = (newCandidates: CmsCandidate[]) => {
+    const next: CmsData = { ...data, candidates: newCandidates };
+    saveCmsData(next);
+    setData(next);
+  };
+
+  const saveEntireData = (nextData: CmsData) => {
+    saveCmsData(nextData);
+    setData(nextData);
+  };
+
   const handleReset = () => {
     const fresh = resetCmsData();
     setData(fresh);
@@ -683,12 +751,14 @@ export function useCmsData() {
     updateCallout,
     deleteCallout,
     reorderCallout,
+    duplicateCallout,
     addAnnouncement,
     updateAnnouncement,
     deleteAnnouncement,
     addExam,
     updateExam,
     deleteExam,
+    duplicateExam,
     addRoom,
     updateRoom,
     deleteRoom,
@@ -698,9 +768,12 @@ export function useCmsData() {
     addSurveillance,
     updateSurveillance,
     deleteSurveillance,
+    duplicateSurveillance,
     addCandidate,
     updateCandidate,
     deleteCandidate,
+    setCandidates,
+    saveEntireData,
     resetToDefaults: handleReset,
   };
 }

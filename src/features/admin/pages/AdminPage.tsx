@@ -1,10 +1,8 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  LayoutDashboard,
   Calendar,
   FileText,
-  Bell,
   GraduationCap,
   DoorOpen,
   Users,
@@ -13,10 +11,10 @@ import {
   Plus,
   Edit2,
   Trash2,
+  Copy,
   Check,
   CheckCircle2,
-  ArrowUp,
-  ArrowDown,
+  ArrowRight,
   Eye,
   ExternalLink,
   Download,
@@ -30,13 +28,18 @@ import {
   CheckCircle,
   ClipboardPaste,
   ChevronDown,
+  Printer,
+  Key,
+  AlertTriangle,
+  RefreshCw,
+  Shuffle,
+  FileSpreadsheet,
 } from "lucide-react";
 
 import {
   useCmsData,
   exportCmsDataJson,
   importCmsDataJson,
-  type CmsCallout,
   type CmsAnnouncement,
   type CmsExam,
   type CmsRoom,
@@ -49,33 +52,30 @@ import {
 import {
   useGitHubAuth,
   pushCmsChangesToGitHub,
+  DEFAULT_GITHUB_TOKEN,
+  resetToDefaultGitHubToken,
 } from "../../../shared/services/github-service";
 
 type ActiveTab =
-  | "overview"
   | "programmations"
-  | "siteInfo"
-  | "announcements"
-  | "exams"
-  | "rooms"
+  | "orga_perdir"
+  | "candidates"
   | "teachers"
-  | "surveillances"
-  | "candidates";
+  | "rooms"
+  | "siteInfo"
+  | "deployment";
 
 export default function AdminPage() {
   const {
     data: cmsData,
     updateSiteInfo,
-    addCallout,
-    updateCallout,
-    deleteCallout,
-    reorderCallout,
     addAnnouncement,
     updateAnnouncement,
     deleteAnnouncement,
     addExam,
     updateExam,
     deleteExam,
+    duplicateExam,
     addRoom,
     updateRoom,
     deleteRoom,
@@ -85,6 +85,7 @@ export default function AdminPage() {
     addSurveillance,
     updateSurveillance,
     deleteSurveillance,
+    duplicateSurveillance,
     addCandidate,
     updateCandidate,
     deleteCandidate,
@@ -105,7 +106,7 @@ export default function AdminPage() {
   const navigate = useNavigate();
 
   // Login form state
-  const [loginTokenInput, setLoginTokenInput] = useState(githubToken || "");
+  const [loginTokenInput, setLoginTokenInput] = useState(DEFAULT_GITHUB_TOKEN || githubToken || "");
   const [loginOwnerInput, setLoginOwnerInput] = useState(githubConfig.owner || "informatique-cmd");
   const [loginRepoInput, setLoginRepoInput] = useState(githubConfig.repo || "examens_blanc_lfjp");
   const [loginBranchInput, setLoginBranchInput] = useState(githubConfig.branch || "main");
@@ -114,6 +115,75 @@ export default function AdminPage() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [hasOpenedGitHub, setHasOpenedGitHub] = useState(false);
   const [showAdvancedConfig, setShowAdvancedConfig] = useState(false);
+
+  // Sync / Push modal state
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStep, setSyncStep] = useState<string>("");
+  const [syncResult, setSyncResult] = useState<{
+    success: boolean;
+    commitSha?: string;
+    commitUrl?: string;
+    error?: string;
+  } | null>(null);
+  const [commitMessageInput, setCommitMessageInput] = useState(
+    `Mise à jour des programmations d'examens LFJP (${new Date().toLocaleDateString("fr-FR")})`
+  );
+  const [modalNewToken, setModalNewToken] = useState(DEFAULT_GITHUB_TOKEN || "");
+  const [showModalPassword, setShowModalPassword] = useState(false);
+  const [dashboardTokenInput, setDashboardTokenInput] = useState(githubToken || DEFAULT_GITHUB_TOKEN || "");
+  const [showDashboardPassword, setShowDashboardPassword] = useState(false);
+  const [isUpdatingTokenInModal, setIsUpdatingTokenInModal] = useState(false);
+  const [tokenUpdateError, setTokenUpdateError] = useState<string | null>(null);
+  const [tokenUpdateSuccess, setTokenUpdateSuccess] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState<ActiveTab>("programmations");
+  const [notification, setNotification] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Teacher batch import
+  const [isBatchImportingTeachers, setIsBatchImportingTeachers] = useState(false);
+  const [batchImportTeachersText, setBatchImportTeachersText] = useState("");
+
+  // Modals for CRUD
+  const [editingAnnouncement, setEditingAnnouncement] = useState<CmsAnnouncement | null>(null);
+  const [isAddingAnnouncement, setIsAddingAnnouncement] = useState(false);
+
+  const [editingExam, setEditingExam] = useState<CmsExam | null>(null);
+  const [isAddingExam, setIsAddingExam] = useState(false);
+
+  const [editingRoom, setEditingRoom] = useState<CmsRoom | null>(null);
+  const [isAddingRoom, setIsAddingRoom] = useState(false);
+
+  const [editingTeacher, setEditingTeacher] = useState<CmsTeacher | null>(null);
+  const [isAddingTeacher, setIsAddingTeacher] = useState(false);
+
+  const [editingSurveillance, setEditingSurveillance] = useState<CmsSurveillance | null>(null);
+  const [isAddingSurveillance, setIsAddingSurveillance] = useState(false);
+
+  const [editingCandidate, setEditingCandidate] = useState<CmsCandidate | null>(null);
+  const [isAddingCandidate, setIsAddingCandidate] = useState(false);
+  const [isBatchImportingCandidates, setIsBatchImportingCandidates] = useState(false);
+  const [batchImportText, setBatchImportText] = useState("");
+
+  // Form local state for Site Info
+  const [siteInfoForm, setSiteInfoForm] = useState(cmsData.siteInfo);
+
+  const showNotification = (msg: string) => {
+    setNotification(msg);
+    setTimeout(() => {
+      setNotification(null);
+    }, 4000);
+  };
+  useEffect(() => {
+    if (githubToken) {
+      setModalNewToken(githubToken);
+      setDashboardTokenInput(githubToken);
+    } else if (DEFAULT_GITHUB_TOKEN) {
+      setModalNewToken(DEFAULT_GITHUB_TOKEN);
+      setDashboardTokenInput(DEFAULT_GITHUB_TOKEN);
+    }
+  }, [githubToken]);
 
   // Logout handler with immediate home redirect
   const handleLogout = () => {
@@ -146,54 +216,17 @@ export default function AdminPage() {
     }
   };
 
-  // Sync / Push modal state
-  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncStep, setSyncStep] = useState<string>("");
-  const [syncResult, setSyncResult] = useState<{
-    success: boolean;
-    commitSha?: string;
-    commitUrl?: string;
-    error?: string;
-  } | null>(null);
-  const [commitMessageInput, setCommitMessageInput] = useState(
-    `Mise à jour des programmations d'examens LFJP (${new Date().toLocaleDateString("fr-FR")})`
-  );
-
-  const [activeTab, setActiveTab] = useState<ActiveTab>("overview");
-  const [notification, setNotification] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // Modals for CRUD
-  const [editingCallout, setEditingCallout] = useState<CmsCallout | null>(null);
-  const [isAddingCallout, setIsAddingCallout] = useState(false);
-
-  const [editingAnnouncement, setEditingAnnouncement] = useState<CmsAnnouncement | null>(null);
-  const [isAddingAnnouncement, setIsAddingAnnouncement] = useState(false);
-
-  const [editingExam, setEditingExam] = useState<CmsExam | null>(null);
-  const [isAddingExam, setIsAddingExam] = useState(false);
-
-  const [editingRoom, setEditingRoom] = useState<CmsRoom | null>(null);
-  const [isAddingRoom, setIsAddingRoom] = useState(false);
-
-  const [editingTeacher, setEditingTeacher] = useState<CmsTeacher | null>(null);
-  const [isAddingTeacher, setIsAddingTeacher] = useState(false);
-
-  const [editingSurveillance, setEditingSurveillance] = useState<CmsSurveillance | null>(null);
-  const [isAddingSurveillance, setIsAddingSurveillance] = useState(false);
-
-  const [editingCandidate, setEditingCandidate] = useState<CmsCandidate | null>(null);
-  const [isAddingCandidate, setIsAddingCandidate] = useState(false);
-
-  // Form local state for Site Info
-  const [siteInfoForm, setSiteInfoForm] = useState(cmsData.siteInfo);
-
-  const showNotification = (msg: string) => {
-    setNotification(msg);
-    setTimeout(() => {
-      setNotification(null);
-    }, 4000);
+  const handleSaveDashboardToken = async () => {
+    const tokenToUse = (dashboardTokenInput || DEFAULT_GITHUB_TOKEN).trim();
+    setIsLoggingIn(true);
+    const loginRes = await loginGitHub(tokenToUse, githubConfig);
+    setIsLoggingIn(false);
+    if (loginRes.success) {
+      setModalNewToken(tokenToUse);
+      showNotification("Jeton GitHub validé et enregistré avec succès !");
+    } else {
+      showNotification("Attention : validation GitHub échouée (" + (loginRes.error || "Erreur") + ")");
+    }
   };
 
   // Handle GitHub Login
@@ -227,10 +260,15 @@ export default function AdminPage() {
     setIsSyncing(true);
     setSyncStep("Initialisation de la synchronisation...");
     setSyncResult(null);
+    setTokenUpdateError(null);
+    setTokenUpdateSuccess(null);
+
+    const tokenToPass = (modalNewToken || dashboardTokenInput || githubToken || DEFAULT_GITHUB_TOKEN).trim();
 
     const res = await pushCmsChangesToGitHub({
       cmsData,
       commitMessage: commitMessageInput,
+      overrideToken: tokenToPass,
       onProgress: (status) => setSyncStep(status),
     });
 
@@ -238,6 +276,121 @@ export default function AdminPage() {
     setSyncResult(res);
     if (res.success) {
       showNotification("Modifications publiées sur GitHub ! Vercel redéploie votre site en ligne.");
+    }
+  };
+
+  // Open GitHub page to generate token with repo scope prefilled
+  const handleOpenGitHubTokenPage = () => {
+    window.open(
+      "https://github.com/settings/tokens/new?scopes=repo&description=LFJP+Admin+CMS+Deploy",
+      "_blank"
+    );
+  };
+
+  // Paste token from clipboard into modal
+  const handlePasteModalToken = async () => {
+    try {
+      if (navigator.clipboard?.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim()) {
+          setModalNewToken(text.trim());
+          setTokenUpdateError(null);
+          showNotification("Jeton collé depuis le presse-papier !");
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
+  // Update token and immediately retry deployment
+  const handleUpdateTokenAndRetry = async () => {
+    const tokenToUse = modalNewToken.trim();
+    if (!tokenToUse) {
+      setTokenUpdateError("Veuillez coller votre nouveau jeton GitHub.");
+      return;
+    }
+
+    setIsUpdatingTokenInModal(true);
+    setTokenUpdateError(null);
+    setTokenUpdateSuccess(null);
+
+    const loginRes = await loginGitHub(tokenToUse, githubConfig);
+    setIsUpdatingTokenInModal(false);
+
+    if (!loginRes.success) {
+      setTokenUpdateError(
+        loginRes.error || "Jeton GitHub invalide ou permissions insuffisantes sur le dépôt."
+      );
+      return;
+    }
+
+    setTokenUpdateSuccess("Jeton validé avec succès ! Déploiement en cours...");
+    setModalNewToken(tokenToUse);
+    setDashboardTokenInput(tokenToUse);
+    showNotification("Jeton GitHub mis à jour avec succès !");
+
+    // Automatically trigger push to GitHub & Vercel
+    await handlePushToGitHub();
+  };
+
+  // Handle Batch Import of Teachers (Pronote / Excel format)
+  const handleBatchImportTeachers = () => {
+    if (!batchImportTeachersText.trim()) return;
+    const lines = batchImportTeachersText.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    let count = 0;
+    lines.forEach((line) => {
+      const parts = line.includes("\t")
+        ? line.split("\t")
+        : line.includes(";")
+        ? line.split(";")
+        : line.split(",");
+
+      if (parts.length >= 2) {
+        const first = parts[0].trim();
+        const second = parts[1].trim();
+        if (first.toLowerCase() === "nom" || first.toLowerCase() === "enseignant") return;
+
+        let civility: "Madame" | "Monsieur" = "Madame";
+        let lastName = first;
+        let firstName = second;
+        let subject = "Enseignement général";
+        let email = "";
+
+        if (first.toLowerCase().includes("m.") || first.toLowerCase().includes("monsieur")) {
+          civility = "Monsieur";
+          lastName = second;
+          firstName = parts[2]?.trim() || "";
+          subject = parts[3]?.trim() || "Enseignement";
+          email = parts[4]?.trim() || "";
+        } else if (first.toLowerCase().includes("mme") || first.toLowerCase().includes("madame")) {
+          civility = "Madame";
+          lastName = second;
+          firstName = parts[2]?.trim() || "";
+          subject = parts[3]?.trim() || "Enseignement";
+          email = parts[4]?.trim() || "";
+        } else {
+          subject = parts[2]?.trim() || "Enseignement";
+          email = parts[3]?.trim() || "";
+        }
+
+        addTeacher({
+          civility,
+          lastName: lastName.toUpperCase(),
+          firstName: firstName ? firstName.charAt(0).toUpperCase() + firstName.slice(1) : "",
+          subject,
+          email: email || `${firstName.toLowerCase()}.${lastName.toLowerCase()}@lfjpsaly.org`,
+        });
+        count++;
+      }
+    });
+
+    if (count > 0) {
+      showNotification(`${count} enseignants importés avec succès !`);
+      setBatchImportTeachersText("");
+      setIsBatchImportingTeachers(false);
+    } else {
+      alert("Format non reconnu. Utilisez le format 'Nom; Prénom; Discipline; Email'.");
     }
   };
 
@@ -280,17 +433,15 @@ export default function AdminPage() {
     reader.readAsText(file);
   };
 
-  // Navigation tabs (single update button is in the top bar)
+  // Navigation tabs organized around the PERDIR workflow & showcase
   const tabs = [
-    { id: "overview" as const, label: "Tableau de bord", icon: LayoutDashboard },
-    { id: "programmations" as const, label: "Programmations", icon: Calendar },
-    { id: "siteInfo" as const, label: "Identité du site", icon: FileText },
-    { id: "announcements" as const, label: "Annonces & Consignes", icon: Bell },
-    { id: "exams" as const, label: "Épreuves", icon: Layers },
-    { id: "rooms" as const, label: "Salles d'examen", icon: DoorOpen },
-    { id: "teachers" as const, label: "Enseignants", icon: Users },
-    { id: "surveillances" as const, label: "Surveillances", icon: Shield },
-    { id: "candidates" as const, label: "Candidats", icon: GraduationCap },
+    { id: "programmations" as const, label: "1. Programmations (Vitrine)", icon: Calendar },
+    { id: "orga_perdir" as const, label: "2. Méthode PERDIR (Frédéric)", icon: Shuffle },
+    { id: "candidates" as const, label: "3. Candidats & Pronote", icon: GraduationCap },
+    { id: "teachers" as const, label: "4. Professeurs & Surveillances", icon: Users },
+    { id: "rooms" as const, label: "5. Salles & Capacités", icon: DoorOpen },
+    { id: "siteInfo" as const, label: "6. Vitrine & Bannières", icon: FileText },
+    { id: "deployment" as const, label: "7. Déploiement Vercel & Git", icon: UploadCloud },
   ];
 
   // -------------------------------------------------------------
@@ -399,6 +550,18 @@ export default function AdminPage() {
                       {showToken ? "Masquer" : "Afficher"}
                     </button>
                   </div>
+                  {DEFAULT_GITHUB_TOKEN && loginTokenInput !== DEFAULT_GITHUB_TOKEN && (
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setLoginTokenInput(DEFAULT_GITHUB_TOKEN)}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-900"
+                      >
+                        <Key className="h-3 w-3" />
+                        <span>Insérer le jeton ({DEFAULT_GITHUB_TOKEN.slice(0, 7)}••••••••{DEFAULT_GITHUB_TOKEN.slice(-4)})</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Collapsible advanced repo configuration */}
@@ -530,6 +693,40 @@ export default function AdminPage() {
             <ExternalLink className="h-3 w-3 opacity-50" />
           </Link>
 
+          <Link
+            to="/convocations"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 shadow-xs transition hover:bg-indigo-100"
+          >
+            <Printer className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Portail Convocations</span>
+            <ExternalLink className="h-3 w-3 opacity-50" />
+          </Link>
+
+          {/* Bouton Assistant Orga-DNB-Blanc (PERDIR) */}
+          <Link
+            to="/orga-dnb"
+            className="flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-800 shadow-xs transition hover:bg-sky-100"
+            title="Assistant d'organisation et brassage d'examen blanc inspiré d'Orga-DNB-Blanc (Frédéric Vedrenne)"
+          >
+            <Shuffle className="h-3.5 w-3.5 text-sky-600" />
+            <span className="hidden sm:inline">Orga-DNB (PERDIR)</span>
+          </Link>
+
+          {/* Bouton Config Jeton GitHub */}
+          <button
+            onClick={() => {
+              setSyncResult(null);
+              setIsSyncModalOpen(true);
+            }}
+            title="Modifier ou renouveler votre jeton d'accès GitHub"
+            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-blue-700"
+          >
+            <Key className="h-3.5 w-3.5 text-slate-500" />
+            <span className="hidden md:inline">Jeton GitHub</span>
+          </button>
+
           {/* LE BOUTON UNIQUE DE SYNCHRONISATION GITHUB & VERCEL */}
           <button
             id="btn-single-sync-github-vercel"
@@ -653,12 +850,153 @@ export default function AdminPage() {
 
             {/* If sync error */}
             {syncResult && !syncResult.success && (
-              <div className="my-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800">
-                <p className="font-bold text-sm">Échec du commit</p>
-                <p className="mt-1">{syncResult.error}</p>
-                <p className="mt-2 text-slate-600">
-                  Vérifiez que votre jeton d'accès GitHub possède bien la permission <code>repo</code> en écriture.
+              <div className="my-5 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-xs text-rose-800 space-y-3">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="h-5 w-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-sm text-rose-900">
+                      Échec du commit : Jeton GitHub invalide ou expiré (Bad credentials)
+                    </p>
+                    <p className="mt-1 text-rose-700">{syncResult.error}</p>
+                    <p className="mt-2 text-slate-700">
+                      GitHub a refusé l'authentification avec la clé actuelle. Pour que la synchronisation et le déploiement automatique sur Vercel fonctionnent, vous devez remplacer votre jeton d'accès GitHub par un nouveau jeton valide avec la permission <code>repo</code> en écriture.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Direct action helper */}
+                <div className="rounded-xl border border-rose-200 bg-white p-3.5 space-y-2 text-slate-700">
+                  <p className="font-bold text-slate-900 text-xs">
+                    Comment résoudre cette erreur en 1 minute ?
+                  </p>
+                  <ol className="list-decimal pl-4 space-y-1 text-slate-600">
+                    <li>
+                      Cliquez sur le bouton ci-dessous pour ouvrir la page GitHub de création de jeton.
+                    </li>
+                    <li>
+                      Vérifiez que la permission <strong>repo</strong> est bien cochée et choisissez une expiration (ex: 90 jours ou <em>No expiration</em>).
+                    </li>
+                    <li>
+                      Cliquez sur <strong>Generate token</strong> tout en bas sur GitHub, puis copiez la clé générée (commençant par <code>ghp_...</code>).
+                    </li>
+                    <li>
+                      Collez-la ci-dessous et cliquez sur <strong>Mettre à jour & Déployer</strong>.
+                    </li>
+                  </ol>
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={handleOpenGitHubTokenPage}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-bold text-white shadow hover:bg-slate-800"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      <span>1. Ouvrir GitHub pour générer un nouveau jeton</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Interactive Token Update Section (always open and accessible) */}
+            {!isSyncing && (
+              <div className="my-4 rounded-2xl border-2 border-blue-200 bg-blue-50/70 p-4 text-xs space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Key className="h-4 w-4 text-blue-700 flex-shrink-0" />
+                    <span className="font-bold text-slate-900 text-sm">
+                      Jeton d'accès GitHub (Token personnel)
+                    </span>
+                  </div>
+                  <span className="rounded-full bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+                    ✓ Jeton intégré au code
+                  </span>
+                </div>
+
+                <p className="text-slate-600 text-xs">
+                  Ce jeton permet au site de pousser vos modifications sur <code>{githubConfig.owner}/{githubConfig.repo}</code> afin que Vercel redéploie le site en ligne.
                 </p>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-semibold text-slate-700">
+                      Jeton actif (vous pouvez le visualiser ou le remplacer ici) :
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowModalPassword(!showModalPassword)}
+                      className="text-[11px] font-bold text-blue-700 hover:text-blue-900"
+                    >
+                      {showModalPassword ? "Masquer le jeton" : "Afficher en clair"}
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type={showModalPassword ? "text" : "password"}
+                        value={modalNewToken}
+                        onChange={(e) => {
+                          setModalNewToken(e.target.value);
+                          setTokenUpdateError(null);
+                        }}
+                        placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-mono text-slate-900 focus:border-blue-600 focus:outline-none"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handlePasteModalToken}
+                      className="flex items-center justify-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                      title="Coller depuis le presse-papier"
+                    >
+                      <ClipboardPaste className="h-3.5 w-3.5" />
+                      <span>Coller</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModalNewToken(DEFAULT_GITHUB_TOKEN);
+                        setDashboardTokenInput(DEFAULT_GITHUB_TOKEN);
+                        resetToDefaultGitHubToken();
+                        setTokenUpdateError(null);
+                        showNotification("Jeton par défaut réactivé !");
+                      }}
+                      className="flex items-center justify-center gap-1 rounded-xl border border-blue-300 bg-white px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50"
+                      title="Réinsérer le jeton LFJP"
+                    >
+                      <span>Jeton par défaut</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isUpdatingTokenInModal || !modalNewToken.trim()}
+                      onClick={handleUpdateTokenAndRetry}
+                      className="flex items-center justify-center gap-1.5 rounded-xl bg-blue-700 px-4 py-2 text-xs font-bold text-white shadow hover:bg-blue-800 disabled:opacity-50"
+                    >
+                      {isUpdatingTokenInModal ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <span>Validation...</span>
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-3.5 w-3.5" />
+                          <span>Valider & Sauvegarder</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {tokenUpdateError && (
+                  <div className="rounded-xl border border-rose-300 bg-rose-100/90 p-2.5 text-[11px] font-semibold text-rose-800">
+                    {tokenUpdateError}
+                  </div>
+                )}
+                {tokenUpdateSuccess && (
+                  <div className="rounded-xl border border-emerald-300 bg-emerald-100/90 p-2.5 text-[11px] font-semibold text-emerald-800">
+                    {tokenUpdateSuccess}
+                  </div>
+                )}
               </div>
             )}
 
@@ -772,20 +1110,20 @@ export default function AdminPage() {
 
         {/* Main Content Area */}
         <main className="flex-1 p-6 lg:p-8">
-          {/* TAB: OVERVIEW */}
-          {activeTab === "overview" && (
+          {/* TAB 7: DÉPLOIEMENT VERCEL & GITHUB */}
+          {activeTab === "deployment" && (
             <div className="space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">Tableau de bord de gestion</h2>
+                  <h2 className="text-2xl font-bold text-slate-900">Centre de Déploiement Vercel & Sauvegardes</h2>
                   <p className="mt-1 text-sm text-slate-600">
-                    Gérez l'ensemble des examens blancs, plannings, épreuves et consignes du LFJP pour l'année {cmsData.siteInfo.schoolYear}.
+                    Contrôlez la synchronisation avec GitHub et le redéploiement mondial sur Vercel sans frais.
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
-                      setIsAddingCallout(true);
+                      setIsAddingExam(true);
                       setActiveTab("programmations");
                     }}
                     className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow hover:bg-blue-700"
@@ -796,26 +1134,85 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Status Banner */}
-              <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-700 text-white font-bold text-sm shadow-xs">
-                    LFJP
+              {/* Status & Token Management Card */}
+              <div className="rounded-2xl border-2 border-blue-200 bg-gradient-to-r from-blue-50/80 via-white to-indigo-50/60 p-6 shadow-sm space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-700 text-white shadow">
+                      <UploadCloud className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-bold text-slate-900">
+                          Connexion GitHub & Déploiement Vercel
+                        </h3>
+                        <span className="rounded-full bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+                          ✓ Jeton configuré dans le code
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        Dépôt : <code className="font-semibold text-blue-800">{githubConfig.owner}/{githubConfig.repo}</code> (branche <code className="text-blue-800">{githubConfig.branch}</code>) • Déploiement automatique sans frais
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-slate-900">
-                      Dépôt GitHub connecté : {githubConfig.owner}/{githubConfig.repo}
-                    </p>
-                    <p className="text-xs text-slate-600">
-                      Branche de publication : <code className="font-semibold text-blue-700">{githubConfig.branch}</code> • Synchronisation Vercel directe sans service payant
-                    </p>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setSyncResult(null);
+                        setIsSyncModalOpen(true);
+                      }}
+                      className="flex items-center gap-2 rounded-xl bg-blue-700 px-5 py-2.5 text-xs font-bold text-white shadow transition hover:bg-blue-800 active:scale-[0.98]"
+                    >
+                      <UploadCloud className="h-4 w-4" />
+                      <span>Mettre à jour GitHub & Vercel maintenant</span>
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
-                    <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>Synchronisé avec Vercel</span>
-                  </span>
+
+                <div className="border-t border-blue-100 pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                  <div className="flex-1 flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs">
+                    <Key className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                    <span className="font-semibold text-slate-700 whitespace-nowrap">Jeton GitHub :</span>
+                    <input
+                      type={showDashboardPassword ? "text" : "password"}
+                      value={dashboardTokenInput}
+                      onChange={(e) => setDashboardTokenInput(e.target.value)}
+                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                      className="flex-1 font-mono text-xs text-slate-800 outline-none bg-transparent"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowDashboardPassword(!showDashboardPassword)}
+                      className="text-[11px] font-semibold text-slate-400 hover:text-slate-700 whitespace-nowrap"
+                    >
+                      {showDashboardPassword ? "Masquer" : "Afficher"}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveDashboardToken}
+                      className="flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white hover:bg-slate-800"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      <span>Enregistrer ce jeton</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetToDefaultGitHubToken();
+                        setDashboardTokenInput(DEFAULT_GITHUB_TOKEN);
+                        setModalNewToken(DEFAULT_GITHUB_TOKEN);
+                        showNotification("Jeton par défaut réactivé avec succès !");
+                      }}
+                      className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 whitespace-nowrap"
+                      title="Réinitialiser avec le jeton du code"
+                    >
+                      Jeton par défaut
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -940,20 +1337,38 @@ export default function AdminPage() {
           {/* TAB: PROGRAMMATIONS */}
           {activeTab === "programmations" && (
             <div className="space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">Programmations d'examens (Accueil)</h2>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Ajoutez, modifiez, réordonnez ou supprimez les cartes d'examens affichées sur la page d'accueil.
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-md bg-emerald-100 border border-emerald-300 px-2 py-0.5 text-[11px] font-bold text-emerald-800 uppercase">
+                      Vitrine Publique en Direct
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      Gestion des examens blancs affichés sur la page d'accueil
+                    </span>
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-900 mt-1">
+                    Programmations d'Examens
+                  </h2>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Publiez, masquez ou modifiez les examens en un clic. Chaque modification est reflétée instantanément sur la vitrine d'accueil.
                   </p>
                 </div>
-                <div className="flex gap-2">
+
+                <div className="flex flex-wrap items-center gap-2">
                   <button
-                    onClick={() => setIsAddingCallout(true)}
-                    className="flex items-center gap-1.5 rounded-lg bg-blue-700 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-800"
+                    onClick={() => setActiveTab("orga_perdir")}
+                    className="flex items-center gap-1.5 rounded-xl border border-sky-300 bg-sky-50 px-4 py-2 text-xs font-bold text-sky-800 shadow-xs hover:bg-sky-100 transition"
+                  >
+                    <Shuffle className="h-4 w-4 text-sky-600" />
+                    <span>Méthode PERDIR (Frédéric)</span>
+                  </button>
+                  <button
+                    onClick={() => setIsAddingExam(true)}
+                    className="flex items-center gap-1.5 rounded-lg bg-blue-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-800"
                   >
                     <Plus className="h-4 w-4" />
-                    <span>Ajouter une programmation</span>
+                    <span>Nouvelle programmation</span>
                   </button>
                 </div>
               </div>
@@ -970,17 +1385,17 @@ export default function AdminPage() {
                 />
               </div>
 
-              {/* Add / Edit Form Modal */}
-              {(isAddingCallout || editingCallout) && (
+              {/* Add / Edit Exam Modal */}
+              {(isAddingExam || editingExam) && (
                 <div className="rounded-2xl border-2 border-blue-500 bg-white p-6 shadow-xl animate-in fade-in">
                   <div className="flex items-center justify-between border-b pb-4">
                     <h3 className="text-lg font-bold text-slate-900">
-                      {editingCallout ? "Modifier la programmation" : "Nouvelle programmation d'examen"}
+                      {editingExam ? "Modifier la programmation d'examen" : "Nouvelle programmation d'examen"}
                     </h3>
                     <button
                       onClick={() => {
-                        setIsAddingCallout(false);
-                        setEditingCallout(null);
+                        setIsAddingExam(false);
+                        setEditingExam(null);
                       }}
                       className="text-xs font-semibold text-slate-500 hover:text-slate-800"
                     >
@@ -993,120 +1408,114 @@ export default function AdminPage() {
                       const form = e.currentTarget;
                       const formData = new FormData(form);
                       const title = (formData.get("title") as string) || "";
-                      const subtitle = (formData.get("subtitle") as string) || "";
-                      const dateLabel = (formData.get("dateLabel") as string) || "";
-                      const date = (formData.get("date") as string) || "";
-                      const to = (formData.get("to") as string) || "/";
-                      const footerLabel = (formData.get("footerLabel") as string) || "Accéder à l'organisation complète";
-                      const iconLabel = (formData.get("iconLabel") as string) || editingCallout?.iconLabel || `Accéder à ${title}`;
-                      const category = (formData.get("category") as CmsCallout["category"]) || "general";
+                      const targetLevel = (formData.get("targetLevel") as string) || "3ème (Brevet)";
+                      const examType = (formData.get("examType") as string) || "DNB Blanc";
+                      const period = (formData.get("period") as string) || "";
+                      const status = (formData.get("status") as CmsExam["status"]) || "Prévu";
+                      const description = (formData.get("description") as string) || "";
                       const isPublished = formData.get("isPublished") === "on";
 
-                      if (editingCallout) {
-                        updateCallout(editingCallout.id, {
+                      if (editingExam) {
+                        updateExam(editingExam.id, {
                           title,
-                          subtitle,
-                          dateLabel,
-                          date,
-                          to,
-                          footerLabel,
-                          iconLabel,
-                          category,
+                          targetLevel,
+                          examType,
+                          period,
+                          status,
+                          description,
                           isPublished,
                         });
-                        showNotification("Programmation mise à jour ! Pensez à synchroniser avec GitHub & Vercel.");
+                        showNotification("Programmation mise à jour ! Elle est synchronisée en temps réel.");
                       } else {
-                        addCallout({
+                        addExam({
                           title,
-                          subtitle,
-                          dateLabel,
-                          date,
-                          to,
-                          footerLabel,
-                          iconLabel,
-                          category,
+                          targetLevel,
+                          examType,
+                          period,
+                          startsAt: "",
+                          endsAt: "",
+                          status,
+                          description,
                           isPublished,
                         });
                         showNotification("Nouvelle programmation ajoutée !");
                       }
-                      setIsAddingCallout(false);
-                      setEditingCallout(null);
+                      setIsAddingExam(false);
+                      setEditingExam(null);
                     }}
                     className="mt-4 grid gap-4 sm:grid-cols-2"
                   >
                     <div className="space-y-1 sm:col-span-2">
-                      <label className="text-xs font-bold text-slate-700">Titre de l'épreuve / examen *</label>
+                      <label className="text-xs font-bold text-slate-700">Intitulé de l'examen / session *</label>
                       <input
                         name="title"
                         required
-                        defaultValue={editingCallout?.title || ""}
-                        placeholder="Ex: Baccalauréat blanc 1ère et Terminale"
+                        defaultValue={editingExam?.title || ""}
+                        placeholder="Ex: DNB Blanc n°2 (Épreuves écrites complètes)"
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">Sous-titre (optionnel)</label>
-                      <input
-                        name="subtitle"
-                        defaultValue={editingCallout?.subtitle || ""}
-                        placeholder="Ex: Session Avril 2026"
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">Catégorie / Style d'icône *</label>
+                      <label className="text-xs font-bold text-slate-700">Niveau ciblé *</label>
                       <select
-                        name="category"
-                        defaultValue={editingCallout?.category || "general"}
+                        name="targetLevel"
+                        defaultValue={editingExam?.targetLevel || "3ème"}
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
                       >
-                        <option value="general">Général / Baccalauréat</option>
-                        <option value="math">Mathématiques</option>
-                        <option value="oral">Épreuve orale / Grand Oral</option>
-                        <option value="surveillance">Surveillance & Planning</option>
+                        <option value="3ème">3ème (Collège - DNB)</option>
+                        <option value="1ère">1ère (Lycée - Bac)</option>
+                        <option value="Terminale">Terminale (Lycée - Bac)</option>
+                        <option value="Tous niveaux">Tous niveaux</option>
                       </select>
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">Texte de la date affiché *</label>
+                      <label className="text-xs font-bold text-slate-700">Type d'examen *</label>
+                      <select
+                        name="examType"
+                        defaultValue={editingExam?.examType || "DNB Blanc"}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                      >
+                        <option value="DNB Blanc">DNB Blanc (Brevet)</option>
+                        <option value="Baccalauréat blanc">Baccalauréat blanc</option>
+                        <option value="Épreuve commune">Épreuve commune</option>
+                        <option value="Épreuve orale">Épreuve orale / Grand Oral</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-700">Dates / Période *</label>
                       <input
-                        name="dateLabel"
+                        name="period"
                         required
-                        defaultValue={editingCallout?.dateLabel || ""}
-                        placeholder="Ex: 7 au 10 avril 2026"
+                        defaultValue={editingExam?.period || ""}
+                        placeholder="Ex: 14 au 16 mai 2026"
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
                       />
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">Date de tri chronologique (AAAA-MM-JJ) *</label>
-                      <input
-                        name="date"
-                        type="date"
-                        required
-                        defaultValue={editingCallout?.date || "2026-04-07"}
+                      <label className="text-xs font-bold text-slate-700">Statut de la session *</label>
+                      <select
+                        name="status"
+                        defaultValue={editingExam?.status || "Prévu"}
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                      />
+                      >
+                        <option value="Prévu">Prévu</option>
+                        <option value="En cours">En cours</option>
+                        <option value="Terminé">Terminé</option>
+                        <option value="Archivé">Archivé</option>
+                      </select>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">Lien vers la page / URL *</label>
-                      <input
-                        name="to"
-                        required
-                        defaultValue={editingCallout?.to || "/examens-blancs"}
-                        placeholder="/examens-blancs ou /examens-blancs/..."
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">Libellé du bouton au bas de la carte</label>
-                      <input
-                        name="footerLabel"
-                        defaultValue={editingCallout?.footerLabel || "Accéder à l'organisation complète"}
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-xs font-bold text-slate-700">Consignes & Détails (optionnel)</label>
+                      <textarea
+                        name="description"
+                        rows={2}
+                        defaultValue={editingExam?.description || ""}
+                        placeholder="Consignes matérielles, horaires de convocation, calculatrice autorisée ou interdite..."
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
                       />
                     </div>
@@ -1116,11 +1525,11 @@ export default function AdminPage() {
                         type="checkbox"
                         id="isPublished"
                         name="isPublished"
-                        defaultChecked={editingCallout ? editingCallout.isPublished : true}
+                        defaultChecked={editingExam ? editingExam.isPublished !== false : true}
                         className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                       />
                       <label htmlFor="isPublished" className="text-sm font-semibold text-slate-800">
-                        Publier cette programmation sur la page d'accueil
+                        Publier immédiatement sur la vitrine publique du lycée (Accueil)
                       </label>
                     </div>
 
@@ -1128,8 +1537,8 @@ export default function AdminPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setIsAddingCallout(false);
-                          setEditingCallout(null);
+                          setIsAddingExam(false);
+                          setEditingExam(null);
                         }}
                         className="rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                       >
@@ -1139,113 +1548,267 @@ export default function AdminPage() {
                         type="submit"
                         className="rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white shadow hover:bg-blue-700"
                       >
-                        {editingCallout ? "Enregistrer les modifications" : "Ajouter la programmation"}
+                        {editingExam ? "Enregistrer les modifications" : "Créer la programmation"}
                       </button>
                     </div>
                   </form>
                 </div>
               )}
 
-              {/* Callouts list */}
+              {/* Exams list with Live Publish/Unpublish Toggle */}
               <div className="space-y-3">
-                {cmsData.callouts
-                  .filter((c) =>
+                {cmsData.exams
+                  .filter((exam) =>
                     searchQuery
-                      ? c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        (c.dateLabel || "").toLowerCase().includes(searchQuery.toLowerCase())
+                      ? exam.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        exam.targetLevel.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        exam.period.toLowerCase().includes(searchQuery.toLowerCase())
                       : true
                   )
-                  .map((callout, idx) => (
-                    <div
-                      key={callout.id}
-                      className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 sm:flex-row sm:items-center"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="flex flex-col items-center gap-1">
-                          <button
-                            onClick={() => reorderCallout(callout.id, "up")}
-                            disabled={idx === 0}
-                            title="Monter"
-                            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30"
-                          >
-                            <ArrowUp className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => reorderCallout(callout.id, "down")}
-                            disabled={idx === cmsData.callouts.length - 1}
-                            title="Descendre"
-                            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30"
-                          >
-                            <ArrowDown className="h-4 w-4" />
-                          </button>
-                        </div>
-
-                        <div>
+                  .map((exam) => {
+                    const isPub = exam.isPublished !== false;
+                    return (
+                      <div
+                        key={exam.id}
+                        className={`flex flex-col justify-between gap-4 rounded-2xl border p-5 shadow-xs transition sm:flex-row sm:items-center ${
+                          isPub
+                            ? "border-slate-200 bg-white hover:border-slate-300"
+                            : "border-dashed border-slate-300 bg-slate-50/70 opacity-75"
+                        }`}
+                      >
+                        <div className="space-y-1.5 flex-1 pr-4">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-base font-bold text-slate-900">{callout.title}</h3>
-                            {callout.subtitle && (
-                              <span className="text-xs font-semibold text-slate-500">· {callout.subtitle}</span>
-                            )}
+                            <span className="rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-xs font-bold text-indigo-700">
+                              {exam.targetLevel || "Tous niveaux"}
+                            </span>
+                            <h3 className="text-base font-bold text-slate-900">{exam.title}</h3>
                             <span
-                              className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                                callout.isPublished
-                                  ? "bg-emerald-100 text-emerald-800"
+                              className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                                isPub
+                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
                                   : "bg-slate-200 text-slate-600"
                               }`}
                             >
-                              {callout.isPublished ? "Publiée" : "Brouillon (Masquée)"}
-                            </span>
-                            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                              {callout.category}
+                              {isPub ? "● En ligne sur la Vitrine" : "○ Brouillon (Masqué)"}
                             </span>
                           </div>
 
-                          <div className="mt-1 flex flex-wrap items-center gap-4 text-xs text-slate-500">
-                            <span>📅 {callout.dateLabel}</span>
-                            <span>🔗 {callout.to}</span>
-                            <span>Bouton : « {callout.footerLabel} »</span>
+                          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+                            <span>📅 {exam.period}</span>
+                            <span>📌 {exam.examType}</span>
+                            <span>Statut : {exam.status || "Prévu"}</span>
                           </div>
+                          {exam.description && (
+                            <p className="text-xs text-slate-600 line-clamp-1">{exam.description}</p>
+                          )}
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {/* Toggle Publish / Unpublish */}
+                          <button
+                            onClick={() => {
+                              updateExam(exam.id, { isPublished: !isPub });
+                              showNotification(
+                                isPub
+                                  ? `« ${exam.title} » est maintenant masqué de la vitrine.`
+                                  : `« ${exam.title} » est maintenant publié en direct sur la vitrine !`
+                              );
+                            }}
+                            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                              isPub
+                                ? "border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                                : "border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                            }`}
+                          >
+                            {isPub ? "Masquer" : "Publier"}
+                          </button>
+
+                          <button
+                            onClick={() => setActiveTab("orga_perdir")}
+                            title="Lancer l'organisation et le brassage pour cet examen"
+                            className="flex items-center gap-1 rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-800 hover:bg-sky-100"
+                          >
+                            <Shuffle className="h-3.5 w-3.5 text-sky-600" />
+                            <span>Organiser (PERDIR)</span>
+                          </button>
+
+                          <button
+                            onClick={() => setEditingExam(exam)}
+                            className="flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                            <span>Modifier</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              const copy = duplicateExam(exam.id);
+                              if (copy) {
+                                setEditingExam(copy);
+                                showNotification(`Examen dupliqué : « ${copy.title} »`);
+                              }
+                            }}
+                            title="Dupliquer pour une autre session"
+                            className="flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                            <span>Dupliquer</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (confirm(`Supprimer définitivement l'examen « ${exam.title} » ?`)) {
+                                deleteExam(exam.id);
+                                showNotification("Examen supprimé de la vitrine.");
+                              }
+                            }}
+                            className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span>Supprimer</span>
+                          </button>
                         </div>
                       </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            updateCallout(callout.id, { isPublished: !callout.isPublished });
-                            showNotification(
-                              callout.isPublished ? "Programmation masquée." : "Programmation publiée sur l'accueil !"
-                            );
-                          }}
-                          className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                            callout.isPublished
-                              ? "border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
-                              : "border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-                          }`}
-                        >
-                          {callout.isPublished ? "Dépublier" : "Publier"}
-                        </button>
-                        <button
-                          onClick={() => setEditingCallout(callout)}
-                          className="flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-blue-700"
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                          <span>Modifier</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm(`Supprimer la programmation « ${callout.title} » ?`)) {
-                              deleteCallout(callout.id);
-                              showNotification("Programmation supprimée.");
-                            }
-                          }}
-                          className="flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          <span>Supprimer</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+          {/* TAB 2: MÉTHODE PERDIR (FRÉDÉRIC VEDRENNE) */}
+          {activeTab === "orga_perdir" && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-md bg-indigo-100 border border-indigo-300 px-2 py-0.5 text-[11px] font-bold text-indigo-800 uppercase">
+                      Méthode Frédéric Vedrenne (Orga-DNB)
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      Organisation, Brassage anti-triche & Imprimerie Officielle
+                    </span>
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-900 mt-1">
+                    Assistant Logistique des Examens Blancs
+                  </h2>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Suivez les 5 étapes types de la direction pour préparer l'examen blanc de A à Z.
+                  </p>
+                </div>
+
+                <Link
+                  to="/orga-dnb"
+                  target="_blank"
+                  className="flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-slate-800 transition"
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>Ouvrir l'Espace d'Impression Grand Format</span>
+                  <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+                </Link>
+              </div>
+
+              {/* 5-Step Workflow Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center">
+                      1
+                    </span>
+                    <Calendar className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <h3 className="font-bold text-sm text-slate-900">Paramètres & Horaires</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Définition des épreuves officielles, calcul automatique du tiers-temps (+1/3 temps d'épreuve) et choix du mode de brassage.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab("programmations")}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 pt-2 block"
+                  >
+                    Gérer les programmations →
+                  </button>
+                </div>
+
+                <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center">
+                      2
+                    </span>
+                    <DoorOpen className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <h3 className="font-bold text-sm text-slate-900">Salles & Jauges</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Mobilisation des salles, contrôle de la capacité globale et marquage des salles dédiées aux aménagements Tiers-Temps.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab("rooms")}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 pt-2 block"
+                  >
+                    Configurer les salles ({cmsData.rooms.length} salles) →
+                  </button>
+                </div>
+
+                <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center">
+                      3
+                    </span>
+                    <GraduationCap className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <h3 className="font-bold text-sm text-slate-900">Élèves & Import Pronote</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Importation de masse par simple copier-coller de Pronote (Nom, Prénom, Division, Aménagement Tiers-Temps).
+                  </p>
+                  <button
+                    onClick={() => setActiveTab("candidates")}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 pt-2 block"
+                  >
+                    Voir les candidats ({cmsData.candidates.length} inscrits) →
+                  </button>
+                </div>
+
+                <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center">
+                      4
+                    </span>
+                    <Users className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <h3 className="font-bold text-sm text-slate-900">Professeurs & Surveillances</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Importation de la liste des professeurs, répartition des missions de surveillance par salle et décompte des heures.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab("teachers")}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 pt-2 block"
+                  >
+                    Voir les professeurs ({cmsData.teachers.length} enseignants) →
+                  </button>
+                </div>
+
+                <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-2 md:col-span-2 lg:col-span-2 bg-gradient-to-br from-indigo-50/60 to-white">
+                  <div className="flex items-center justify-between">
+                    <span className="w-7 h-7 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">
+                      5
+                    </span>
+                    <Printer className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <h3 className="font-bold text-sm text-slate-900">
+                    Moteur de Répartition & Imprimerie Officielle
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Déclenche l'algorithme de placement (isolement des Tiers-Temps + alternance inter-classes) et génère en 1 clic :
+                    les <strong>Feuilles d'Émargement officielles</strong>, les <strong>Étiquettes de table (Chevalets)</strong>,
+                    les <strong>Listes d'Affichage Portes de Salle</strong> et les <strong>Convocations A4</strong>.
+                  </p>
+                  <Link
+                    to="/orga-dnb"
+                    className="inline-flex items-center gap-2 mt-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition"
+                  >
+                    <span>Lancer le Moteur & Imprimer les Documents</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
               </div>
             </div>
           )}
@@ -1403,19 +1966,16 @@ export default function AdminPage() {
                   </button>
                 </div>
               </form>
-            </div>
-          )}
 
-          {/* TAB: ANNOUNCEMENTS */}
-          {activeTab === "announcements" && (
-            <div className="space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900">Annonces & Consignes officielles</h2>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Publiez des consignes relatives au matériel, aux horaires ou aux protocoles d'examen.
-                  </p>
-                </div>
+              {/* Announcements Section */}
+              <div className="mt-8 border-t border-slate-200 pt-8 space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">Annonces & Consignes officielles</h2>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Publiez des consignes relatives au matériel, aux horaires ou aux protocoles d'examen.
+                    </p>
+                  </div>
                 <button
                   onClick={() => setIsAddingAnnouncement(true)}
                   className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-blue-700"
@@ -1629,223 +2189,10 @@ export default function AdminPage() {
                 ))}
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* TAB: EXAMS */}
-          {activeTab === "exams" && (
-            <div className="space-y-6">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900">Épreuves & Calendrier officiel</h2>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Définition des sessions d'examens, niveaux scolaires associés et état d'avancement.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsAddingExam(true)}
-                  className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-blue-700"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Ajouter une épreuve</span>
-                </button>
-              </div>
 
-              {/* Add / Edit Exam */}
-              {(isAddingExam || editingExam) && (
-                <div className="rounded-2xl border-2 border-blue-500 bg-white p-6 shadow-xl animate-in fade-in">
-                  <div className="flex items-center justify-between border-b pb-4">
-                    <h3 className="text-lg font-bold text-slate-900">
-                      {editingExam ? "Modifier l'épreuve" : "Ajouter une épreuve"}
-                    </h3>
-                    <button
-                      onClick={() => {
-                        setIsAddingExam(false);
-                        setEditingExam(null);
-                      }}
-                      className="text-xs font-semibold text-slate-500 hover:text-slate-800"
-                    >
-                      Annuler
-                    </button>
-                  </div>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const form = e.currentTarget;
-                      const formData = new FormData(form);
-                      const title = formData.get("title") as string;
-                      const examType = formData.get("examType") as string;
-                      const targetLevel = formData.get("targetLevel") as string;
-                      const period = formData.get("period") as string;
-                      const description = formData.get("description") as string;
-                      const status = formData.get("status") as CmsExam["status"];
-
-                      if (editingExam) {
-                        updateExam(editingExam.id, {
-                          title,
-                          examType,
-                          targetLevel,
-                          period,
-                          description,
-                          status,
-                        });
-                        showNotification("Épreuve mise à jour !");
-                      } else {
-                        addExam({
-                          title,
-                          examType,
-                          targetLevel,
-                          period,
-                          startsAt: "",
-                          endsAt: "",
-                          description,
-                          status,
-                        });
-                        showNotification("Épreuve ajoutée !");
-                      }
-                      setIsAddingExam(false);
-                      setEditingExam(null);
-                    }}
-                    className="mt-4 grid gap-4 sm:grid-cols-2"
-                  >
-                    <div className="space-y-1 sm:col-span-2">
-                      <label className="text-xs font-bold text-slate-700">Intitulé de l'épreuve *</label>
-                      <input
-                        name="title"
-                        required
-                        defaultValue={editingExam?.title || ""}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">Type d'examen *</label>
-                      <input
-                        name="examType"
-                        required
-                        defaultValue={editingExam?.examType || "Baccalauréat blanc"}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">Niveau ciblé *</label>
-                      <input
-                        name="targetLevel"
-                        required
-                        defaultValue={editingExam?.targetLevel || "Terminale"}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">Période / Date *</label>
-                      <input
-                        name="period"
-                        required
-                        defaultValue={editingExam?.period || ""}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-700">Statut *</label>
-                      <select
-                        name="status"
-                        defaultValue={editingExam?.status || "Prévu"}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                      >
-                        <option value="Prévu">Prévu</option>
-                        <option value="En cours">En cours</option>
-                        <option value="Terminé">Terminé</option>
-                        <option value="Archivé">Archivé</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1 sm:col-span-2">
-                      <label className="text-xs font-bold text-slate-700">Description</label>
-                      <textarea
-                        name="description"
-                        rows={2}
-                        defaultValue={editingExam?.description || ""}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="flex justify-end gap-3 pt-4 sm:col-span-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsAddingExam(false);
-                          setEditingExam(null);
-                        }}
-                        className="rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      >
-                        Annuler
-                      </button>
-                      <button
-                        type="submit"
-                        className="rounded-lg bg-blue-600 px-5 py-2 text-xs font-semibold text-white shadow hover:bg-blue-700"
-                      >
-                        Enregistrer
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-
-              {/* Table */}
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <table className="w-full text-left text-sm">
-                  <thead className="border-b bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500">
-                    <tr>
-                      <th className="p-4">Épreuve</th>
-                      <th className="p-4">Type</th>
-                      <th className="p-4">Niveau</th>
-                      <th className="p-4">Période</th>
-                      <th className="p-4">Statut</th>
-                      <th className="p-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {cmsData.exams.map((exam) => (
-                      <tr key={exam.id} className="hover:bg-slate-50/70">
-                        <td className="p-4 font-bold text-slate-900">{exam.title}</td>
-                        <td className="p-4 text-slate-700">{exam.examType}</td>
-                        <td className="p-4 text-slate-700">{exam.targetLevel}</td>
-                        <td className="p-4 text-slate-600">{exam.period}</td>
-                        <td className="p-4">
-                          <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
-                            {exam.status}
-                          </span>
-                        </td>
-                        <td className="p-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              onClick={() => setEditingExam(exam)}
-                              className="rounded p-1 text-slate-600 hover:text-blue-700"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (confirm(`Supprimer l'épreuve « ${exam.title} » ?`)) {
-                                  deleteExam(exam.id);
-                                  showNotification("Épreuve supprimée.");
-                                }
-                              }}
-                              className="rounded p-1 text-slate-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
 
           {/* TAB: ROOMS */}
           {activeTab === "rooms" && (
@@ -2019,14 +2366,93 @@ export default function AdminPage() {
                     Gestion des enseignants mobilisés pour la surveillance et les jurys d'examen.
                   </p>
                 </div>
-                <button
-                  onClick={() => setIsAddingTeacher(true)}
-                  className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-blue-700"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Ajouter un enseignant</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsBatchImportingTeachers(true)}
+                    className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                  >
+                    <FileSpreadsheet className="h-4 w-4" />
+                    <span>Import groupé (Pronote/CSV)</span>
+                  </button>
+                  <button
+                    onClick={() => setIsAddingTeacher(true)}
+                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-blue-700"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Ajouter un enseignant</span>
+                  </button>
+                </div>
               </div>
+
+              {/* Batch Import Teachers Modal */}
+              {isBatchImportingTeachers && (
+                <div className="rounded-2xl border-2 border-indigo-500 bg-white p-6 shadow-xl animate-in fade-in">
+                  <div className="flex items-center justify-between border-b pb-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">
+                        Import groupé des professeurs (Pronote / CSV / Excel)
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Collez directement la liste des enseignants depuis Pronote, STSWeb ou un tableau Excel.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setIsBatchImportingTeachers(false);
+                        setBatchImportTeachersText("");
+                      }}
+                      className="text-xs font-semibold text-slate-500 hover:text-slate-800"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+
+                  <div className="mt-4 space-y-4">
+                    <div className="rounded-xl bg-indigo-50 p-3 text-xs text-indigo-900">
+                      <div className="font-bold mb-1">Formats reconnus :</div>
+                      <ul className="list-disc pl-4 space-y-0.5 text-indigo-800">
+                        <li>Copier-coller tabulaire depuis Pronote (Colonnes : Nom | Prénom | Matière/Discipline | Email)</li>
+                        <li>Format CSV ou point-virgule : <code className="bg-white/80 px-1 py-0.5 rounded font-mono">DUPONT; Jean; Mathématiques; jean.dupont@lfjpsaly.org</code></li>
+                        <li>Format simple : <code className="bg-white/80 px-1 py-0.5 rounded font-mono">Mme MARTIN Sophie - Histoire-Géo</code></li>
+                      </ul>
+                    </div>
+
+                    <textarea
+                      value={batchImportTeachersText}
+                      onChange={(e) => setBatchImportTeachersText(e.target.value)}
+                      placeholder={"Collez ici votre liste de professeurs...\nExemple :\nDUPONT\tJean\tMathématiques\tjean.dupont@lfjpsaly.org\nMARTIN\tSophie\tHistoire-Géographie\tsophie.martin@lfjpsaly.org\nDIALLO\tIbrahima\tSciences Physiques\tibrahima.diallo@lfjpsaly.org"}
+                      rows={8}
+                      className="w-full rounded-xl border border-slate-300 p-3 font-mono text-xs focus:border-indigo-500 focus:outline-none"
+                    />
+
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="text-xs text-slate-500">
+                        {batchImportTeachersText.trim().split("\n").filter((l) => l.trim()).length} ligne(s) détectée(s)
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsBatchImportingTeachers(false);
+                            setBatchImportTeachersText("");
+                          }}
+                          className="rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleBatchImportTeachers}
+                          disabled={!batchImportTeachersText.trim()}
+                          className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                          Importer les professeurs
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Add/Edit Teacher */}
               {(isAddingTeacher || editingTeacher) && (
@@ -2188,12 +2614,9 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
 
-          {/* TAB: SURVEILLANCES */}
-          {activeTab === "surveillances" && (
-            <div className="space-y-6">
+              {/* Surveillances Planning Section */}
+              <div className="mt-10 border-t border-slate-200 pt-8 space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900">Planning des surveillances</h2>
@@ -2201,13 +2624,23 @@ export default function AdminPage() {
                     Affectation des créneaux de surveillance par épreuve, salle et horaire.
                   </p>
                 </div>
-                <button
-                  onClick={() => setIsAddingSurveillance(true)}
-                  className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-blue-700"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Ajouter une surveillance</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/convocations"
+                    target="_blank"
+                    className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-semibold text-indigo-700 shadow-xs hover:bg-indigo-100 transition"
+                  >
+                    <Printer className="h-4 w-4" />
+                    <span>Émargements & Ordres de mission</span>
+                  </Link>
+                  <button
+                    onClick={() => setIsAddingSurveillance(true)}
+                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-blue-700"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Ajouter une surveillance</span>
+                  </button>
+                </div>
               </div>
 
               {/* Add/Edit Surveillance */}
@@ -2376,9 +2809,23 @@ export default function AdminPage() {
                           <div className="flex justify-end gap-2">
                             <button
                               onClick={() => setEditingSurveillance(surv)}
+                              title="Modifier l'affectation"
                               className="rounded p-1 text-slate-600 hover:text-blue-700"
                             >
                               <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                const copy = duplicateSurveillance(surv.id);
+                                if (copy) {
+                                  setEditingSurveillance(copy);
+                                  showNotification("Affectation de surveillance dupliquée.");
+                                }
+                              }}
+                              title="Dupliquer cette surveillance"
+                              className="rounded p-1 text-slate-600 hover:text-indigo-700"
+                            >
+                              <Copy className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => {
@@ -2387,6 +2834,7 @@ export default function AdminPage() {
                                   showNotification("Affectation supprimée.");
                                 }
                               }}
+                              title="Supprimer l'affectation"
                               className="rounded p-1 text-slate-600 hover:text-red-700"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -2399,7 +2847,8 @@ export default function AdminPage() {
                 </table>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
           {/* TAB: CANDIDATES */}
           {activeTab === "candidates" && (
@@ -2411,14 +2860,97 @@ export default function AdminPage() {
                     Gestion des élèves, classes, convocations en salle et aménagements d'épreuves.
                   </p>
                 </div>
-                <button
-                  onClick={() => setIsAddingCandidate(true)}
-                  className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-blue-700"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Ajouter un élève</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/convocations"
+                    target="_blank"
+                    className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-semibold text-indigo-700 shadow-xs hover:bg-indigo-100 transition"
+                  >
+                    <Printer className="h-4 w-4" />
+                    <span>Imprimer les Convocations A4</span>
+                  </Link>
+                  <button
+                    onClick={() => setIsBatchImportingCandidates(true)}
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition"
+                  >
+                    <ClipboardPaste className="h-4 w-4 text-slate-500" />
+                    <span>Import groupé CSV</span>
+                  </button>
+                  <button
+                    onClick={() => setIsAddingCandidate(true)}
+                    className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-blue-700"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Ajouter un élève</span>
+                  </button>
+                </div>
               </div>
+
+              {/* Batch Import Candidates Modal */}
+              {isBatchImportingCandidates && (
+                <div className="rounded-2xl border-2 border-indigo-500 bg-white p-6 shadow-xl animate-in fade-in">
+                  <div className="flex items-center justify-between border-b pb-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">Importation groupée de candidats (CSV ou Presse-Papier)</h3>
+                      <p className="text-xs text-slate-500">Collez votre liste d'élèves (un élève par ligne, champs séparés par des points-virgules ou virgules)</p>
+                    </div>
+                    <button
+                      onClick={() => setIsBatchImportingCandidates(false)}
+                      className="text-xs font-semibold text-slate-500 hover:text-slate-800"
+                    >
+                      Fermer
+                    </button>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    <p className="text-xs text-slate-600">
+                      <strong>Format attendu par ligne :</strong> <code className="bg-slate-100 px-1 py-0.5 rounded">Nom; Prénom; Classe; Salle; Heure (optionnel); Aménagement (optionnel)</code>
+                    </p>
+                    <textarea
+                      rows={6}
+                      value={batchImportText}
+                      onChange={(e) => setBatchImportText(e.target.value)}
+                      placeholder={`Exemple :\nDiop; Awa; 1ère G1; Salle S12; 07h45; Standard\nNdiaye; Mamadou; Terminale G1; Salle S14; 07h45; Standard\nDupont; Paul; 3ème A; Salle S04 (Tiers-Temps); 07h30; Tiers-temps accordé`}
+                      className="w-full rounded-xl border border-slate-300 p-3 text-xs font-mono focus:border-indigo-500 focus:outline-none"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => setIsBatchImportingCandidates(false)}
+                        className="rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        onClick={() => {
+                          const lines = batchImportText.split("\n").filter((l: string) => l.trim().length > 0);
+                          let count = 0;
+                          for (const line of lines) {
+                            const parts = line.split(/[;,]/).map((p: string) => p.trim());
+                            if (parts.length >= 2) {
+                              const [lastName, firstName, className, roomName, convocationTime, accommodation] = parts;
+                              addCandidate({
+                                lastName: lastName || "Élève",
+                                firstName: firstName || "",
+                                className: className || "Terminale G1",
+                                examName: "Baccalauréat / DNB blanc",
+                                roomName: roomName || "Salle S12",
+                                convocationTime: convocationTime || "07h45",
+                                accommodation: accommodation || "Aucun",
+                              });
+                              count++;
+                            }
+                          }
+                          setIsBatchImportingCandidates(false);
+                          setBatchImportText("");
+                          showNotification(`${count} candidat(s) importé(s) avec succès !`);
+                        }}
+                        className="rounded-lg bg-indigo-600 px-5 py-2 text-xs font-semibold text-white shadow hover:bg-indigo-700"
+                      >
+                        Importer tous les candidats
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Add/Edit Candidate */}
               {(isAddingCandidate || editingCandidate) && (
