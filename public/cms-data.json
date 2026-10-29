@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-10-26T18:17:34.647Z",
+  "updatedAt": "2026-10-28T19:35:21.756Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Espace examens blancs LFJP",
@@ -162,6 +162,19 @@
       "category": "surveillance",
       "isPublished": true,
       "order": 11
+    },
+    {
+      "id": "callout-1793216121756",
+      "to": "/examens-blancs",
+      "iconLabel": "Accéder à EXam",
+      "subtitle": "",
+      "title": "EXam",
+      "dateLabel": "10, 11 et 12 décembre 2026",
+      "date": "2026-10-27",
+      "footerLabel": "Accéder à l'organisation complète",
+      "category": "math",
+      "isPublished": true,
+      "order": 12
     }
   ],
   "announcements": [
