@@ -439,10 +439,10 @@ export default function OrgaDnbPage() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-indigo-100 text-indigo-700">
-                  Assistant PERDIR
+                  Organisation des Examens
                 </span>
                 <span className="text-xs text-slate-400">
-                  Inspiré de Frédéric Vedrenne (Orga-DNB-Blanc)
+                  Module de Répartition & Planification LFJP
                 </span>
               </div>
               <h1 className="text-base font-bold text-slate-900">
@@ -585,7 +585,7 @@ export default function OrgaDnbPage() {
               <div className="mt-6 p-4 rounded-xl bg-slate-50 border border-slate-200">
                 <h3 className="text-xs font-bold text-slate-900 mb-2 flex items-center gap-2">
                   <Shuffle className="h-4 w-4 text-indigo-600" />
-                  Mode de Répartition des Candidats (Philosophie PERDIR)
+                  Mode de Répartition des Candidats (Brassage anti-fraude)
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <label

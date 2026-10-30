@@ -56,14 +56,17 @@ import {
   resetToDefaultGitHubToken,
 } from "../../../shared/services/github-service";
 
-type ActiveTab =
-  | "programmations"
-  | "orga_perdir"
-  | "candidates"
-  | "teachers"
-  | "rooms"
-  | "siteInfo"
-  | "deployment";
+import AdminSidebar, { type AdminSection } from "../components/AdminSidebar";
+import ConfigSection from "../components/ConfigSection";
+import VitrinePublishSection from "../components/VitrinePublishSection";
+import DataAmenagementsSection from "../components/DataAmenagementsSection";
+import SecPochettesSection from "../components/SecPochettesSection";
+import OrganizationSection from "../components/OrganizationSection";
+import { PlanningRoomsSection, PlanningProfsSection } from "../components/PlanningSections";
+import { ConvocElevesSection, ConvocProfsSection } from "../components/ConvocSections";
+import ViewEdtSection from "../components/ViewEdtSection";
+import CorrRepartitionSection from "../components/CorrRepartitionSection";
+import ResultsSections from "../components/ResultsSections";
 
 export default function AdminPage() {
   const {
@@ -89,6 +92,7 @@ export default function AdminPage() {
     addCandidate,
     updateCandidate,
     deleteCandidate,
+    setCandidates,
     resetToDefaults,
   } = useCmsData();
 
@@ -137,7 +141,29 @@ export default function AdminPage() {
   const [tokenUpdateError, setTokenUpdateError] = useState<string | null>(null);
   const [tokenUpdateSuccess, setTokenUpdateSuccess] = useState<string | null>(null);
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>("programmations");
+  // Navigation state matching target site
+  const [currentSection, setCurrentSection] = useState<AdminSection>("config");
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
+    dataMenu: true,
+    planningMenu: false,
+    convocMenu: false,
+    resMenu: false,
+  });
+  const toggleSubmenu = (key: string) => {
+    setOpenSubmenus((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const setActiveTab = (tab: any) => {
+    if (tab === "programmations") setCurrentSection("config");
+    else if (tab === "candidates") setCurrentSection("data-eleves");
+    else if (tab === "rooms") setCurrentSection("data-salles");
+    else if (tab === "teachers") setCurrentSection("data-profs");
+    else if (tab === "orga_perdir") setCurrentSection("organization");
+    else if (tab === "siteInfo") setCurrentSection("config");
+    else if (tab === "deployment") setCurrentSection("deployment");
+    else setCurrentSection(tab);
+  };
+  const activeTab: any = currentSection;
   const [notification, setNotification] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -433,15 +459,13 @@ export default function AdminPage() {
     reader.readAsText(file);
   };
 
-  // Navigation tabs organized around the PERDIR workflow & showcase
   const tabs = [
     { id: "programmations" as const, label: "1. Programmations (Vitrine)", icon: Calendar },
-    { id: "orga_perdir" as const, label: "2. Méthode PERDIR (Frédéric)", icon: Shuffle },
-    { id: "candidates" as const, label: "3. Candidats & Pronote", icon: GraduationCap },
-    { id: "teachers" as const, label: "4. Professeurs & Surveillances", icon: Users },
-    { id: "rooms" as const, label: "5. Salles & Capacités", icon: DoorOpen },
-    { id: "siteInfo" as const, label: "6. Vitrine & Bannières", icon: FileText },
-    { id: "deployment" as const, label: "7. Déploiement Vercel & Git", icon: UploadCloud },
+    { id: "candidates" as const, label: "2. Candidats & Pronote", icon: GraduationCap },
+    { id: "teachers" as const, label: "3. Professeurs & Surveillances", icon: Users },
+    { id: "rooms" as const, label: "4. Salles & Capacités", icon: DoorOpen },
+    { id: "siteInfo" as const, label: "5. Vitrine & Bannières", icon: FileText },
+    { id: "deployment" as const, label: "6. Déploiement Vercel & Git", icon: UploadCloud },
   ];
 
   // -------------------------------------------------------------
@@ -704,14 +728,15 @@ export default function AdminPage() {
             <ExternalLink className="h-3 w-3 opacity-50" />
           </Link>
 
-          {/* Bouton Assistant Orga-DNB-Blanc (PERDIR) */}
+          {/* Bouton Espace Impression Grand Format */}
           <Link
             to="/orga-dnb"
+            target="_blank"
             className="flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-800 shadow-xs transition hover:bg-sky-100"
-            title="Assistant d'organisation et brassage d'examen blanc inspiré d'Orga-DNB-Blanc (Frédéric Vedrenne)"
+            title="Module d'impression grand format des listes d'émargement et étiquettes"
           >
-            <Shuffle className="h-3.5 w-3.5 text-sky-600" />
-            <span className="hidden sm:inline">Orga-DNB (PERDIR)</span>
+            <Printer className="h-3.5 w-3.5 text-sky-600" />
+            <span className="hidden sm:inline">Espace Impression</span>
           </Link>
 
           {/* Bouton Config Jeton GitHub */}
@@ -1055,63 +1080,156 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Main Layout Container */}
-      <div className="mx-auto flex max-w-7xl flex-col lg:flex-row">
-        {/* Sidebar Navigation Tabs */}
-        <aside className="w-full border-b border-slate-200 bg-white p-4 lg:w-64 lg:min-h-[calc(100vh-65px)] lg:border-b-0 lg:border-r">
-          <p className="mb-2 px-3 text-xs font-bold uppercase tracking-wider text-slate-400">
-            Gestion du contenu
-          </p>
-          <nav className="space-y-1">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition ${
-                    isActive
-                      ? "bg-blue-50 text-blue-700 font-semibold shadow-xs"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  }`}
-                >
-                  <Icon className={`h-4 w-4 ${isActive ? "text-blue-600" : "text-slate-400"}`} />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          <div className="mt-6 border-t border-slate-100 pt-4">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-              <div className="flex items-center gap-1.5 font-bold text-slate-800">
-                <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
-                <span>100% Gratuit (Sans Supabase)</span>
-              </div>
-              <p className="mt-1 text-slate-500">
-                Votre dépôt GitHub stocke vos données gratuitement. Vercel héberge le site en production sans frais.
-              </p>
-              <button
-                onClick={() => {
-                  if (confirm("Voulez-vous vraiment réinitialiser toutes les données aux valeurs officielles du lycée ?")) {
-                    resetToDefaults();
-                    showNotification("Données réinitialisées aux valeurs initiales.");
-                  }
-                }}
-                className="mt-3 flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-red-600"
-              >
-                <RotateCcw className="h-3 w-3" />
-                <span>Réinitialiser par défaut</span>
-              </button>
-            </div>
-          </div>
-        </aside>
+      {/* Main Layout Container with Target Site Sidebar */}
+      <div className="flex flex-col lg:flex-row min-h-screen bg-[#f4f6f9]">
+        {/* Authentic Sidebar matching target site */}
+        <AdminSidebar
+          currentSection={currentSection}
+          onSelectSection={(sec) => setCurrentSection(sec)}
+          openSubmenus={openSubmenus}
+          onToggleSubmenu={toggleSubmenu}
+          onSaveProject={handleDownloadJson}
+          onLoadProject={handleImportJson}
+          onResetDefaults={() => {
+            if (confirm("Voulez-vous vraiment réinitialiser toutes les données aux valeurs officielles du lycée ?")) {
+              resetToDefaults();
+              showNotification("Données réinitialisées aux valeurs initiales.");
+            }
+          }}
+          candidatesCount={cmsData.candidates.length}
+          roomsCount={cmsData.rooms.length}
+          teachersCount={cmsData.teachers.length}
+          examsCount={cmsData.exams.length}
+          schoolYear={cmsData.siteInfo.schoolYear || "2025-2026"}
+        />
 
         {/* Main Content Area */}
-        <main className="flex-1 p-6 lg:p-8">
-          {/* TAB 7: DÉPLOIEMENT VERCEL & GITHUB */}
-          {activeTab === "deployment" && (
+        <main className="flex-1 p-6 lg:p-8 overflow-y-auto max-w-7xl">
+          {/* 1. CONFIGURATION */}
+          {currentSection === "config" && (
+            <ConfigSection
+              siteInfo={cmsData.siteInfo}
+              onUpdateSiteInfo={updateSiteInfo}
+              exams={cmsData.exams}
+              onTogglePublishExam={(id, pub) => updateExam(id, { isPublished: pub })}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 2. VITRINE & PUBLICATIONS */}
+          {currentSection === "vitrine-publish" && (
+            <VitrinePublishSection
+              siteInfo={cmsData.siteInfo}
+              exams={cmsData.exams}
+              announcements={cmsData.announcements}
+              surveillances={cmsData.surveillances}
+              onTogglePublishExam={(id, pub) => updateExam(id, { isPublished: pub })}
+              onTogglePublishAnnouncement={(id, pub) => updateAnnouncement(id, { isPublished: pub })}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 3. AMÉNAGEMENTS */}
+          {currentSection === "data-amenagements" && (
+            <DataAmenagementsSection
+              candidates={cmsData.candidates}
+              onUpdateCandidate={updateCandidate}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 4. POCHETTES SURVEILLANTS */}
+          {currentSection === "sec-pochettes" && (
+            <SecPochettesSection
+              rooms={cmsData.rooms}
+              candidates={cmsData.candidates}
+              surveillances={cmsData.surveillances}
+              siteInfo={cmsData.siteInfo}
+            />
+          )}
+
+          {/* 5. RÉPARTITION & BRASSAGE */}
+          {currentSection === "organization" && (
+            <OrganizationSection
+              candidates={cmsData.candidates}
+              rooms={cmsData.rooms}
+              onSetCandidates={setCandidates}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 6. PLANNING VUE PAR SALLES */}
+          {currentSection === "planning-rooms" && (
+            <PlanningRoomsSection
+              rooms={cmsData.rooms}
+              surveillances={cmsData.surveillances}
+              exams={cmsData.exams}
+              teachers={cmsData.teachers}
+              onAddSurveillance={addSurveillance}
+              onDeleteSurveillance={deleteSurveillance}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 7. PLANNING VUE PROFESSEURS */}
+          {currentSection === "planning-profs" && (
+            <PlanningProfsSection
+              teachers={cmsData.teachers}
+              surveillances={cmsData.surveillances}
+              onAddSurveillance={addSurveillance}
+              onDeleteSurveillance={deleteSurveillance}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 8. VERS EDT */}
+          {currentSection === "view-edt" && (
+            <ViewEdtSection
+              rooms={cmsData.rooms}
+              teachers={cmsData.teachers}
+              surveillances={cmsData.surveillances}
+              siteInfo={cmsData.siteInfo}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 9. CONVOCATIONS ÉLÈVES */}
+          {currentSection === "convoc-eleves" && (
+            <ConvocElevesSection
+              candidates={cmsData.candidates}
+              siteInfo={cmsData.siteInfo}
+            />
+          )}
+
+          {/* 10. CONVOCATIONS PROFESSEURS */}
+          {currentSection === "convoc-profs" && (
+            <ConvocProfsSection
+              teachers={cmsData.teachers}
+              surveillances={cmsData.surveillances}
+              siteInfo={cmsData.siteInfo}
+            />
+          )}
+
+          {/* 11. CORRECTIONS */}
+          {currentSection === "corr-repartition" && (
+            <CorrRepartitionSection
+              teachers={cmsData.teachers}
+              candidates={cmsData.candidates}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 12. RÉSULTATS (IMPORT, ANALYSE, RELEVÉS, DATAVIS, SIMULATION) */}
+          {["res-import", "res-analyse", "res-releves", "res-datavis", "res-simul"].includes(currentSection) && (
+            <ResultsSections
+              candidates={cmsData.candidates}
+              siteInfo={cmsData.siteInfo}
+              activeSub={currentSection as any}
+              onShowNotification={showNotification}
+            />
+          )}
+          {/* DÉPLOIEMENT VERCEL & GITHUB */}
+          {(currentSection === "deployment" || activeTab === "deployment") && (
             <div className="space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
@@ -1357,11 +1475,11 @@ export default function AdminPage() {
 
                 <div className="flex flex-wrap items-center gap-2">
                   <button
-                    onClick={() => setActiveTab("orga_perdir")}
+                    onClick={() => setCurrentSection("organization")}
                     className="flex items-center gap-1.5 rounded-xl border border-sky-300 bg-sky-50 px-4 py-2 text-xs font-bold text-sky-800 shadow-xs hover:bg-sky-100 transition"
                   >
                     <Shuffle className="h-4 w-4 text-sky-600" />
-                    <span>Méthode PERDIR (Frédéric)</span>
+                    <span>Répartition & Brassage</span>
                   </button>
                   <button
                     onClick={() => setIsAddingExam(true)}
@@ -1625,12 +1743,12 @@ export default function AdminPage() {
                           </button>
 
                           <button
-                            onClick={() => setActiveTab("orga_perdir")}
+                            onClick={() => setCurrentSection("organization")}
                             title="Lancer l'organisation et le brassage pour cet examen"
                             className="flex items-center gap-1 rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-800 hover:bg-sky-100"
                           >
                             <Shuffle className="h-3.5 w-3.5 text-sky-600" />
-                            <span>Organiser (PERDIR)</span>
+                            <span>Répartition</span>
                           </button>
 
                           <button
@@ -1676,8 +1794,8 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* TAB 2: MÉTHODE PERDIR (FRÉDÉRIC VEDRENNE) */}
-          {activeTab === "orga_perdir" && (
+          {/* TAB 2: ANCIEN ASSISTANT (REMPLACÉ PAR SECTIONS AUTHENTIQUES) */}
+          {false && (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -2194,8 +2312,8 @@ export default function AdminPage() {
 
 
 
-          {/* TAB: ROOMS */}
-          {activeTab === "rooms" && (
+          {/* DONNÉES: SALLES */}
+          {(currentSection === "data-salles" || activeTab === "rooms") && (
             <div className="space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
@@ -2356,8 +2474,8 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* TAB: TEACHERS */}
-          {activeTab === "teachers" && (
+          {/* DONNÉES: PROFESSEURS */}
+          {(currentSection === "data-profs" || activeTab === "teachers") && (
             <div className="space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
@@ -2850,8 +2968,8 @@ export default function AdminPage() {
           </div>
         )}
 
-          {/* TAB: CANDIDATES */}
-          {activeTab === "candidates" && (
+          {/* DONNÉES: ÉLÈVES */}
+          {(currentSection === "data-eleves" || activeTab === "candidates") && (
             <div className="space-y-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>

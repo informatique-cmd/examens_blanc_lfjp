@@ -10,6 +10,15 @@ import {
   Clock,
   BookOpen,
   Layers,
+  Users,
+  GraduationCap,
+  Award,
+  School,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  ShieldCheck,
+  FileText,
 } from "lucide-react";
 
 import HomeHero from "../components/HomeHero";
@@ -19,9 +28,15 @@ import { useCmsData, type CmsExam } from "../../../shared/services/cms-store";
 export default function HomePage() {
   const { data: cmsData } = useCmsData();
 
-  // Filter state for the public showcase
+  // Actor filter: all, students (élèves & familles), teachers (professeurs & personnels)
+  const [selectedActor, setSelectedActor] = useState<"all" | "students" | "teachers">("all");
+
+  // Level filter
   const [selectedLevel, setSelectedLevel] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Expanded exam ID for viewing full schedule
+  const [expandedExamId, setExpandedExamId] = useState<string | null>(null);
 
   // Only display published exams on the public showcase
   const publishedExams = useMemo(() => {
@@ -45,6 +60,17 @@ export default function HomePage() {
       return matchLevel && matchQuery;
     });
   }, [publishedExams, selectedLevel, searchQuery]);
+
+  // Filtered announcements by actor target
+  const publishedAnnouncements = useMemo(() => {
+    return cmsData.announcements.filter((ann) => {
+      if (!ann.isPublished) return false;
+      if (selectedActor === "all") return true;
+      if (selectedActor === "students") return ann.target === "all" || ann.target === "bac" || ann.target === "dnb";
+      if (selectedActor === "teachers") return ann.target === "all" || ann.target === "teachers";
+      return true;
+    });
+  }, [cmsData.announcements, selectedActor]);
 
   // Compute countdown or human date
   const getExamCountdown = (exam: CmsExam) => {
@@ -112,9 +138,87 @@ export default function HomePage() {
         </div>
       ) : null}
 
+      {/* SÉLECTEUR D'ACTEURS (Pour l'ensemble des acteurs) */}
+      <div className="w-full max-w-5xl rounded-2xl bg-white border border-slate-200 p-3 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2 self-start sm:self-auto px-1">
+            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Users className="h-4 w-4 text-[#3498db]" />
+              <span>Espace Public Dédié :</span>
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1.5 w-full sm:w-auto bg-slate-100 p-1 rounded-xl text-xs font-bold">
+            <button
+              onClick={() => setSelectedActor("all")}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center justify-center gap-1.5 ${
+                selectedActor === "all"
+                  ? "bg-white text-slate-900 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <span>🌐 Tous les acteurs</span>
+            </button>
+
+            <button
+              onClick={() => setSelectedActor("students")}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center justify-center gap-1.5 ${
+                selectedActor === "students"
+                  ? "bg-white text-indigo-700 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <GraduationCap className="h-3.5 w-3.5" />
+              <span>Élèves & Familles</span>
+            </button>
+
+            <button
+              onClick={() => setSelectedActor("teachers")}
+              className={`px-3 py-1.5 rounded-lg transition flex items-center justify-center gap-1.5 ${
+                selectedActor === "teachers"
+                  ? "bg-white text-amber-700 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Award className="h-3.5 w-3.5" />
+              <span>Professeurs</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Publications / Direction Announcements for Selected Actors */}
+      {publishedAnnouncements.length > 0 && (
+        <section className="w-full max-w-5xl space-y-3 text-left">
+          <div className="flex items-center gap-2 px-1">
+            <FileText className="h-4 w-4 text-sky-600" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+              Publications Officielles de Direction
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {publishedAnnouncements.map((ann) => (
+              <div
+                key={ann.id}
+                className="p-4 rounded-xl border border-sky-100 bg-sky-50/60 shadow-xs space-y-1"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-sky-950">{ann.title}</span>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-sky-200/70 text-sky-900">
+                    {ann.target === "all" ? "Général" : ann.target === "teachers" ? "Enseignants" : "Candidats"}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed">{ann.content}</p>
+                <p className="text-[10px] text-slate-400 pt-1">Publié le {ann.date}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Showcase Section: Published Exam Sessions */}
-      <section className="w-full max-w-5xl space-y-4">
+      <section className="w-full max-w-5xl space-y-4 text-left">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
           <div>
             <div className="flex items-center gap-2">
@@ -126,7 +230,7 @@ export default function HomePage() {
               </span>
             </div>
             <h2 className="text-lg font-bold text-slate-900 mt-0.5">
-              Programmations des Examens Blancs
+              Programmations des Examens Blancs & Épreuves
             </h2>
           </div>
 
@@ -170,6 +274,8 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredExams.map((exam) => {
               const countdown = getExamCountdown(exam);
+              const isExpanded = expandedExamId === exam.id;
+
               return (
                 <div
                   key={exam.id}
@@ -212,21 +318,51 @@ export default function HomePage() {
                     </p>
 
                     {/* Description */}
-                    <p className="text-xs text-slate-600 line-clamp-2 mb-4 leading-relaxed">
-                      {exam.description || "Consultez les horaires et la répartition des candidats pour cette session."}
+                    <p className="text-xs text-slate-600 line-clamp-2 mb-3 leading-relaxed">
+                      {exam.description || "Consultez les horaires officiels et la répartition des épreuves pour cette session."}
                     </p>
+
+                    {/* Interactive Accordion for detailed schedule */}
+                    {isExpanded && (
+                      <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+                        <p className="font-bold text-slate-800">
+                          Horaires Officiels & Aménagements Tiers-Temps :
+                        </p>
+                        <div className="space-y-1.5 text-[11px]">
+                          <div className="flex justify-between border-b pb-1">
+                            <span className="font-medium text-slate-700">Matin (Épreuve 1) :</span>
+                            <span className="font-mono text-slate-900">08h00 - 09h30 • <span className="text-purple-700 font-bold">TT : 10h00</span></span>
+                          </div>
+                          <div className="flex justify-between border-b pb-1">
+                            <span className="font-medium text-slate-700">Matin (Épreuve 2) :</span>
+                            <span className="font-mono text-slate-900">09h45 - 11h15 • <span className="text-purple-700 font-bold">TT : 11h45</span></span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="font-medium text-slate-700">Après-midi :</span>
+                            <span className="font-mono text-slate-900">13h30 - 15h30 • <span className="text-purple-700 font-bold">TT : 16h10</span></span>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-slate-500 italic pt-1">
+                          Les salles d'examen sont affichées sur les panneaux officiels de l'établissement.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Card Bottom: Session Status & Details */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  {/* Card Bottom: Session Status & Expand Button */}
+                  <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                     <span className="text-[11px] font-semibold text-slate-500">
                       Statut : <span className="font-bold text-indigo-700">{exam.status || "Prévu"}</span>
                     </span>
 
-                    <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-[11px] font-medium inline-flex items-center gap-1">
-                      <Clock className="h-3 w-3 text-slate-400" />
-                      <span>{exam.period}</span>
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedExamId(isExpanded ? null : exam.id)}
+                      className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition inline-flex items-center gap-1"
+                    >
+                      <span>{isExpanded ? "Masquer détails" : "Détail des horaires"}</span>
+                      {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    </button>
                   </div>
                 </div>
               );
@@ -241,14 +377,52 @@ export default function HomePage() {
               Aucune programmation publiée pour cette sélection
             </h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Les sessions d'examen sont gérées depuis l'administration. Dès qu'un examen est publié, il apparaîtra ici automatiquement.
+              Les sessions d'examen sont gérées depuis l'administration. Dès qu'un examen est publié, il apparaîtra ici automatiquement pour l'ensemble des acteurs.
             </p>
           </div>
         )}
       </section>
 
+      {/* Surveillance Overview for Teachers & Stakeholders */}
+      {(selectedActor === "teachers" || selectedActor === "all") && cmsData.surveillances.length > 0 && (
+        <section className="w-full max-w-5xl rounded-2xl bg-white border border-slate-200 p-5 text-left shadow-xs space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div className="flex items-center gap-2">
+              <Award className="h-4 w-4 text-amber-600" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                Dispositif Officiel de Surveillance des Épreuves
+              </h3>
+            </div>
+            <span className="text-[11px] font-semibold text-slate-400">
+              Espace Professeurs & Personnels
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {cmsData.surveillances.slice(0, 6).map((surv) => (
+              <div
+                key={surv.id}
+                className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 text-xs space-y-1"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900">{surv.teacherName}</span>
+                  <span className="px-1.5 py-0.5 rounded bg-white text-indigo-700 font-bold text-[10px] border">
+                    {surv.roomName}
+                  </span>
+                </div>
+                <p className="text-slate-500 text-[11px] flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-slate-400" />
+                  <span>{surv.timeSlot} • {surv.date}</span>
+                </p>
+                <p className="text-[10px] text-slate-600 italic">{surv.mission || "Surveillant titulaire"}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Official Guidelines & Instructions */}
-      <section className="w-full max-w-5xl rounded-2xl bg-slate-50 border border-slate-200 p-5 text-slate-700">
+      <section className="w-full max-w-5xl rounded-2xl bg-slate-50 border border-slate-200 p-5 text-slate-700 text-left">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 mb-3 flex items-center gap-2">
           <BookOpen className="h-4 w-4 text-indigo-600" />
           Règles & Consignes Officielles pour les Épreuves au LFJP
@@ -281,11 +455,11 @@ export default function HomePage() {
         <div>
           <Link
             to="/admin"
-            title="Espace réservé à l'administration PERDIR"
+            title="Espace réservé à l'administration et à la direction"
             className="inline-flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-700 transition font-medium"
           >
             <Lock className="h-3 w-3 opacity-60" />
-            <span>Accès administration (Méthode PERDIR)</span>
+            <span>Espace Direction & Organisation des Examens</span>
           </Link>
         </div>
       </footer>
