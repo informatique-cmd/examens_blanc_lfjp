@@ -2,13 +2,11 @@ import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarDays,
-  FileCheck2,
   AlertCircle,
   Info,
   CheckCircle2,
   Lock,
   Search,
-  ArrowRight,
   Clock,
   BookOpen,
   Layers,
@@ -114,34 +112,6 @@ export default function HomePage() {
         </div>
       ) : null}
 
-      {/* Main Action Banner: Official Convocations & Sign-in portal */}
-      <div className="w-full max-w-5xl rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-indigo-900 p-5 text-white shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 border border-indigo-800/40">
-        <div className="flex items-center gap-3.5">
-          <div className="p-3 rounded-xl bg-white/10 text-indigo-300">
-            <FileCheck2 className="h-6 w-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-indigo-500/30 text-indigo-200">
-                Espace Candidats & Familles
-              </span>
-            </div>
-            <h3 className="font-bold text-sm sm:text-base text-white mt-0.5">
-              Portail Officiel des Convocations & Émargements
-            </h3>
-            <p className="text-xs text-slate-300">
-              Recherchez votre convocation nominative, vos horaires aménagés (tiers-temps) et votre numéro de table.
-            </p>
-          </div>
-        </div>
-        <Link
-          to="/convocations"
-          className="whitespace-nowrap px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-xs transition shadow-xs inline-flex items-center gap-2"
-        >
-          <span>Accéder aux convocations</span>
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      </div>
 
       {/* Showcase Section: Published Exam Sessions */}
       <section className="w-full max-w-5xl space-y-4">
@@ -247,19 +217,16 @@ export default function HomePage() {
                     </p>
                   </div>
 
-                  {/* Card Bottom CTA */}
+                  {/* Card Bottom: Session Status & Details */}
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                     <span className="text-[11px] font-semibold text-slate-500">
-                      Statut : <span className="text-slate-800">{exam.status || "Prévu"}</span>
+                      Statut : <span className="font-bold text-indigo-700">{exam.status || "Prévu"}</span>
                     </span>
 
-                    <Link
-                      to="/convocations"
-                      className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition inline-flex items-center gap-1.5"
-                    >
-                      <span>Voir ma convocation</span>
-                      <ArrowRight className="h-3 w-3" />
-                    </Link>
+                    <span className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-[11px] font-medium inline-flex items-center gap-1">
+                      <Clock className="h-3 w-3 text-slate-400" />
+                      <span>{exam.period}</span>
+                    </span>
                   </div>
                 </div>
               );
