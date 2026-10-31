@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, Fragment, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Calendar,
@@ -18,7 +18,6 @@ import {
   Eye,
   ExternalLink,
   Download,
-  RotateCcw,
   Layers,
   Search,
   LogOut,
@@ -33,7 +32,6 @@ import {
   AlertTriangle,
   RefreshCw,
   Shuffle,
-  FileSpreadsheet,
 } from "lucide-react";
 
 import {
@@ -70,6 +68,7 @@ import ResultsSections from "../components/ResultsSections";
 import DataElevesSection from "../components/DataElevesSection";
 import DataSallesSection from "../components/DataSallesSection";
 import DataProfsSection from "../components/DataProfsSection";
+import CreneauxSection from "../components/CreneauxSection";
 
 export default function AdminPage() {
   const {
@@ -82,6 +81,9 @@ export default function AdminPage() {
     updateExam,
     deleteExam,
     duplicateExam,
+    addExamSlot,
+    updateExamSlot,
+    deleteExamSlot,
     addRoom,
     updateRoom,
     deleteRoom,
@@ -94,6 +96,7 @@ export default function AdminPage() {
     updateSurveillance,
     deleteSurveillance,
     duplicateSurveillance,
+    setSurveillances,
     addCandidate,
     updateCandidate,
     deleteCandidate,
@@ -1105,12 +1108,61 @@ export default function AdminPage() {
           roomsCount={cmsData.rooms.length}
           teachersCount={cmsData.teachers.length}
           examsCount={cmsData.exams.length}
+          examSlotsCount={cmsData.examSlots?.length || 0}
           schoolYear={cmsData.siteInfo.schoolYear || "2025-2026"}
         />
 
         {/* Main Content Area */}
         <main className="flex-1 p-6 lg:p-8 overflow-y-auto max-w-7xl">
-          {/* 1. CONFIGURATION */}
+          {/* Chronological Workflow Stepper Bar */}
+          <div className="mb-6 p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs overflow-x-auto">
+            <div className="flex items-center gap-1.5 min-w-max text-xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-2">
+                Workflow chronologique :
+              </span>
+              {[
+                { id: "config", label: "1. Paramètres & Logo", icon: "⚙️" },
+                { id: "data-eleves", label: "2. Données Pronote", icon: "📂" },
+                { id: "creneaux-epreuves", label: "3. Créneaux", icon: "🕒" },
+                { id: "organization", label: "4. Répartition & Brassage", icon: "🧩" },
+                { id: "planning-rooms", label: "5. Plannings", icon: "📅" },
+                { id: "view-edt", label: "6. Vers EDT", icon: "➡️" },
+                { id: "convoc-eleves", label: "7. Convocations", icon: "📨" },
+                { id: "corr-repartition", label: "8. Corrections & Notes", icon: "📦" },
+                { id: "vitrine-publish", label: "9. Vitrine", icon: "📢" },
+                { id: "deployment", label: "10. Déploiement", icon: "🚀" },
+              ].map((step, idx) => {
+                const isActive =
+                  currentSection === step.id ||
+                  (step.id === "data-eleves" &&
+                    ["data-eleves", "data-salles", "data-profs", "data-amenagements", "sec-pochettes"].includes(currentSection)) ||
+                  (step.id === "planning-rooms" && ["planning-rooms", "planning-profs"].includes(currentSection)) ||
+                  (step.id === "convoc-eleves" && ["convoc-eleves", "convoc-profs"].includes(currentSection)) ||
+                  (step.id === "corr-repartition" &&
+                    ["corr-repartition", "res-import", "res-analyse", "res-releves", "res-datavis", "res-simul"].includes(currentSection));
+
+                return (
+                  <Fragment key={step.id}>
+                    {idx > 0 && <span className="text-slate-300 font-bold">➔</span>}
+                    <button
+                      type="button"
+                      onClick={() => setCurrentSection(step.id as AdminSection)}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1 ${
+                        isActive
+                          ? "bg-slate-900 text-white shadow-xs"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      }`}
+                    >
+                      <span>{step.icon}</span>
+                      <span>{step.label}</span>
+                    </button>
+                  </Fragment>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 1. CONFIGURATION & LOGO */}
           {currentSection === "config" && (
             <ConfigSection
               siteInfo={cmsData.siteInfo}
@@ -1121,7 +1173,164 @@ export default function AdminPage() {
             />
           )}
 
-          {/* 2. VITRINE & PUBLICATIONS */}
+          {/* 2. DONNÉES PRONOTE : ÉLÈVES */}
+          {currentSection === "data-eleves" && (
+            <DataElevesSection
+              candidates={cmsData.candidates}
+              onAddCandidate={addCandidate}
+              onUpdateCandidate={updateCandidate}
+              onDeleteCandidate={deleteCandidate}
+              onSetCandidates={setCandidates}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 2. DONNÉES PRONOTE : SALLES */}
+          {currentSection === "data-salles" && (
+            <DataSallesSection
+              rooms={cmsData.rooms}
+              onAddRoom={addRoom}
+              onUpdateRoom={updateRoom}
+              onDeleteRoom={deleteRoom}
+              onSetRooms={setRooms}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 2. DONNÉES PRONOTE : PROFESSEURS */}
+          {currentSection === "data-profs" && (
+            <DataProfsSection
+              teachers={cmsData.teachers}
+              onAddTeacher={addTeacher}
+              onUpdateTeacher={updateTeacher}
+              onDeleteTeacher={deleteTeacher}
+              onSetTeachers={setTeachers}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 2. AMÉNAGEMENTS */}
+          {currentSection === "data-amenagements" && (
+            <DataAmenagementsSection
+              candidates={cmsData.candidates}
+              onUpdateCandidate={updateCandidate}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 2. POCHETTES SURVEILLANTS */}
+          {currentSection === "sec-pochettes" && (
+            <SecPochettesSection
+              rooms={cmsData.rooms}
+              candidates={cmsData.candidates}
+              surveillances={cmsData.surveillances}
+              siteInfo={cmsData.siteInfo}
+            />
+          )}
+
+          {/* 3. CRÉNEAUX DES ÉPREUVES */}
+          {currentSection === "creneaux-epreuves" && (
+            <CreneauxSection
+              examSlots={cmsData.examSlots || []}
+              exams={cmsData.exams}
+              rooms={cmsData.rooms}
+              surveillances={cmsData.surveillances}
+              onAddExamSlot={addExamSlot}
+              onUpdateExamSlot={updateExamSlot}
+              onDeleteExamSlot={deleteExamSlot}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 4. RÉPARTITION & BRASSAGE (ÉLÈVES + SURVEILLANTS) */}
+          {currentSection === "organization" && (
+            <OrganizationSection
+              candidates={cmsData.candidates}
+              rooms={cmsData.rooms}
+              teachers={cmsData.teachers}
+              examSlots={cmsData.examSlots || []}
+              surveillances={cmsData.surveillances}
+              onSetCandidates={setCandidates}
+              onSetSurveillances={setSurveillances}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 5. PLANNING VUE PAR SALLES */}
+          {currentSection === "planning-rooms" && (
+            <PlanningRoomsSection
+              rooms={cmsData.rooms}
+              surveillances={cmsData.surveillances}
+              exams={cmsData.exams}
+              teachers={cmsData.teachers}
+              examSlots={cmsData.examSlots || []}
+              candidates={cmsData.candidates}
+              onAddSurveillance={addSurveillance}
+              onDeleteSurveillance={deleteSurveillance}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 5. PLANNING VUE PROFESSEURS */}
+          {currentSection === "planning-profs" && (
+            <PlanningProfsSection
+              teachers={cmsData.teachers}
+              surveillances={cmsData.surveillances}
+              examSlots={cmsData.examSlots || []}
+              onAddSurveillance={addSurveillance}
+              onDeleteSurveillance={deleteSurveillance}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 6. VERS EDT */}
+          {currentSection === "view-edt" && (
+            <ViewEdtSection
+              rooms={cmsData.rooms}
+              teachers={cmsData.teachers}
+              surveillances={cmsData.surveillances}
+              siteInfo={cmsData.siteInfo}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 7. CONVOCATIONS ÉLÈVES */}
+          {currentSection === "convoc-eleves" && (
+            <ConvocElevesSection
+              candidates={cmsData.candidates}
+              siteInfo={cmsData.siteInfo}
+            />
+          )}
+
+          {/* 7. CONVOCATIONS PROFESSEURS */}
+          {currentSection === "convoc-profs" && (
+            <ConvocProfsSection
+              teachers={cmsData.teachers}
+              surveillances={cmsData.surveillances}
+              siteInfo={cmsData.siteInfo}
+            />
+          )}
+
+          {/* 8. CORRECTIONS */}
+          {currentSection === "corr-repartition" && (
+            <CorrRepartitionSection
+              teachers={cmsData.teachers}
+              candidates={cmsData.candidates}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 8. RÉSULTATS (IMPORT, ANALYSE, RELEVÉS, DATAVIS, SIMULATION) */}
+          {["res-import", "res-analyse", "res-releves", "res-datavis", "res-simul"].includes(currentSection) && (
+            <ResultsSections
+              candidates={cmsData.candidates}
+              siteInfo={cmsData.siteInfo}
+              activeSub={currentSection as any}
+              onShowNotification={showNotification}
+            />
+          )}
+
+          {/* 9. VITRINE & PUBLICATIONS */}
           {currentSection === "vitrine-publish" && (
             <VitrinePublishSection
               siteInfo={cmsData.siteInfo}
@@ -1134,106 +1343,7 @@ export default function AdminPage() {
             />
           )}
 
-          {/* 3. AMÉNAGEMENTS */}
-          {currentSection === "data-amenagements" && (
-            <DataAmenagementsSection
-              candidates={cmsData.candidates}
-              onUpdateCandidate={updateCandidate}
-              onShowNotification={showNotification}
-            />
-          )}
-
-          {/* 4. POCHETTES SURVEILLANTS */}
-          {currentSection === "sec-pochettes" && (
-            <SecPochettesSection
-              rooms={cmsData.rooms}
-              candidates={cmsData.candidates}
-              surveillances={cmsData.surveillances}
-              siteInfo={cmsData.siteInfo}
-            />
-          )}
-
-          {/* 5. RÉPARTITION & BRASSAGE */}
-          {currentSection === "organization" && (
-            <OrganizationSection
-              candidates={cmsData.candidates}
-              rooms={cmsData.rooms}
-              onSetCandidates={setCandidates}
-              onShowNotification={showNotification}
-            />
-          )}
-
-          {/* 6. PLANNING VUE PAR SALLES */}
-          {currentSection === "planning-rooms" && (
-            <PlanningRoomsSection
-              rooms={cmsData.rooms}
-              surveillances={cmsData.surveillances}
-              exams={cmsData.exams}
-              teachers={cmsData.teachers}
-              onAddSurveillance={addSurveillance}
-              onDeleteSurveillance={deleteSurveillance}
-              onShowNotification={showNotification}
-            />
-          )}
-
-          {/* 7. PLANNING VUE PROFESSEURS */}
-          {currentSection === "planning-profs" && (
-            <PlanningProfsSection
-              teachers={cmsData.teachers}
-              surveillances={cmsData.surveillances}
-              onAddSurveillance={addSurveillance}
-              onDeleteSurveillance={deleteSurveillance}
-              onShowNotification={showNotification}
-            />
-          )}
-
-          {/* 8. VERS EDT */}
-          {currentSection === "view-edt" && (
-            <ViewEdtSection
-              rooms={cmsData.rooms}
-              teachers={cmsData.teachers}
-              surveillances={cmsData.surveillances}
-              siteInfo={cmsData.siteInfo}
-              onShowNotification={showNotification}
-            />
-          )}
-
-          {/* 9. CONVOCATIONS ÉLÈVES */}
-          {currentSection === "convoc-eleves" && (
-            <ConvocElevesSection
-              candidates={cmsData.candidates}
-              siteInfo={cmsData.siteInfo}
-            />
-          )}
-
-          {/* 10. CONVOCATIONS PROFESSEURS */}
-          {currentSection === "convoc-profs" && (
-            <ConvocProfsSection
-              teachers={cmsData.teachers}
-              surveillances={cmsData.surveillances}
-              siteInfo={cmsData.siteInfo}
-            />
-          )}
-
-          {/* 11. CORRECTIONS */}
-          {currentSection === "corr-repartition" && (
-            <CorrRepartitionSection
-              teachers={cmsData.teachers}
-              candidates={cmsData.candidates}
-              onShowNotification={showNotification}
-            />
-          )}
-
-          {/* 12. RÉSULTATS (IMPORT, ANALYSE, RELEVÉS, DATAVIS, SIMULATION) */}
-          {["res-import", "res-analyse", "res-releves", "res-datavis", "res-simul"].includes(currentSection) && (
-            <ResultsSections
-              candidates={cmsData.candidates}
-              siteInfo={cmsData.siteInfo}
-              activeSub={currentSection as any}
-              onShowNotification={showNotification}
-            />
-          )}
-          {/* DÉPLOIEMENT VERCEL & GITHUB */}
+          {/* 10. DÉPLOIEMENT VERCEL & GITHUB */}
           {(currentSection === "deployment" || activeTab === "deployment") && (
             <div className="space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-4">

@@ -11,6 +11,9 @@ import {
   FileText,
   Trash2,
   Upload,
+  Image as ImageIcon,
+  Plus,
+  RotateCcw,
 } from "lucide-react";
 import type { SiteInfo, CmsExam } from "../../../shared/services/cms-store";
 
@@ -35,6 +38,18 @@ export default function ConfigSection({
   const [examType, setExamType] = useState<string>("DNB Blanc");
   const [customExamName, setCustomExamName] = useState<string>("");
 
+  // Logo management state
+  const [logos, setLogos] = useState<Array<{ src: string; alt?: string }>>(
+    siteInfo.logos && siteInfo.logos.length > 0
+      ? siteInfo.logos
+      : [
+          { src: "https://lfjpsaly.org/wp-content/uploads/2021/09/Logo-LFJP-ok-1.png", alt: "Lycée Français Jacques Prévert" },
+          { src: "https://upload.wikimedia.org/wikipedia/fr/thumb/a/a2/Logo_AEFE_2020.svg/1200px-Logo_AEFE_2020.svg.png", alt: "Réseau AEFE" },
+        ]
+  );
+  const [newLogoUrl, setNewLogoUrl] = useState<string>("");
+  const [newLogoAlt, setNewLogoAlt] = useState<string>("");
+
   // Sciences checkboxes
   const [sciencesConfig, setSciencesConfig] = useState({
     svt: true,
@@ -56,10 +71,65 @@ export default function ConfigSection({
     siteInfo.bannerAlert?.type || "info"
   );
 
+  const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Veuillez sélectionner un fichier image valide (PNG, JPEG, SVG, WebP).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        const next = [...logos, { src: dataUrl, alt: file.name.replace(/\.[^/.]+$/, "") }];
+        setLogos(next);
+        onUpdateSiteInfo({ logos: next });
+        onShowNotification("Logo de l'école téléversé avec succès !");
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAddLogoByUrl = () => {
+    if (!newLogoUrl.trim()) return;
+    const next = [...logos, { src: newLogoUrl.trim(), alt: newLogoAlt.trim() || schoolName }];
+    setLogos(next);
+    onUpdateSiteInfo({ logos: next });
+    setNewLogoUrl("");
+    setNewLogoAlt("");
+    onShowNotification("Nouveau logo ajouté par URL !");
+  };
+
+  const handleRemoveLogo = (index: number) => {
+    const next = logos.filter((_, i) => i !== index);
+    setLogos(next);
+    onUpdateSiteInfo({ logos: next });
+    onShowNotification("Logo retiré.");
+  };
+
+  const handleSetPresetLogo = (preset: "lfjp" | "aefe" | "both") => {
+    let next: Array<{ src: string; alt?: string }> = [];
+    if (preset === "lfjp") {
+      next = [{ src: "https://lfjpsaly.org/wp-content/uploads/2021/09/Logo-LFJP-ok-1.png", alt: "Lycée Français Jacques Prévert de Saly" }];
+    } else if (preset === "aefe") {
+      next = [{ src: "https://upload.wikimedia.org/wikipedia/fr/thumb/a/a2/Logo_AEFE_2020.svg/1200px-Logo_AEFE_2020.svg.png", alt: "Agence pour l'Enseignement Français à l'Étranger (AEFE)" }];
+    } else {
+      next = [
+        { src: "https://lfjpsaly.org/wp-content/uploads/2021/09/Logo-LFJP-ok-1.png", alt: "Lycée Français Jacques Prévert" },
+        { src: "https://upload.wikimedia.org/wikipedia/fr/thumb/a/a2/Logo_AEFE_2020.svg/1200px-Logo_AEFE_2020.svg.png", alt: "Réseau AEFE" },
+      ];
+    }
+    setLogos(next);
+    onUpdateSiteInfo({ logos: next });
+    onShowNotification("Logos officiels rétablis !");
+  };
+
   const handleSaveParams = () => {
     onUpdateSiteInfo({
       title: schoolName,
       schoolYear: sessionYear,
+      logos: logos,
       bannerAlert: {
         enabled: alertEnabled,
         title: alertTitle,
@@ -260,6 +330,163 @@ export default function ConfigSection({
                 <span className="font-semibold text-slate-800">Technologie</span>
               </label>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Card: Logo de l'École & Identité Visuelle */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-5">
+        <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-[#e67e22]" />
+              <span>Logo de l'Établissement & En-tête Officiel</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Téléversez ou modifiez le logo du lycée affiché sur la vitrine publique, les convocations et les bordereaux.
+            </p>
+          </div>
+          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+            Identité Visuelle
+          </span>
+        </div>
+
+        {/* Existing Logos Grid & Previews */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-2">
+            Logos actifs ({logos.length}) :
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {logos.map((logo, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/80 hover:bg-slate-50 transition group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-14 h-14 rounded-lg border border-slate-200 bg-white p-1 flex items-center justify-center flex-shrink-0 shadow-2xs">
+                    <img
+                      src={logo.src}
+                      alt={logo.alt || "Logo"}
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-900 truncate">
+                      {logo.alt || `Logo ${idx + 1}`}
+                    </p>
+                    <p className="text-[10px] text-slate-400 truncate">
+                      {logo.src.startsWith("data:") ? "Image importée locale" : logo.src}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleRemoveLogo(idx)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                  title="Supprimer ce logo"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+
+            {logos.length === 0 && (
+              <div className="col-span-full p-6 text-center border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-xs">
+                Aucun logo configuré. Téléversez une image ou choisissez un modèle prédéfini ci-dessous.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Add Logo: File Upload + URL Input */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+          {/* File Upload */}
+          <div className="p-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#3498db] bg-slate-50/50 hover:bg-sky-50/30 transition text-center flex flex-col items-center justify-center">
+            <Upload className="h-6 w-6 text-[#3498db] mb-1.5" />
+            <p className="text-xs font-bold text-slate-800">
+              Téléverser un fichier logo
+            </p>
+            <p className="text-[11px] text-slate-500 mb-2">
+              Formats acceptés : PNG transparent, JPEG, SVG ou WebP
+            </p>
+            <label className="cursor-pointer px-4 py-2 rounded-lg bg-[#3498db] hover:bg-[#2980b9] text-white text-xs font-bold transition shadow-2xs">
+              <span>Choisir un fichier sur votre appareil</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoFileUpload}
+                className="hidden"
+              />
+            </label>
+          </div>
+
+          {/* Add by URL */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-2.5 flex flex-col justify-between">
+            <div>
+              <p className="text-xs font-bold text-slate-800">
+                Ou ajouter via un lien web direct (URL)
+              </p>
+              <p className="text-[11px] text-slate-500 mb-2">
+                Entrez l'URL publique de l'image du lycée.
+              </p>
+              <div className="space-y-1.5">
+                <input
+                  type="url"
+                  value={newLogoUrl}
+                  onChange={(e) => setNewLogoUrl(e.target.value)}
+                  placeholder="https://.../logo-ecole.png"
+                  className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden"
+                />
+                <input
+                  type="text"
+                  value={newLogoAlt}
+                  onChange={(e) => setNewLogoAlt(e.target.value)}
+                  placeholder="Description du logo (ex: Lycée Français Jacques Prévert)"
+                  className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden"
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={!newLogoUrl.trim()}
+              onClick={handleAddLogoByUrl}
+              className="w-full py-1.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-900 disabled:opacity-40 text-white text-xs font-bold transition flex items-center justify-center gap-1.5"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Ajouter ce logo</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Quick presets */}
+        <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100">
+          <span className="text-xs text-slate-500 font-medium">
+            Rétablir un modèle officiel en 1 clic :
+          </span>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => handleSetPresetLogo("lfjp")}
+              className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-semibold text-slate-700 transition"
+            >
+              LFJP Saly seul
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetPresetLogo("aefe")}
+              className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-semibold text-slate-700 transition"
+            >
+              Réseau AEFE seul
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetPresetLogo("both")}
+              className="px-2.5 py-1 text-xs rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 font-bold text-indigo-700 transition"
+            >
+              LFJP + AEFE (Défaut officiel)
+            </button>
           </div>
         </div>
       </div>

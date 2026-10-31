@@ -73,9 +73,26 @@ export interface CmsTeacher {
   email: string;
 }
 
+export interface CmsExamSlot {
+  id: string;
+  examId?: string;
+  examTitle: string;
+  subject: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  tiersTempsEndTime?: string;
+  tiersTempsDurationMinutes?: number;
+  targetLevel?: string;
+  roomNames?: string[];
+  notes?: string;
+}
+
 export interface CmsSurveillance {
   id: string;
   examTitle: string;
+  slotId?: string;
   teacherName: string;
   roomName: string;
   date: string;
@@ -103,6 +120,7 @@ export interface CmsData {
   callouts: CmsCallout[];
   announcements: CmsAnnouncement[];
   exams: CmsExam[];
+  examSlots: CmsExamSlot[];
   rooms: CmsRoom[];
   teachers: CmsTeacher[];
   surveillances: CmsSurveillance[];
@@ -250,6 +268,113 @@ export const DEFAULT_CMS_DATA: CmsData = {
       status: "Prévu",
     },
   ],
+  examSlots: [
+    {
+      id: "slot-dnb-1",
+      examId: "exam-2",
+      examTitle: "DNB blanc",
+      subject: "Français (1ère partie : Grammaire, Dictée & Compréhension)",
+      date: "2026-03-24",
+      startTime: "08:00",
+      endTime: "09:30",
+      durationMinutes: 90,
+      tiersTempsEndTime: "10:00",
+      tiersTempsDurationMinutes: 120,
+      targetLevel: "3ème",
+      roomNames: ["Salle S12", "Salle S14", "Salle S04 (Tiers-Temps)", "Salle Polyvalente"],
+      notes: "Dictée à 08h30. Matériel standard.",
+    },
+    {
+      id: "slot-dnb-2",
+      examId: "exam-2",
+      examTitle: "DNB blanc",
+      subject: "Français (2ème partie : Rédaction)",
+      date: "2026-03-24",
+      startTime: "09:45",
+      endTime: "11:15",
+      durationMinutes: 90,
+      tiersTempsEndTime: "11:45",
+      tiersTempsDurationMinutes: 120,
+      targetLevel: "3ème",
+      roomNames: ["Salle S12", "Salle S14", "Salle S04 (Tiers-Temps)", "Salle Polyvalente"],
+      notes: "Dictionnaires unilingues autorisés.",
+    },
+    {
+      id: "slot-dnb-3",
+      examId: "exam-2",
+      examTitle: "DNB blanc",
+      subject: "Mathématiques",
+      date: "2026-03-24",
+      startTime: "13:30",
+      endTime: "15:30",
+      durationMinutes: 120,
+      tiersTempsEndTime: "16:10",
+      tiersTempsDurationMinutes: 160,
+      targetLevel: "3ème",
+      roomNames: ["Salle S12", "Salle S14", "Salle S04 (Tiers-Temps)", "Salle Polyvalente"],
+      notes: "Calculatrice autorisée en mode examen.",
+    },
+    {
+      id: "slot-dnb-4",
+      examId: "exam-2",
+      examTitle: "DNB blanc",
+      subject: "Histoire-Géographie & EMC",
+      date: "2026-03-25",
+      startTime: "08:00",
+      endTime: "10:00",
+      durationMinutes: 120,
+      tiersTempsEndTime: "10:40",
+      tiersTempsDurationMinutes: 160,
+      targetLevel: "3ème",
+      roomNames: ["Salle S12", "Salle S14", "Salle S04 (Tiers-Temps)", "Salle Polyvalente"],
+      notes: "Crayons de couleur autorisés pour le croquis.",
+    },
+    {
+      id: "slot-dnb-5",
+      examId: "exam-2",
+      examTitle: "DNB blanc",
+      subject: "Sciences (Physique-Chimie / SVT / Techno)",
+      date: "2026-03-25",
+      startTime: "10:15",
+      endTime: "11:15",
+      durationMinutes: 60,
+      tiersTempsEndTime: "11:35",
+      tiersTempsDurationMinutes: 80,
+      targetLevel: "3ème",
+      roomNames: ["Salle S12", "Salle S14", "Salle S04 (Tiers-Temps)", "Salle Polyvalente"],
+      notes: "Deux disciplines au programme.",
+    },
+    {
+      id: "slot-bac-1",
+      examId: "exam-4",
+      examTitle: "Baccalauréat blanc 1ère et Terminale (Session Avril)",
+      subject: "Français EAF (Écrit - 1ère)",
+      date: "2026-04-07",
+      startTime: "08:00",
+      endTime: "12:00",
+      durationMinutes: 240,
+      tiersTempsEndTime: "13:20",
+      tiersTempsDurationMinutes: 320,
+      targetLevel: "1ère",
+      roomNames: ["Salle S12", "Salle S14", "Salle S04 (Tiers-Temps)"],
+      notes: "Dissertation ou commentaire de texte.",
+    },
+    {
+      id: "slot-bac-2",
+      examId: "exam-4",
+      examTitle: "Baccalauréat blanc 1ère et Terminale (Session Avril)",
+      subject: "Philosophie (Terminale)",
+      date: "2026-04-07",
+      startTime: "08:00",
+      endTime: "12:00",
+      durationMinutes: 240,
+      tiersTempsEndTime: "13:20",
+      tiersTempsDurationMinutes: 320,
+      targetLevel: "Terminale",
+      roomNames: ["Salle Polyvalente", "Salle S04 (Tiers-Temps)"],
+      notes: "Épreuve terminale.",
+    },
+  ],
   rooms: [
     { id: "room-1", name: "Salle S12", capacity: 24, building: "Bâtiment Secondaire", notes: "Sujets écrits généraux" },
     { id: "room-2", name: "Salle S14", capacity: 28, building: "Bâtiment Secondaire", notes: "Configuration examen standard" },
@@ -324,6 +449,9 @@ export function getCmsData(): CmsData {
       exams: Array.isArray(parsed.exams)
         ? parsed.exams.map((e) => ({ ...e, isPublished: e.isPublished !== false }))
         : DEFAULT_CMS_DATA.exams.map((e) => ({ ...e, isPublished: true })),
+      examSlots: Array.isArray(parsed.examSlots) && parsed.examSlots.length > 0
+        ? parsed.examSlots
+        : DEFAULT_CMS_DATA.examSlots,
       rooms: Array.isArray(parsed.rooms) ? parsed.rooms : DEFAULT_CMS_DATA.rooms,
       teachers: Array.isArray(parsed.teachers) ? parsed.teachers : DEFAULT_CMS_DATA.teachers,
       surveillances: Array.isArray(parsed.surveillances) ? parsed.surveillances : DEFAULT_CMS_DATA.surveillances,
@@ -734,6 +862,44 @@ export function useCmsData() {
     setData(next);
   };
 
+  // Exam Slots
+  const addExamSlot = (item: Omit<CmsExamSlot, "id">) => {
+    const newItem: CmsExamSlot = { ...item, id: `slot-${Date.now()}` };
+    const next: CmsData = { ...data, examSlots: [...(data.examSlots || []), newItem] };
+    saveCmsData(next);
+    setData(next);
+  };
+
+  const updateExamSlot = (id: string, updates: Partial<CmsExamSlot>) => {
+    const next: CmsData = {
+      ...data,
+      examSlots: (data.examSlots || []).map((s) => (s.id === id ? { ...s, ...updates } : s)),
+    };
+    saveCmsData(next);
+    setData(next);
+  };
+
+  const deleteExamSlot = (id: string) => {
+    const next: CmsData = {
+      ...data,
+      examSlots: (data.examSlots || []).filter((s) => s.id !== id),
+    };
+    saveCmsData(next);
+    setData(next);
+  };
+
+  const setExamSlots = (newSlots: CmsExamSlot[]) => {
+    const next: CmsData = { ...data, examSlots: newSlots };
+    saveCmsData(next);
+    setData(next);
+  };
+
+  const setSurveillances = (newSurvs: CmsSurveillance[]) => {
+    const next: CmsData = { ...data, surveillances: newSurvs };
+    saveCmsData(next);
+    setData(next);
+  };
+
   const setRooms = (newRooms: CmsRoom[]) => {
     const next: CmsData = { ...data, rooms: newRooms };
     saveCmsData(next);
@@ -771,6 +937,10 @@ export function useCmsData() {
     updateExam,
     deleteExam,
     duplicateExam,
+    addExamSlot,
+    updateExamSlot,
+    deleteExamSlot,
+    setExamSlots,
     addRoom,
     updateRoom,
     deleteRoom,
@@ -783,6 +953,7 @@ export function useCmsData() {
     updateSurveillance,
     deleteSurveillance,
     duplicateSurveillance,
+    setSurveillances,
     addCandidate,
     updateCandidate,
     deleteCandidate,

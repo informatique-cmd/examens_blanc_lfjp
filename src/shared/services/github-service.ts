@@ -27,6 +27,7 @@ import resultsSectionsRaw from "../../features/admin/components/ResultsSections.
 import dataElevesSectionRaw from "../../features/admin/components/DataElevesSection.tsx?raw";
 import dataSallesSectionRaw from "../../features/admin/components/DataSallesSection.tsx?raw";
 import dataProfsSectionRaw from "../../features/admin/components/DataProfsSection.tsx?raw";
+import creneauxSectionRaw from "../../features/admin/components/CreneauxSection.tsx?raw";
 
 export interface GitHubUser {
   login: string;
@@ -517,6 +518,7 @@ export async function pushCmsChangesToGitHub({
       { path: "src/features/admin/components/DataElevesSection.tsx", content: dataElevesSectionRaw },
       { path: "src/features/admin/components/DataSallesSection.tsx", content: dataSallesSectionRaw },
       { path: "src/features/admin/components/DataProfsSection.tsx", content: dataProfsSectionRaw },
+      { path: "src/features/admin/components/CreneauxSection.tsx", content: creneauxSectionRaw },
       { path: "src/features/orga-dnb/pages/OrgaDnbPage.tsx", content: orgaDnbPageRaw },
       { path: "src/features/convocations/pages/ConvocationsPage.tsx", content: convocationsPageRaw },
       { path: "src/features/home/components/HomeCallToActionCard.tsx", content: homeCallToActionCardRaw },
