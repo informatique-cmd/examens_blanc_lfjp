@@ -1,15 +1,15 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-09-22T12:00:00.000Z",
+  "updatedAt": "2026-10-30T16:12:45.107Z",
   "siteInfo": {
-    "title": "Toute l'organisation des examens blancs centralisée en un seul endroit pour la communauté éducative.",
+    "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Espace examens blancs LFJP",
-    "description": "Retrouvez les plannings, les listes des élèves par salle, les consignes et les convocations pour le Baccalauréat blanc de décembre 2025 ainsi que pour les épreuves écrites et orales du DNB et du Baccalauréat.",
-    "schoolYear": "2025-2026",
+    "description": "Cet espace réunit l'ensemble des informations pratiques nécessaires pour préparer, coordonner et faire vivre les épreuves. Vous y trouverez les documents, convocations, affectations de salles et les consignes indispensables pour guider sereinement chaque étape du déroulement des examens blancs.",
+    "schoolYear": "2026-2027",
     "logos": [
       {
-        "src": "https://aefe.fr/sites/default/files/asset/document/logo-aefe-bleu-et-orange_0.svg",
-        "alt": "Logo de l'Agence pour l'enseignement français à l'étranger"
+        "src": "https://i.imgur.com/0YmGlXO.png",
+        "alt": "Logo de l'AEFE"
       }
     ],
     "bannerAlert": {
@@ -23,210 +23,737 @@
     {
       "id": "callout-1",
       "to": "/examens-blancs",
-      "iconLabel": "Accéder à l'organisation du Baccalauréat blanc 1ère et Terminale",
-      "subtitle": "Organisation complète",
-      "title": "Baccalauréat blanc 1ère et Terminale",
+      "iconLabel": "Accéder à Baccalauréat blanc 1ère et Terminale",
+      "subtitle": "",
+      "title": "Baccalauréat blanc 1ère et Terminales",
       "dateLabel": "10, 11 et 12 décembre 2025",
       "date": "2025-12-10",
-      "footerLabel": "Accéder à l'organisation",
+      "footerLabel": "Accéder à l'organisation complète",
       "category": "general",
       "isPublished": true,
       "order": 1
     },
     {
       "id": "callout-2",
-      "to": "/examens-blancs/bac-mathematiques-terminale-2026-04-07",
-      "iconLabel": "Accéder à l'organisation de l'épreuve de spécialité Mathématiques",
-      "subtitle": "Épreuve de spécialité",
-      "title": "Mathématiques Terminale",
-      "dateLabel": "Mardi 7 avril 2026",
-      "date": "2026-04-07",
-      "footerLabel": "Consulter l'épreuve de spécialité",
-      "category": "math",
+      "to": "/examens-blancs/dnb-blanc-zao-2026-02-03",
+      "iconLabel": "Organisation du DNB blanc",
+      "subtitle": "",
+      "title": "DNB blanc",
+      "dateLabel": "3 et 4 février 2026",
+      "date": "2026-02-03",
+      "footerLabel": "Consulter plannings et surveillances",
+      "category": "general",
       "isPublished": true,
       "order": 2
     },
     {
       "id": "callout-3",
-      "to": "/examens-blancs/oraux-dnb-2026-05-20",
-      "iconLabel": "Accéder à l'organisation des oraux du DNB blanc",
-      "subtitle": "Épreuves orales",
-      "title": "Oraux DNB blanc",
-      "dateLabel": "Mercredi 20 mai 2026",
-      "date": "2026-05-20",
-      "footerLabel": "Consulter le planning des oraux",
-      "category": "oral",
+      "to": "/examens-blancs/mathematiques-2026-02-13",
+      "iconLabel": "Consulter l'organisation du bac blanc de maths 1ère",
+      "subtitle": "",
+      "title": "Bac blanc de maths 1ère",
+      "dateLabel": "13 février 2026",
+      "date": "2026-02-13",
+      "footerLabel": "Accéder à l'organisation complète",
+      "category": "math",
       "isPublished": true,
       "order": 3
     },
     {
       "id": "callout-4",
-      "to": "/surveillances-bac-dnb",
-      "iconLabel": "Accéder au planning de surveillance Bac et DNB",
-      "subtitle": "Planning & convocations",
-      "title": "Surveillances Bac & DNB",
-      "dateLabel": "Sessions 2025-2026",
+      "to": "/examens-blancs/eaf-2026-04-07",
+      "iconLabel": "Accéder à l'organisation du baccalauréat blanc 1ère et Terminale",
+      "subtitle": "",
+      "title": "Baccalauréat blanc 1ère et Terminale",
+      "dateLabel": "7 au 10 avril 2026",
       "date": "2026-04-07",
-      "footerLabel": "Consulter les surveillances",
-      "category": "surveillance",
+      "footerLabel": "Accéder à l'organisation complète",
+      "category": "general",
       "isPublished": true,
       "order": 4
+    },
+    {
+      "id": "callout-5",
+      "to": "/examens-blancs/oraux-eaf-2026-04",
+      "iconLabel": "Consulter l'organisation des oraux blancs de français",
+      "subtitle": "",
+      "title": "Oraux blancs EAF 1ère",
+      "dateLabel": "13, 14 et 15 avril 2026",
+      "date": "2026-04-13",
+      "footerLabel": "Accéder au planning détaillé",
+      "category": "oral",
+      "isPublished": true,
+      "order": 5
+    },
+    {
+      "id": "callout-6",
+      "to": "/examens-blancs/grand-oral-2026-04-17",
+      "iconLabel": "Consulter l'organisation du Grand Oral Blanc",
+      "subtitle": "",
+      "title": "Grand Oral Blanc",
+      "dateLabel": "Vendredi 17 avril 2026",
+      "date": "2026-04-17",
+      "footerLabel": "Accéder au planning détaillé",
+      "category": "oral",
+      "isPublished": true,
+      "order": 6
+    },
+    {
+      "id": "callout-7",
+      "to": "/examens-blancs/oraux-eaf-2026-05",
+      "iconLabel": "Consulter l'organisation des oraux blancs de français",
+      "subtitle": "",
+      "title": "Oraux blancs EAF 1ère",
+      "dateLabel": "11, 12 et 13 mai 2026",
+      "date": "2026-05-11",
+      "footerLabel": "Accéder au planning détaillé",
+      "category": "oral",
+      "isPublished": true,
+      "order": 7
+    },
+    {
+      "id": "callout-8",
+      "to": "https://bastiencapel.github.io/OralDNB2026/",
+      "iconLabel": "Consulter l'organisation des oraux du DNB",
+      "subtitle": "",
+      "title": "Oraux du DNB",
+      "dateLabel": "20 mai 2026",
+      "date": "2026-05-20",
+      "footerLabel": "Accéder au planning détaillé",
+      "category": "oral",
+      "isPublished": true,
+      "order": 8
+    },
+    {
+      "id": "callout-9",
+      "to": "/examens-blancs/mathematiques-2026-05-23",
+      "iconLabel": "Consulter l'organisation du bac blanc de maths 1ère",
+      "subtitle": "",
+      "title": "Bac blanc de maths 1ère",
+      "dateLabel": "23 mai 2026",
+      "date": "2026-05-23",
+      "footerLabel": "Accéder à l'organisation complète",
+      "category": "math",
+      "isPublished": true,
+      "order": 9
+    },
+    {
+      "id": "callout-10",
+      "to": "/examens-blancs/oraux-eaf-2026-06",
+      "iconLabel": "Consulter l'organisation des oraux de français",
+      "subtitle": "",
+      "title": "Oral de français",
+      "dateLabel": "1er au 5 juin 2026",
+      "date": "2026-06-01",
+      "footerLabel": "Accéder à la liste des élèves",
+      "category": "oral",
+      "isPublished": true,
+      "order": 10
+    },
+    {
+      "id": "callout-11",
+      "to": "/surveillances-bac-dnb",
+      "iconLabel": "Consulter le planning des surveillances BAC et DNB",
+      "subtitle": "",
+      "title": "Surveillances BAC et DNB",
+      "dateLabel": "Session Juin 2026",
+      "date": "2026-06-08",
+      "footerLabel": "Accéder au planning détaillé",
+      "category": "surveillance",
+      "isPublished": true,
+      "order": 11
+    },
+    {
+      "id": "callout-12",
+      "to": "/examens-blancs",
+      "iconLabel": "Accéder à EXam",
+      "subtitle": "",
+      "title": "EXam",
+      "dateLabel": "10, 11 et 12 décembre 2026",
+      "date": "2026-10-27",
+      "footerLabel": "Accéder à l'organisation complète",
+      "category": "math",
+      "isPublished": true,
+      "order": 12
     }
   ],
   "announcements": [
     {
       "id": "ann-1",
-      "title": "Calculatrices autorisées en mode examen",
-      "content": "Seules les calculatrices dotées du mode examen activé ou sans mémoire sont autorisées pour les épreuves de mathématiques et de sciences.",
+      "title": "Rappel des horaires de convocation",
+      "content": "Les candidats doivent se présenter 15 minutes avant l'heure indiquée sur la convocation avec leur pièce d'identité et leur matériel obligatoire.",
       "priority": "important",
-      "target": "bac",
+      "target": "all",
       "isPublished": true,
-      "date": "2026-04-01"
+      "date": "2026-02-01"
     },
     {
       "id": "ann-2",
-      "title": "Pièces d'identité et convocations obligatoires",
-      "content": "Chaque candidat doit impérativement présenter sa convocation imprimée ainsi qu'une pièce d'identité en cours de validité dès l'entrée en salle.",
+      "title": "Calculatrices autorisées en mode examen",
+      "content": "Pour les épreuves de mathématiques et de sciences, les calculatrices doivent obligatoirement être activées en mode examen dès l'entrée en salle.",
       "priority": "information",
-      "target": "all",
+      "target": "bac",
       "isPublished": true,
-      "date": "2026-04-02"
+      "date": "2026-02-10"
+    },
+    {
+      "id": "ann-3",
+      "title": "Émargement des feuilles de surveillance",
+      "content": "Mesdames et Messieurs les enseignants surveillants sont priés de remettre les pochettes d'émargement au secrétariat des examens dès la fin de l'épreuve.",
+      "priority": "urgent",
+      "target": "teachers",
+      "isPublished": true,
+      "date": "2026-02-12"
     }
   ],
   "exams": [
     {
       "id": "exam-1",
-      "title": "Baccalauréat blanc - Session 1",
+      "title": "Baccalauréat blanc 1ère et Terminale (Session Décembre)",
       "examType": "Baccalauréat blanc",
-      "targetLevel": "1ère et Terminale",
-      "period": "10 au 12 décembre 2025",
-      "startsAt": "2025-12-10T08:00:00",
-      "endsAt": "2025-12-12T17:00:00",
-      "description": "Épreuves écrites complètes pour les classes de Première et Terminale.",
-      "status": "Terminé"
+      "targetLevel": "1ère & Terminale",
+      "period": "10, 11 et 12 décembre 2025",
+      "startsAt": "2025-12-10T08:00",
+      "endsAt": "2025-12-12T17:00",
+      "description": "Épreuves écrites complètes toutes spécialités pour les élèves de première et terminale.",
+      "status": "Terminé",
+      "isPublished": false
     },
     {
       "id": "exam-2",
-      "title": "Épreuve de spécialité Mathématiques Terminale",
-      "examType": "Baccalauréat blanc",
-      "targetLevel": "Terminale",
-      "period": "Mardi 7 avril 2026",
-      "startsAt": "2026-04-07T08:00:00",
-      "endsAt": "2026-04-07T12:00:00",
-      "description": "Épreuve de spécialité Mathématiques de 4 heures en salle dédiée.",
-      "status": "Prévu"
+      "title": "DNB blanc ZAO",
+      "examType": "DNB blanc",
+      "targetLevel": "3ème",
+      "period": "3 et 4 février 2026",
+      "startsAt": "2026-02-03T08:00",
+      "endsAt": "2026-02-04T16:30",
+      "description": "Épreuves écrites de français, mathématiques, histoire-géo et sciences pour les classes de troisième.",
+      "status": "Terminé",
+      "isPublished": false
     },
     {
       "id": "exam-3",
-      "title": "Oraux DNB blanc",
-      "examType": "DNB blanc",
+      "title": "Bac blanc de Mathématiques 1ère (Février)",
+      "examType": "Spécialité Mathématiques",
+      "targetLevel": "1ère Spé Maths",
+      "period": "13 février 2026",
+      "startsAt": "2026-02-13T08:00",
+      "endsAt": "2026-02-13T10:00",
+      "description": "Épreuve anticipée de spécialité mathématiques première.",
+      "status": "Terminé",
+      "isPublished": false
+    },
+    {
+      "id": "exam-4",
+      "title": "Baccalauréat blanc 1ère et Terminale (Session Avril)",
+      "examType": "Baccalauréat blanc",
+      "targetLevel": "1ère & Terminale",
+      "period": "7 au 10 avril 2026",
+      "startsAt": "2026-04-07T08:00",
+      "endsAt": "2026-04-10T17:00",
+      "description": "Épreuves blanches de printemps et EAF anticipées.",
+      "status": "Prévu",
+      "isPublished": false
+    },
+    {
+      "id": "exam-5",
+      "title": "Oraux blancs EAF 1ère (Session Avril)",
+      "examType": "Épreuves anticipées orales",
+      "targetLevel": "1ère",
+      "period": "13, 14 et 15 avril 2026",
+      "startsAt": "2026-04-13T08:00",
+      "endsAt": "2026-04-15T18:00",
+      "description": "Passations individuelles devant les examinateurs de français.",
+      "status": "Prévu",
+      "isPublished": false
+    },
+    {
+      "id": "exam-6",
+      "title": "Grand Oral Blanc",
+      "examType": "Grand Oral",
+      "targetLevel": "Terminale",
+      "period": "Vendredi 17 avril 2026",
+      "startsAt": "2026-04-17T08:00",
+      "endsAt": "2026-04-17T17:00",
+      "description": "Entraînement officiel au Grand Oral avec jury pluri-disciplinaire.",
+      "status": "Prévu",
+      "isPublished": false
+    },
+    {
+      "id": "exam-7",
+      "title": "Oraux du DNB",
+      "examType": "Épreuve orale DNB",
       "targetLevel": "3ème",
-      "period": "Mercredi 20 mai 2026",
-      "startsAt": "2026-05-20T08:00:00",
-      "endsAt": "2026-05-20T16:00:00",
-      "description": "Passage individuel devant jury pour l'épreuve orale du Diplôme National du Brevet.",
-      "status": "Prévu"
+      "period": "20 mai 2026",
+      "startsAt": "2026-05-20T08:00",
+      "endsAt": "2026-05-20T17:00",
+      "description": "Soutenance de projet devant le jury pour les élèves de troisième.",
+      "status": "Prévu",
+      "isPublished": false
     }
   ],
   "rooms": [
     {
-      "id": "room-1",
-      "name": "Salle S12",
-      "capacity": 24,
-      "building": "Bâtiment Secondaire RDC",
-      "notes": "Salle principale pour les épreuves de Terminale"
+      "id": "room-1793442139651-1-629w",
+      "name": "BUREAU CPE",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
     },
     {
-      "id": "room-2",
-      "name": "Salle S14",
+      "id": "room-1793442139651-2-uje0",
+      "name": "BUREAU PROVISEUR",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-3-dr7m",
+      "name": "CDI",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-4-ls1a",
+      "name": "FOYER",
+      "capacity": 10,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-5-7qqp",
+      "name": "LABORATOIRE",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-6-jm6w",
+      "name": "S7 ARTS",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-7-3aet",
+      "name": "SALLE POLYVALENTE",
+      "capacity": 80,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-8-63kg",
+      "name": "SALLE TECHNOLOGIE",
+      "capacity": 25,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-9-cpmq",
+      "name": "SCIENCES",
       "capacity": 20,
-      "building": "Bâtiment Secondaire 1er étage",
-      "notes": "Salle adaptée pour épreuves de Première"
+      "building": "Bâtiment Principal",
+      "notes": ""
     },
     {
-      "id": "room-3",
-      "name": "Salle Multimédia",
-      "capacity": 15,
-      "building": "Bâtiment Administratif",
-      "notes": "Aménagement tiers-temps et ordinateurs"
+      "id": "room-1793442139651-10-t07j",
+      "name": "SCIENCES 1",
+      "capacity": 20,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-11-4r14",
+      "name": "SCIENCES 2",
+      "capacity": 20,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-12-x8w7",
+      "name": "SCIENCES 3",
+      "capacity": 20,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-13-sa4a",
+      "name": "SECONDAIRE",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-14-9qqc",
+      "name": "24 PLACES",
+      "capacity": 24,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-15-11s6",
+      "name": "S12",
+      "capacity": 26,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-16-97lc",
+      "name": "S13",
+      "capacity": 24,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-17-mtzh",
+      "name": "S14",
+      "capacity": 24,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-18-j7gx",
+      "name": "S15",
+      "capacity": 24,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-19-5v5v",
+      "name": "30 PLACES",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-20-7gpj",
+      "name": "S1",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-21-nsxh",
+      "name": "S10",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-22-t97u",
+      "name": "S11",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-23-ukef",
+      "name": "S2",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-24-enma",
+      "name": "S3",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-25-w8vb",
+      "name": "S4",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-26-c199",
+      "name": "S5",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-27-yhu5",
+      "name": "S6",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-28-2rz6",
+      "name": "S8",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-29-6as8",
+      "name": "S9",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793442139651-30-s987",
+      "name": "TERRAIN DE SPORT SECONDAIRE",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
     }
   ],
   "teachers": [
     {
-      "id": "teacher-1",
+      "id": "teach-1793441834955-1-hsvi",
       "civility": "Monsieur",
-      "firstName": "Bastien",
-      "lastName": "Capel",
-      "subject": "Mathématiques",
-      "email": "bastien.capel@lfjpsaly.org"
+      "lastName": "ANE",
+      "firstName": "Alassane",
+      "subject": "HISTOIRE GEOGRAPHIE, SCIENCES ECONOMIQUES ET SOCIALES",
+      "email": "alassane.ane@lfjpsaly.org"
     },
     {
-      "id": "teacher-2",
+      "id": "teach-1793441834955-2-zgt2",
+      "civility": "Monsieur",
+      "lastName": "BARITOU",
+      "firstName": "Olivier",
+      "subject": "FRANCAIS",
+      "email": "olivier.baritou@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-3-2isg",
       "civility": "Madame",
-      "firstName": "Sophie",
-      "lastName": "Diop",
-      "subject": "Histoire-Géographie",
-      "email": "sophie.diop@lfjpsaly.org"
+      "lastName": "BOSSU",
+      "firstName": "Claire",
+      "subject": "HISTOIRE GEOGRAPHIE",
+      "email": "claire.bossu@lfjpsaly.org"
     },
     {
-      "id": "teacher-3",
+      "id": "teach-1793441834955-4-shi5",
+      "civility": "Madame",
+      "lastName": "CHABERT",
+      "firstName": "Karine",
+      "subject": "MATHEMATIQUES",
+      "email": "karine.chabert@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-5-f2z7",
       "civility": "Monsieur",
-      "firstName": "Amadou",
-      "lastName": "Ndiaye",
-      "subject": "Sciences Physiques",
-      "email": "amadou.ndiaye@lfjpsaly.org"
+      "lastName": "CNED",
+      "firstName": "cned",
+      "subject": "Enseignement Général",
+      "email": "c.cned@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-6-wtus",
+      "civility": "Monsieur",
+      "lastName": "COSTE",
+      "firstName": "Clara",
+      "subject": "Enseignement Général",
+      "email": "c.coste@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-7-0wxe",
+      "civility": "Madame",
+      "lastName": "D'AQUINO",
+      "firstName": "Roselyne",
+      "subject": "PRIO - ADN",
+      "email": "orientation@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-8-ubzn",
+      "civility": "Madame",
+      "lastName": "DABLIN",
+      "firstName": "Lorraine",
+      "subject": "ARTS PLASTIQUES",
+      "email": "lorraine.dablin@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-9-u4ed",
+      "civility": "Monsieur",
+      "lastName": "DAVID",
+      "firstName": "Vincent",
+      "subject": "SCIENCES ET VIE DE LA TERRE",
+      "email": "vincent.david@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-10-95tm",
+      "civility": "Madame",
+      "lastName": "DIADIO",
+      "firstName": "Ira",
+      "subject": "DOCUMENTATION",
+      "email": "ira.diadio@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-11-5wuc",
+      "civility": "Monsieur",
+      "lastName": "DIANDY",
+      "firstName": "Antoine",
+      "subject": "EDUCATION MUSICALE",
+      "email": "antoine.diandy@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-12-mg1q",
+      "civility": "Madame",
+      "lastName": "DRAME",
+      "firstName": "Claire",
+      "subject": "EDUCATION PHYSIQUE ET SPORTIVE",
+      "email": "claire.drame@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-13-rsw0",
+      "civility": "Madame",
+      "lastName": "DUFAY",
+      "firstName": "Maguette",
+      "subject": "MATHEMATIQUES",
+      "email": "maguette.dufay@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-14-pqa7",
+      "civility": "Monsieur",
+      "lastName": "FALL",
+      "firstName": "Baba",
+      "subject": "SCIENCES PHYSIQUES ET CHIMIE",
+      "email": "baba.fall@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-15-b5ed",
+      "civility": "Monsieur",
+      "lastName": "FAYE",
+      "firstName": "François",
+      "subject": "ANGLAIS",
+      "email": "francois.faye@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-16-0g30",
+      "civility": "Madame",
+      "lastName": "FAYE",
+      "firstName": "Maryelle",
+      "subject": "FRANCAIS",
+      "email": "maryelle.faye@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-17-yz3y",
+      "civility": "Monsieur",
+      "lastName": "FRAYON",
+      "firstName": "Antoine",
+      "subject": "TECHNOLOGIE, SCIENCE NUMERIQUE",
+      "email": "antoine.frayon@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-18-q44i",
+      "civility": "Madame",
+      "lastName": "GIBUS",
+      "firstName": "Amandine",
+      "subject": "ESPAGNOL",
+      "email": "amandine.gibus@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-19-n1o7",
+      "civility": "Monsieur",
+      "lastName": "GOMIS",
+      "firstName": "Alain",
+      "subject": "PHILOSOPHIE",
+      "email": "alain.gomis@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-20-f97z",
+      "civility": "Madame",
+      "lastName": "JAÏT",
+      "firstName": "Layla",
+      "subject": "ANGLAIS",
+      "email": "layla.jait@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-21-zk13",
+      "civility": "Madame",
+      "lastName": "MBOUP",
+      "firstName": "Nathalie",
+      "subject": "SCIENCES ET VIE DE LA TERRE",
+      "email": "nathalie.mboup@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-22-rg81",
+      "civility": "Madame",
+      "lastName": "MICHON GUILLAUME",
+      "firstName": "Mathilde",
+      "subject": "HISTOIRE GEOGRAPHIE",
+      "email": "mathilde.michonguillaume@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-23-swlk",
+      "civility": "Madame",
+      "lastName": "MOURAIN DIOP",
+      "firstName": "Fanelly",
+      "subject": "FRANCAIS",
+      "email": "fanelly.mouraindiop@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-24-7g3b",
+      "civility": "Monsieur",
+      "lastName": "NDAW",
+      "firstName": "Adama",
+      "subject": "SCIENCES PHYSIQUES ET CHIMIE",
+      "email": "adama.ndaw@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-25-qimg",
+      "civility": "Monsieur",
+      "lastName": "NDIAYE",
+      "firstName": "Alassane",
+      "subject": "EDUCATION PHYSIQUE ET SPORTIVE",
+      "email": "alassane.ndiaye@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-26-5dto",
+      "civility": "Madame",
+      "lastName": "PEREZ",
+      "firstName": "Fanny",
+      "subject": "DOCUMENTATION",
+      "email": "fanny.perez@lfjpsal.org"
+    },
+    {
+      "id": "teach-1793441834955-27-f60m",
+      "civility": "Monsieur",
+      "lastName": "PIAGGIO",
+      "firstName": "Fernando",
+      "subject": "ESPAGNOL",
+      "email": "fernando.piaggio@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-28-jtm5",
+      "civility": "Madame",
+      "lastName": "PORTER",
+      "firstName": "Elizabeth",
+      "subject": "ANGLAIS",
+      "email": "elizabeth.porter@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-29-d22l",
+      "civility": "Madame",
+      "lastName": "RIVIERE",
+      "firstName": "Sandrine",
+      "subject": "MATHEMATIQUES",
+      "email": "sandrine.riviere@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-30-fxjs",
+      "civility": "Monsieur",
+      "lastName": "SERVATE",
+      "firstName": "Samuel",
+      "subject": "MATHEMATIQUES",
+      "email": "samuel.servate@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793441834955-31-u7n3",
+      "civility": "Monsieur",
+      "lastName": "THOMAS",
+      "firstName": "Yvon",
+      "subject": "HISTOIRE GEOGRAPHIE",
+      "email": "yvon.thomas@lfjpsaly.org"
     }
   ],
-  "surveillances": [
-    {
-      "id": "surv-1",
-      "examTitle": "Mathématiques Terminale",
-      "teacherName": "M. Bastien Capel",
-      "roomName": "Salle S12",
-      "date": "2026-04-07",
-      "timeSlot": "08h00 - 12h00",
-      "mission": "Surveillance principale"
-    },
-    {
-      "id": "surv-2",
-      "examTitle": "Oraux DNB blanc",
-      "teacherName": "Mme Sophie Diop",
-      "roomName": "Salle S14",
-      "date": "2026-05-20",
-      "timeSlot": "08h00 - 12h30",
-      "mission": "Membre du jury oral"
-    }
-  ],
-  "candidates": [
-    {
-      "id": "cand-1",
-      "firstName": "Fatou",
-      "lastName": "Sow",
-      "className": "Terminale G1",
-      "examName": "Bac blanc Mathématiques",
-      "roomName": "Salle S12",
-      "convocationTime": "07h45",
-      "accommodation": "Aucun"
-    },
-    {
-      "id": "cand-2",
-      "firstName": "Alexandre",
-      "lastName": "Fall",
-      "className": "Terminale G2",
-      "examName": "Bac blanc Mathématiques",
-      "roomName": "Salle S12",
-      "convocationTime": "07h45",
-      "accommodation": "Aucun"
-    },
-    {
-      "id": "cand-3",
-      "firstName": "Aïssatou",
-      "lastName": "Diallo",
-      "className": "3ème A",
-      "examName": "Oraux DNB blanc",
-      "roomName": "Salle S14",
-      "convocationTime": "08h15",
-      "accommodation": "Tiers-temps"
-    }
-  ]
+  "surveillances": [],
+  "candidates": []
 }
