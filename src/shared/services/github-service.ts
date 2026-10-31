@@ -12,6 +12,21 @@ import orgaDnbPageRaw from "../../features/orga-dnb/pages/OrgaDnbPage.tsx?raw";
 import convocationsPageRaw from "../../features/convocations/pages/ConvocationsPage.tsx?raw";
 import cmsStoreRaw from "./cms-store.ts?raw";
 import githubServiceRaw from "./github-service.ts?raw";
+import pronoteCsvServiceRaw from "./pronote-csv-service.ts?raw";
+import adminSidebarRaw from "../../features/admin/components/AdminSidebar.tsx?raw";
+import configSectionRaw from "../../features/admin/components/ConfigSection.tsx?raw";
+import vitrinePublishSectionRaw from "../../features/admin/components/VitrinePublishSection.tsx?raw";
+import dataAmenagementsSectionRaw from "../../features/admin/components/DataAmenagementsSection.tsx?raw";
+import secPochettesSectionRaw from "../../features/admin/components/SecPochettesSection.tsx?raw";
+import organizationSectionRaw from "../../features/admin/components/OrganizationSection.tsx?raw";
+import planningSectionsRaw from "../../features/admin/components/PlanningSections.tsx?raw";
+import convocSectionsRaw from "../../features/admin/components/ConvocSections.tsx?raw";
+import viewEdtSectionRaw from "../../features/admin/components/ViewEdtSection.tsx?raw";
+import corrRepartitionSectionRaw from "../../features/admin/components/CorrRepartitionSection.tsx?raw";
+import resultsSectionsRaw from "../../features/admin/components/ResultsSections.tsx?raw";
+import dataElevesSectionRaw from "../../features/admin/components/DataElevesSection.tsx?raw";
+import dataSallesSectionRaw from "../../features/admin/components/DataSallesSection.tsx?raw";
+import dataProfsSectionRaw from "../../features/admin/components/DataProfsSection.tsx?raw";
 
 export interface GitHubUser {
   login: string;
@@ -482,13 +497,28 @@ export async function pushCmsChangesToGitHub({
 
     const filesToSync: Array<{ path: string; content: string }> = [
       { path: "src/shared/services/cms-store.ts", content: cmsStoreRaw },
+      { path: "src/shared/services/pronote-csv-service.ts", content: pronoteCsvServiceRaw },
+      { path: "src/shared/services/github-service.ts", content: githubServiceRaw },
       { path: "src/features/home/constants.ts", content: tsCode },
       { path: "src/app/App.tsx", content: appTsxRaw },
       { path: "src/features/home/pages/HomePage.tsx", content: homePageRaw },
       { path: "src/features/admin/pages/AdminPage.tsx", content: adminPageRaw },
+      { path: "src/features/admin/components/AdminSidebar.tsx", content: adminSidebarRaw },
+      { path: "src/features/admin/components/ConfigSection.tsx", content: configSectionRaw },
+      { path: "src/features/admin/components/VitrinePublishSection.tsx", content: vitrinePublishSectionRaw },
+      { path: "src/features/admin/components/DataAmenagementsSection.tsx", content: dataAmenagementsSectionRaw },
+      { path: "src/features/admin/components/SecPochettesSection.tsx", content: secPochettesSectionRaw },
+      { path: "src/features/admin/components/OrganizationSection.tsx", content: organizationSectionRaw },
+      { path: "src/features/admin/components/PlanningSections.tsx", content: planningSectionsRaw },
+      { path: "src/features/admin/components/ConvocSections.tsx", content: convocSectionsRaw },
+      { path: "src/features/admin/components/ViewEdtSection.tsx", content: viewEdtSectionRaw },
+      { path: "src/features/admin/components/CorrRepartitionSection.tsx", content: corrRepartitionSectionRaw },
+      { path: "src/features/admin/components/ResultsSections.tsx", content: resultsSectionsRaw },
+      { path: "src/features/admin/components/DataElevesSection.tsx", content: dataElevesSectionRaw },
+      { path: "src/features/admin/components/DataSallesSection.tsx", content: dataSallesSectionRaw },
+      { path: "src/features/admin/components/DataProfsSection.tsx", content: dataProfsSectionRaw },
       { path: "src/features/orga-dnb/pages/OrgaDnbPage.tsx", content: orgaDnbPageRaw },
       { path: "src/features/convocations/pages/ConvocationsPage.tsx", content: convocationsPageRaw },
-      { path: "src/shared/services/github-service.ts", content: githubServiceRaw },
       { path: "src/features/home/components/HomeCallToActionCard.tsx", content: homeCallToActionCardRaw },
       { path: "src/features/home/pages/SchoolYearPage.tsx", content: schoolYearPageRaw },
       { path: "src/features/home/pages/SchoolExamPage.tsx", content: schoolExamPageRaw },

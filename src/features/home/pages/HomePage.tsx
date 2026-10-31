@@ -13,11 +13,8 @@ import {
   Users,
   GraduationCap,
   Award,
-  School,
-  ExternalLink,
   ChevronDown,
   ChevronUp,
-  ShieldCheck,
   FileText,
 } from "lucide-react";
 

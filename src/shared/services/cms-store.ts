@@ -734,6 +734,18 @@ export function useCmsData() {
     setData(next);
   };
 
+  const setRooms = (newRooms: CmsRoom[]) => {
+    const next: CmsData = { ...data, rooms: newRooms };
+    saveCmsData(next);
+    setData(next);
+  };
+
+  const setTeachers = (newTeachers: CmsTeacher[]) => {
+    const next: CmsData = { ...data, teachers: newTeachers };
+    saveCmsData(next);
+    setData(next);
+  };
+
   const saveEntireData = (nextData: CmsData) => {
     saveCmsData(nextData);
     setData(nextData);
@@ -762,9 +774,11 @@ export function useCmsData() {
     addRoom,
     updateRoom,
     deleteRoom,
+    setRooms,
     addTeacher,
     updateTeacher,
     deleteTeacher,
+    setTeachers,
     addSurveillance,
     updateSurveillance,
     deleteSurveillance,
