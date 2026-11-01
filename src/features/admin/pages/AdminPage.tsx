@@ -69,7 +69,6 @@ import DataElevesSection from "../components/DataElevesSection";
 import DataSallesSection from "../components/DataSallesSection";
 import DataProfsSection from "../components/DataProfsSection";
 import CreneauxSection from "../components/CreneauxSection";
-import SessionsExamensSection from "../components/SessionsExamensSection";
 
 export default function AdminPage() {
   const {
@@ -1124,15 +1123,14 @@ export default function AdminPage() {
               {[
                 { id: "config", label: "1. Paramètres & Logo", icon: "⚙️" },
                 { id: "data-eleves", label: "2. Données Pronote", icon: "📂" },
-                { id: "sessions-examens", label: "3. Sessions", icon: "📋" },
-                { id: "creneaux-epreuves", label: "4. Créneaux", icon: "🕒" },
-                { id: "organization", label: "5. Répartition & Brassage", icon: "🧩" },
-                { id: "planning-rooms", label: "6. Plannings", icon: "📅" },
-                { id: "view-edt", label: "7. Vers EDT", icon: "➡️" },
-                { id: "convoc-eleves", label: "8. Convocations", icon: "📨" },
-                { id: "corr-repartition", label: "9. Corrections & Notes", icon: "📦" },
-                { id: "vitrine-publish", label: "10. Vitrine", icon: "📢" },
-                { id: "deployment", label: "11. Déploiement", icon: "🚀" },
+                { id: "creneaux-epreuves", label: "3. Créneaux", icon: "🕒" },
+                { id: "organization", label: "4. Répartition & Brassage", icon: "🧩" },
+                { id: "planning-rooms", label: "5. Plannings", icon: "📅" },
+                { id: "view-edt", label: "6. Vers EDT", icon: "➡️" },
+                { id: "convoc-eleves", label: "7. Convocations", icon: "📨" },
+                { id: "corr-repartition", label: "8. Corrections & Notes", icon: "📦" },
+                { id: "vitrine-publish", label: "9. Vitrine", icon: "📢" },
+                { id: "deployment", label: "10. Déploiement", icon: "🚀" },
               ].map((step, idx) => {
                 const isActive =
                   currentSection === step.id ||
@@ -1230,22 +1228,7 @@ export default function AdminPage() {
             />
           )}
 
-          {/* 3. SESSIONS D'EXAMENS */}
-          {currentSection === "sessions-examens" && (
-            <SessionsExamensSection
-              exams={cmsData.exams}
-              examSlots={cmsData.examSlots || []}
-              onAddExam={addExam}
-              onUpdateExam={updateExam}
-              onDeleteExam={deleteExam}
-              onNavigateToSlots={() => {
-                setCurrentSection("creneaux-epreuves");
-              }}
-              onShowNotification={showNotification}
-            />
-          )}
-
-          {/* 4. CRÉNEAUX DES ÉPREUVES */}
+          {/* 3. CRÉNEAUX DES ÉPREUVES */}
           {currentSection === "creneaux-epreuves" && (
             <CreneauxSection
               examSlots={cmsData.examSlots || []}
@@ -1259,7 +1242,7 @@ export default function AdminPage() {
             />
           )}
 
-          {/* 5. RÉPARTITION & BRASSAGE (ÉLÈVES + SURVEILLANTS) */}
+          {/* 4. RÉPARTITION & BRASSAGE (ÉLÈVES + SURVEILLANTS) */}
           {currentSection === "organization" && (
             <OrganizationSection
               candidates={cmsData.candidates}

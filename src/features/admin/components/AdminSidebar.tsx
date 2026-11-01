@@ -29,7 +29,6 @@ import {
   ChevronRight,
   RotateCcw,
   Clock,
-  ClipboardList,
 } from "lucide-react";
 
 export type AdminSection =
@@ -39,7 +38,6 @@ export type AdminSection =
   | "data-profs"
   | "data-amenagements"
   | "sec-pochettes"
-  | "sessions-examens"
   | "creneaux-epreuves"
   | "organization"
   | "planning-rooms"
@@ -248,27 +246,7 @@ export default function AdminSidebar({
           )}
         </div>
 
-        {/* 3. Sessions d'Examens */}
-        <button
-          onClick={() => onSelectSection("sessions-examens")}
-          className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
-            currentSection === "sessions-examens"
-              ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
-              : "hover:bg-white/5 hover:text-white"
-          }`}
-        >
-          <div className="flex items-center gap-2.5">
-            <ClipboardList className="h-4 w-4 shrink-0 text-amber-400" />
-            <span>📋 3. Sessions d'Examens</span>
-          </div>
-          {typeof examsCount === "number" && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/30 text-amber-200 font-bold">
-              {examsCount}
-            </span>
-          )}
-        </button>
-
-        {/* 4. Créneaux des Épreuves */}
+        {/* 3. Créneaux des Épreuves (NEW!) */}
         <button
           onClick={() => onSelectSection("creneaux-epreuves")}
           className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
@@ -279,7 +257,7 @@ export default function AdminSidebar({
         >
           <div className="flex items-center gap-2.5">
             <Clock className="h-4 w-4 shrink-0 text-cyan-400" />
-            <span>🕒 4. Créneaux des Épreuves</span>
+            <span>🕒 3. Créneaux des Épreuves</span>
           </div>
           {typeof examSlotsCount === "number" && (
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/30 text-cyan-200 font-bold">
@@ -288,7 +266,7 @@ export default function AdminSidebar({
           )}
         </button>
 
-        {/* 5. Répartition & Brassage */}
+        {/* 4. Répartition & Brassage */}
         <button
           onClick={() => onSelectSection("organization")}
           className={`w-full flex items-center gap-2.5 px-4 py-3 text-left transition border-b border-white/5 ${
@@ -298,10 +276,10 @@ export default function AdminSidebar({
           }`}
         >
           <Grid className="h-4 w-4 shrink-0 text-emerald-400" />
-          <span>🧩 5. Répartition & Brassage</span>
+          <span>🧩 4. Répartition & Brassage</span>
         </button>
 
-        {/* 6. Planning (Submenu) */}
+        {/* 5. Planning (Submenu) */}
         <div>
           <button
             onClick={() => onToggleSubmenu("planningMenu")}
@@ -313,7 +291,7 @@ export default function AdminSidebar({
           >
             <div className="flex items-center gap-2.5">
               <Calendar className="h-4 w-4 shrink-0 text-indigo-400" />
-              <span>📅 6. Plannings</span>
+              <span>📅 5. Plannings</span>
             </div>
             {openSubmenus.planningMenu ? (
               <ChevronDown className="h-3.5 w-3.5 opacity-60" />
@@ -351,7 +329,7 @@ export default function AdminSidebar({
           )}
         </div>
 
-        {/* 7. Vers EDT */}
+        {/* 6. Vers EDT */}
         <button
           onClick={() => onSelectSection("view-edt")}
           className={`w-full flex items-center gap-2.5 px-4 py-3 text-left transition border-b border-white/5 ${
@@ -361,10 +339,10 @@ export default function AdminSidebar({
           }`}
         >
           <ArrowRightCircle className="h-4 w-4 shrink-0 text-teal-400" />
-          <span>➡️ 7. Vers EDT</span>
+          <span>➡️ 6. Vers EDT</span>
         </button>
 
-        {/* 8. Convocations (Submenu) */}
+        {/* 7. Convocations (Submenu) */}
         <div>
           <button
             onClick={() => onToggleSubmenu("convocMenu")}
@@ -376,7 +354,7 @@ export default function AdminSidebar({
           >
             <div className="flex items-center gap-2.5">
               <Mail className="h-4 w-4 shrink-0 text-amber-400" />
-              <span>📨 8. Convocations</span>
+              <span>📨 7. Convocations</span>
             </div>
             {openSubmenus.convocMenu ? (
               <ChevronDown className="h-3.5 w-3.5 opacity-60" />
@@ -414,7 +392,7 @@ export default function AdminSidebar({
           )}
         </div>
 
-        {/* 9. Corrections & Résultats (Submenu) */}
+        {/* 8. Corrections & Résultats (Submenu) */}
         <div>
           <button
             onClick={() => onToggleSubmenu("resMenu")}
@@ -426,7 +404,7 @@ export default function AdminSidebar({
           >
             <div className="flex items-center gap-2.5">
               <BarChart3 className="h-4 w-4 shrink-0 text-cyan-400" />
-              <span>📊 9. Corrections & Résultats</span>
+              <span>📊 8. Corrections & Résultats</span>
             </div>
             {openSubmenus.resMenu ? (
               <ChevronDown className="h-3.5 w-3.5 opacity-60" />
@@ -512,7 +490,7 @@ export default function AdminSidebar({
           )}
         </div>
 
-        {/* 10. Vitrine & Publications (Pilote central de publication) */}
+        {/* 9. Vitrine & Publications (Pilote central de publication) */}
         <button
           onClick={() => onSelectSection("vitrine-publish")}
           className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
@@ -523,14 +501,14 @@ export default function AdminSidebar({
         >
           <div className="flex items-center gap-2.5">
             <Eye className="h-4 w-4 shrink-0 text-emerald-400" />
-            <span>📢 10. Vitrine & Publications</span>
+            <span>📢 9. Vitrine & Publications</span>
           </div>
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-300 font-bold uppercase">
             Acteurs
           </span>
         </button>
 
-        {/* 11. Déploiement Git & Vercel */}
+        {/* 10. Déploiement Git & Vercel */}
         <button
           onClick={() => onSelectSection("deployment")}
           className={`w-full flex items-center gap-2.5 px-4 py-3 text-left transition border-b border-white/5 ${
@@ -540,7 +518,7 @@ export default function AdminSidebar({
           }`}
         >
           <UploadCloud className="h-4 w-4 shrink-0 text-sky-400" />
-          <span>🚀 11. Déploiement Git & Vercel</span>
+          <span>🚀 10. Déploiement Git & Vercel</span>
         </button>
       </nav>
 
