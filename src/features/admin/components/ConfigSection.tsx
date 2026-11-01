@@ -23,6 +23,8 @@ interface ConfigSectionProps {
   exams: CmsExam[];
   onTogglePublishExam: (id: string, isPublished: boolean) => void;
   onShowNotification: (msg: string) => void;
+  onResetToDefaults?: () => void;
+  onResetForNewSchoolYear?: (newYear: string, preserveCatalogs?: boolean) => void;
 }
 
 export default function ConfigSection({
@@ -31,6 +33,8 @@ export default function ConfigSection({
   exams,
   onTogglePublishExam,
   onShowNotification,
+  onResetToDefaults,
+  onResetForNewSchoolYear,
 }: ConfigSectionProps) {
   const [schoolName, setSchoolName] = useState(siteInfo.title || "Lycée Français Jacques Prévert");
   const [schoolCity, setSchoolCity] = useState("Saly, Sénégal");
@@ -43,12 +47,31 @@ export default function ConfigSection({
     siteInfo.logos && siteInfo.logos.length > 0
       ? siteInfo.logos
       : [
-          { src: "https://lfjpsaly.org/wp-content/uploads/2021/09/Logo-LFJP-ok-1.png", alt: "Lycée Français Jacques Prévert" },
-          { src: "https://upload.wikimedia.org/wikipedia/fr/thumb/a/a2/Logo_AEFE_2020.svg/1200px-Logo_AEFE_2020.svg.png", alt: "Réseau AEFE" },
+          { src: "/assets/aistudio/logo-lfjp_62451311.png", alt: "Lycée Français Jacques Prévert - Saly, Sénégal" },
+          { src: "https://aefe.fr/sites/default/files/asset/document/logo-aefe-bleu-et-orange_0.svg", alt: "Réseau AEFE" },
         ]
   );
   const [newLogoUrl, setNewLogoUrl] = useState<string>("");
   const [newLogoAlt, setNewLogoAlt] = useState<string>("");
+
+  // Next school year reset state
+  const [nextYearInput, setNextYearInput] = useState<string>(() => {
+    const cur = siteInfo.schoolYear || "2025-2026";
+    const parts = cur.split("-");
+    if (parts.length === 2 && !isNaN(Number(parts[0])) && !isNaN(Number(parts[1]))) {
+      return `${Number(parts[0]) + 1}-${Number(parts[1]) + 1}`;
+    }
+    return "2026-2027";
+  });
+  const [preserveCatalogs, setPreserveCatalogs] = useState(true);
+  const [confirmModal, setConfirmModal] = useState<"nextYear" | "factory" | null>(null);
+
+  // Sync sessionYear with siteInfo prop if updated externally
+  React.useEffect(() => {
+    if (siteInfo.schoolYear) {
+      setSessionYear(siteInfo.schoolYear);
+    }
+  }, [siteInfo.schoolYear]);
 
   // Sciences checkboxes
   const [sciencesConfig, setSciencesConfig] = useState({
@@ -111,18 +134,18 @@ export default function ConfigSection({
   const handleSetPresetLogo = (preset: "lfjp" | "aefe" | "both") => {
     let next: Array<{ src: string; alt?: string }> = [];
     if (preset === "lfjp") {
-      next = [{ src: "https://lfjpsaly.org/wp-content/uploads/2021/09/Logo-LFJP-ok-1.png", alt: "Lycée Français Jacques Prévert de Saly" }];
+      next = [{ src: "/assets/aistudio/logo-lfjp_62451311.png", alt: "Lycée Français Jacques Prévert - Saly, Sénégal" }];
     } else if (preset === "aefe") {
-      next = [{ src: "https://upload.wikimedia.org/wikipedia/fr/thumb/a/a2/Logo_AEFE_2020.svg/1200px-Logo_AEFE_2020.svg.png", alt: "Agence pour l'Enseignement Français à l'Étranger (AEFE)" }];
+      next = [{ src: "https://aefe.fr/sites/default/files/asset/document/logo-aefe-bleu-et-orange_0.svg", alt: "Agence pour l'Enseignement Français à l'Étranger (AEFE)" }];
     } else {
       next = [
-        { src: "https://lfjpsaly.org/wp-content/uploads/2021/09/Logo-LFJP-ok-1.png", alt: "Lycée Français Jacques Prévert" },
-        { src: "https://upload.wikimedia.org/wikipedia/fr/thumb/a/a2/Logo_AEFE_2020.svg/1200px-Logo_AEFE_2020.svg.png", alt: "Réseau AEFE" },
+        { src: "/assets/aistudio/logo-lfjp_62451311.png", alt: "Lycée Français Jacques Prévert - Saly, Sénégal" },
+        { src: "https://aefe.fr/sites/default/files/asset/document/logo-aefe-bleu-et-orange_0.svg", alt: "Agence pour l'Enseignement Français à l'Étranger (AEFE)" },
       ];
     }
     setLogos(next);
     onUpdateSiteInfo({ logos: next });
-    onShowNotification("Logos officiels rétablis !");
+    onShowNotification("Logos officiels LFJP & AEFE rétablis avec succès !");
   };
 
   const handleSaveParams = () => {
@@ -696,6 +719,159 @@ export default function ConfigSection({
           </div>
         </div>
       </div>
+
+      {/* Card 3: Réinitialisation pour Nouvelle Année Scolaire (Remise à zéro) */}
+      <div className="bg-white rounded-xl border border-rose-200/80 shadow-xs p-6 space-y-5">
+        <div className="border-b border-rose-100 pb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 rounded-lg bg-rose-50 text-rose-600">
+              <RotateCcw className="h-4 w-4" />
+            </span>
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm">
+                Réinitialisation & Préparation pour la Nouvelle Année Scolaire
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Passez à la session suivante ou remettez les données et configurations à zéro
+              </p>
+            </div>
+          </div>
+          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 uppercase">
+            Rentrée / Nouvelle Session
+          </span>
+        </div>
+
+        <div className="p-4 rounded-xl bg-rose-50/60 border border-rose-200 text-xs text-rose-900 space-y-2">
+          <p className="font-semibold flex items-center gap-1.5">
+            <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+            <span>Comment utiliser la réinitialisation pour l'année prochaine ?</span>
+          </p>
+          <p className="text-slate-600 leading-relaxed text-[11px]">
+            Pour préparer une nouvelle session d'examens (ex: passage de <strong>{sessionYear}</strong> à <strong>{nextYearInput}</strong>), cette opération vide les anciens élèves, leurs affectations de table et les créneaux passés afin de démarrer sur une base propre. Vous pouvez choisir de conserver vos salles et vos professeurs pour éviter de devoir les réimporter.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Nouvelle Année Scolaire cible :
+            </label>
+            <input
+              type="text"
+              value={nextYearInput}
+              onChange={(e) => setNextYearInput(e.target.value)}
+              placeholder="Ex: 2026-2027"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden font-bold text-slate-800"
+            />
+          </div>
+
+          <div className="pt-4">
+            <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 select-none">
+              <input
+                type="checkbox"
+                checked={preserveCatalogs}
+                onChange={(e) => setPreserveCatalogs(e.target.checked)}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+              />
+              <span className="font-medium">
+                Conserver le catalogue des salles et la liste des professeurs
+              </span>
+            </label>
+            <p className="text-[10px] text-slate-400 mt-0.5 pl-6">
+              Recommandé : évite de ressaisir les locaux et le personnel enseignant
+            </p>
+          </div>
+        </div>
+
+        <div className="pt-2 flex flex-wrap items-center gap-3 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={() => setConfirmModal("nextYear")}
+            className="px-4 py-2.5 rounded-xl bg-[#002060] hover:bg-[#001746] text-white text-xs font-bold transition shadow-xs flex items-center gap-2"
+          >
+            <Sparkles className="h-4 w-4 text-amber-300" />
+            <span>✨ Réinitialiser pour l'Année {nextYearInput}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setConfirmModal("factory")}
+            className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 text-xs font-semibold transition border border-slate-300 hover:border-rose-300 flex items-center gap-1.5"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            <span>Remise à zéro totale (Paramètres d'usine)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Confirmation Modal */}
+      {confirmModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-left border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="p-3 bg-rose-100 rounded-xl">
+                <AlertCircle className="h-6 w-6" />
+              </div>
+              <div>
+                <h4 className="font-bold text-base text-slate-900">
+                  {confirmModal === "nextYear"
+                    ? `Confirmer la bascule vers ${nextYearInput} ?`
+                    : "Confirmer la remise à zéro totale ?"}
+                </h4>
+                <p className="text-xs text-slate-500">
+                  Cette action réinitialise les données des examens
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200">
+              {confirmModal === "nextYear"
+                ? `Vous êtes sur le point de préparer la session ${nextYearInput}. Les listes de candidats, les affectations aux salles et les surveillances de l'année précédente seront vidées.${
+                    preserveCatalogs
+                      ? " Vos salles et vos professeurs seront préservés."
+                      : " L'ensemble des données sera supprimé."
+                  }`
+                : "Attention : Toutes les données enregistrées dans votre navigateur seront réinitialisées à leurs valeurs d'origine avec le logo officiel du LFJP."}
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmModal(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              >
+                Annuler
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirmModal === "nextYear") {
+                    if (onResetForNewSchoolYear) {
+                      onResetForNewSchoolYear(nextYearInput, preserveCatalogs);
+                    }
+                    onUpdateSiteInfo({ schoolYear: nextYearInput });
+                    setSessionYear(nextYearInput);
+                    onShowNotification(
+                      `🎉 Année scolaire basculée sur ${nextYearInput} ! Données réinitialisées et vitrine synchronisée.`
+                    );
+                  } else {
+                    if (onResetToDefaults) {
+                      onResetToDefaults();
+                    }
+                    onShowNotification("🔄 Toutes les configurations ont été remises à zéro d'origine.");
+                  }
+                  setConfirmModal(null);
+                }}
+                className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition shadow-xs flex items-center gap-1.5"
+              >
+                <Check className="h-4 w-4" />
+                <span>Oui, réinitialiser maintenant</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
