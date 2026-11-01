@@ -47,6 +47,13 @@ export default function OrganizationSection({
   const [dispatchMode, setDispatchMode] = useState<"brassage" | "alphabetique">("brassage");
   const [separateTT, setSeparateTT] = useState<boolean>(true);
   const [anonymatPrefix, setAnonymatPrefix] = useState<string>("DNB-");
+  const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>(() => rooms.map((r) => r.id));
+  const [ttRoomIds, setTtRoomIds] = useState<string[]>(() => {
+    const defaultTT = rooms.filter(
+      (r) => r.name.toLowerCase().includes("tt") || r.notes?.toLowerCase().includes("tt")
+    );
+    return defaultTT.length > 0 ? defaultTT.map((r) => r.id) : rooms.length > 0 ? [rooms[rooms.length - 1].id] : [];
+  });
 
   // --- SURVEILLANTS ASSIGNMENT STATE ---
   const [selectedSlotId, setSelectedSlotId] = useState<string>("all");
@@ -61,34 +68,77 @@ export default function OrganizationSection({
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [candidates]);
 
-  // Total capacity of available rooms
+  // Selected mobilized rooms
+  const selectedRooms = useMemo(() => {
+    return rooms.filter((r) => selectedRoomIds.includes(r.id));
+  }, [rooms, selectedRoomIds]);
+
+  // Capacity of chosen rooms
+  const selectedCapacity = useMemo(() => {
+    return selectedRooms.reduce((acc, r) => acc + (r.capacity || 0), 0);
+  }, [selectedRooms]);
+
+  // Total capacity of all rooms in school
   const totalCapacity = useMemo(() => {
     return rooms.reduce((acc, r) => acc + (r.capacity || 0), 0);
   }, [rooms]);
 
-  // Breakdown by room
+  // Breakdown by room for the selected rooms
   const roomBreakdown = useMemo(() => {
     return rooms.map((r) => {
+      const isMobilized = selectedRoomIds.includes(r.id);
+      const isTT = ttRoomIds.includes(r.id);
       const assigned = candidates.filter((c) => c.roomName === r.name);
       const ttCount = assigned.filter((c) => c.accommodation?.includes("1/3")).length;
       return {
         room: r,
+        isMobilized,
+        isTT,
         assignedCount: assigned.length,
         ttCount,
         fillRate: r.capacity > 0 ? Math.round((assigned.length / r.capacity) * 100) : 0,
       };
     });
-  }, [rooms, candidates]);
+  }, [rooms, candidates, selectedRoomIds, ttRoomIds]);
 
-  // Main algorithm to dispatch candidates into rooms
+  // Toggle room selection for candidate dispatch
+  const handleToggleRoomSelection = (roomId: string) => {
+    if (selectedRoomIds.includes(roomId)) {
+      if (selectedRoomIds.length === 1) {
+        alert("Vous devez conserver au moins une salle mobilisée.");
+        return;
+      }
+      setSelectedRoomIds(selectedRoomIds.filter((id) => id !== roomId));
+    } else {
+      setSelectedRoomIds([...selectedRoomIds, roomId]);
+    }
+  };
+
+  // Toggle room as Tiers-Temps
+  const handleToggleTTRoom = (roomId: string) => {
+    if (ttRoomIds.includes(roomId)) {
+      setTtRoomIds(ttRoomIds.filter((id) => id !== roomId));
+    } else {
+      setTtRoomIds([...ttRoomIds, roomId]);
+    }
+  };
+
+  // Main algorithm to dispatch candidates into the SELECTED rooms
   const handleRunDispatch = () => {
     if (candidates.length === 0) {
       alert("Aucun candidat importé. Veuillez d'abord importer des élèves dans Données > Élèves.");
       return;
     }
-    if (rooms.length === 0) {
-      alert("Aucune salle configurée. Veuillez ajouter des salles dans Données > Salles.");
+    if (selectedRooms.length === 0) {
+      alert("Aucune salle sélectionnée. Veuillez cocher au moins une salle mobilisée.");
       return;
+    }
+
+    if (selectedCapacity < candidates.length) {
+      const confirmProceed = confirm(
+        `Attention : La capacité des salles sélectionnées (${selectedCapacity} places) est inférieure au nombre d'élèves (${candidates.length} élèves). Voulez-vous tout de même continuer ?`
+      );
+      if (!confirmProceed) return;
     }
 
     const updatedCandidates: CmsCandidate[] = [];
@@ -141,42 +191,44 @@ export default function OrganizationSection({
       );
     }
 
-    // Identify standard rooms and TT rooms
-    const ttRooms = rooms.filter(
-      (r) => r.name.toLowerCase().includes("tt") || r.notes?.toLowerCase().includes("tt")
-    );
-    const stdRooms = rooms.filter((r) => !ttRooms.includes(r));
+    // Partition selected rooms into TT and Standard
+    const chosenTtRooms = selectedRooms.filter((r) => ttRoomIds.includes(r.id));
+    const chosenStdRooms = selectedRooms.filter((r) => !ttRoomIds.includes(r.id));
 
-    const finalStdRooms = stdRooms.length > 0 ? stdRooms : rooms;
-    const finalTtRooms = ttRooms.length > 0 ? ttRooms : [rooms[rooms.length - 1]];
+    // Fallbacks if user didn't specify TT room
+    const finalTtRooms = chosenTtRooms.length > 0 ? chosenTtRooms : [selectedRooms[selectedRooms.length - 1]];
+    const finalStdRooms = chosenStdRooms.length > 0 ? chosenStdRooms : selectedRooms;
 
-    // 1. Assign TT students into TT rooms
-    let currentTTRoomIdx = 0;
-    let currentTTTable = 1;
     let globalAnonymatIndex = 101;
 
-    ttCandidates.sort((a, b) => a.lastName.localeCompare(b.lastName));
-    ttCandidates.forEach((student) => {
-      const room = finalTtRooms[currentTTRoomIdx] || rooms[0];
-      student.roomName = room.name;
-      student.tableNumber = String(currentTTTable);
-      student.anonymatNumber = `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
-      updatedCandidates.push(student);
+    // 1. Assign TT students into chosen TT rooms
+    if (ttCandidates.length > 0) {
+      let currentTTRoomIdx = 0;
+      let currentTTTable = 1;
 
-      currentTTTable++;
-      globalAnonymatIndex++;
-      if (currentTTTable > room.capacity && currentTTRoomIdx < finalTtRooms.length - 1) {
-        currentTTRoomIdx++;
-        currentTTTable = 1;
-      }
-    });
+      ttCandidates.sort((a, b) => a.lastName.localeCompare(b.lastName));
+      ttCandidates.forEach((student) => {
+        const room = finalTtRooms[currentTTRoomIdx] || selectedRooms[0];
+        student.roomName = room.name;
+        student.tableNumber = String(currentTTTable);
+        student.anonymatNumber = `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
+        updatedCandidates.push(student);
 
-    // 2. Assign Regular students into Standard rooms
+        currentTTTable++;
+        globalAnonymatIndex++;
+        if (currentTTTable > room.capacity && currentTTRoomIdx < finalTtRooms.length - 1) {
+          currentTTRoomIdx++;
+          currentTTTable = 1;
+        }
+      });
+    }
+
+    // 2. Assign Regular students into chosen Standard rooms
     let currentStdRoomIdx = 0;
     let currentStdTable = 1;
 
     sortedRegular.forEach((student) => {
-      const room = finalStdRooms[currentStdRoomIdx] || rooms[0];
+      const room = finalStdRooms[currentStdRoomIdx] || selectedRooms[0];
       student.roomName = room.name;
       student.tableNumber = String(currentStdTable);
       student.anonymatNumber = `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
@@ -192,7 +244,7 @@ export default function OrganizationSection({
 
     onSetCandidates(updatedCandidates);
     onShowNotification(
-      `🎉 Répartition effectuée avec succès ! ${updatedCandidates.length} élèves répartis dans ${rooms.length} salles.`
+      `🎉 Répartition réussie ! ${updatedCandidates.length} élèves répartis dans les ${selectedRooms.length} salles sélectionnées (${selectedCapacity} places dispo).`
     );
   };
 
@@ -486,57 +538,117 @@ export default function OrganizationSection({
             </div>
           </div>
 
-          {/* Remplissage et répartition actuelle par salle */}
+          {/* Salles Mobilisées & Remplissage */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
                 <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                   <School className="h-4 w-4 text-emerald-600" />
-                  <span>Remplissage & Attribution des Salles</span>
+                  <span>Salles mobilisées pour la répartition ({selectedRooms.length} / {rooms.length})</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Capacité totale : {totalCapacity} places pour {candidates.length} candidats inscrits.
+                  Cochez les salles utilisées et désignez la salle réservée aux élèves à besoins particuliers (Tiers-Temps).
                 </p>
               </div>
-              <span className="px-2.5 py-1 rounded bg-slate-100 font-bold text-xs text-slate-700">
-                {rooms.length} Salles Disponibles
-              </span>
+
+              {/* Capacity Banner Indicator */}
+              <div className="flex items-center gap-2">
+                <span
+                  className={`px-3 py-1 rounded-xl font-bold text-xs flex items-center gap-1.5 border ${
+                    selectedCapacity >= candidates.length
+                      ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                      : "bg-rose-50 text-rose-800 border-rose-200"
+                  }`}
+                >
+                  <span>
+                    Capacité : {selectedCapacity} places / {candidates.length} élèves
+                  </span>
+                  {selectedCapacity >= candidates.length ? "✓" : "⚠️ Manque de places"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRoomIds(rooms.map((r) => r.id))}
+                  className="text-xs text-indigo-600 hover:underline font-semibold"
+                >
+                  Toutes
+                </button>
+              </div>
             </div>
 
+            {/* Room Cards with Mobilization & TT toggles */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {roomBreakdown.map(({ room, assignedCount, ttCount, fillRate }) => (
+              {roomBreakdown.map(({ room, isMobilized, isTT, assignedCount, ttCount, fillRate }) => (
                 <div
                   key={room.id}
-                  className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2 hover:bg-white hover:border-[#3498db] transition"
+                  className={`p-4 rounded-xl border transition space-y-3 ${
+                    isMobilized
+                      ? isTT
+                        ? "border-purple-300 bg-purple-50/40 shadow-xs"
+                        : "border-slate-200 bg-white hover:border-[#3498db] shadow-xs"
+                      : "border-slate-200 bg-slate-100/60 opacity-60"
+                  }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-slate-900">{room.name}</span>
-                    <span className="text-[11px] font-semibold text-slate-500">
-                      {assignedCount} / {room.capacity} places
-                    </span>
-                  </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer font-bold text-sm text-slate-900">
+                      <input
+                        type="checkbox"
+                        checked={isMobilized}
+                        onChange={() => handleToggleRoomSelection(room.id)}
+                        className="rounded text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span>{room.name}</span>
+                    </label>
 
-                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full transition-all duration-300 ${
-                        fillRate > 100
-                          ? "bg-rose-500"
-                          : fillRate > 80
-                          ? "bg-amber-500"
-                          : "bg-emerald-500"
+                    <button
+                      type="button"
+                      disabled={!isMobilized}
+                      onClick={() => handleToggleTTRoom(room.id)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition border ${
+                        isTT
+                          ? "bg-purple-600 text-white border-purple-600"
+                          : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-purple-50 hover:text-purple-700"
                       }`}
-                      style={{ width: `${Math.min(fillRate, 100)}%` }}
-                    />
+                    >
+                      {isTT ? "♿ Salle TT" : "+ Marquer TT"}
+                    </button>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-                    <span>Remplissage : {fillRate}%</span>
-                    {ttCount > 0 && (
-                      <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[10px]">
-                        {ttCount} Tiers-temps
-                      </span>
-                    )}
-                  </div>
+                  {isMobilized ? (
+                    <>
+                      <div className="flex items-center justify-between text-xs text-slate-500">
+                        <span>Élèves affectés :</span>
+                        <span className="font-bold text-slate-900">
+                          {assignedCount} / {room.capacity} places
+                        </span>
+                      </div>
+
+                      <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            fillRate > 100
+                              ? "bg-rose-500"
+                              : fillRate > 80
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                          }`}
+                          style={{ width: `${Math.min(fillRate, 100)}%` }}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-slate-500">
+                        <span>Remplissage : {fillRate}%</span>
+                        {ttCount > 0 && (
+                          <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[10px]">
+                            {ttCount} Tiers-temps
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-[11px] text-slate-400 italic">
+                      Non mobilisée pour cette session (les élèves ne seront pas placés ici).
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -552,7 +664,7 @@ export default function OrganizationSection({
           {/* Controls Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-white border border-slate-200 shadow-2xs">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-slate-700">Sélectionner un Créneau :</span>
+              <span className="text-xs font-semibold text-slate-700">Créneau d'épreuve :</span>
               <select
                 value={selectedSlotId}
                 onChange={(e) => setSelectedSlotId(e.target.value)}
@@ -577,20 +689,24 @@ export default function OrganizationSection({
             </button>
           </div>
 
-          {/* Slots & Rooms Grid */}
+          {/* Slots & Rooms Grid Sorted Chronologically */}
           {examSlots.length === 0 ? (
             <div className="p-10 rounded-xl bg-white border-2 border-dashed border-slate-200 text-center text-slate-400 text-xs">
               Aucun créneau d'épreuve configuré. Allez dans l'Étape 3 : "Créneaux des Épreuves" pour créer le calendrier.
             </div>
           ) : (
             <div className="space-y-6">
-              {(selectedSlotId === "all"
-                ? examSlots
-                : examSlots.filter((s) => s.id === selectedSlotId)
-              ).map((slot) => {
-                const mobilizedRooms = slot.roomNames && slot.roomNames.length > 0
-                  ? rooms.filter((r) => slot.roomNames!.includes(r.name))
-                  : rooms;
+              {[...examSlots]
+                .sort((a, b) => {
+                  const d = (a.date || "").localeCompare(b.date || "");
+                  if (d !== 0) return d;
+                  return (a.startTime || "").localeCompare(b.startTime || "");
+                })
+                .filter((s) => selectedSlotId === "all" || s.id === selectedSlotId)
+                .map((slot) => {
+                  const mobilizedRooms = slot.roomNames && slot.roomNames.length > 0
+                    ? rooms.filter((r) => slot.roomNames!.includes(r.name))
+                    : selectedRooms;
 
                 return (
                   <div

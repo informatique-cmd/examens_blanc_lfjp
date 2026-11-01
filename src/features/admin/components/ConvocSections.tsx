@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Printer,
   Mail,
@@ -9,6 +9,7 @@ import {
   CheckCircle,
   Tag,
   Search,
+  Filter,
 } from "lucide-react";
 import type {
   CmsCandidate,
@@ -26,23 +27,46 @@ export function ConvocElevesSection({
   candidates,
   siteInfo,
 }: ConvocElevesSectionProps) {
-  const [selectedCandidateId, setSelectedCandidateId] = useState<string>(
-    candidates[0]?.id || ""
-  );
   const [printMode, setPrintMode] = useState<"convocation" | "etiquettes">("convocation");
-  const [search, setSearch] = useState("");
+  const [filterScope, setFilterScope] = useState<"single" | "room" | "class" | "all">("single");
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string>(candidates[0]?.id || "");
+  const [selectedRoomFilter, setSelectedRoomFilter] = useState<string>("all");
+  const [selectedClassFilter, setSelectedClassFilter] = useState<string>("all");
 
-  const candidate = candidates.find((c) => c.id === selectedCandidateId) || candidates[0];
+  // Distinct rooms from candidates
+  const distinctRooms = useMemo(() => {
+    const set = new Set<string>();
+    candidates.forEach((c) => {
+      if (c.roomName) set.add(c.roomName);
+    });
+    return Array.from(set).sort();
+  }, [candidates]);
 
-  const filteredCandidates = candidates.filter((c) => {
-    const q = search.toLowerCase();
-    return (
-      !q ||
-      c.lastName.toLowerCase().includes(q) ||
-      c.firstName.toLowerCase().includes(q) ||
-      c.className.toLowerCase().includes(q)
-    );
-  });
+  // Distinct classes from candidates
+  const distinctClasses = useMemo(() => {
+    const set = new Set<string>();
+    candidates.forEach((c) => {
+      if (c.className) set.add(c.className);
+    });
+    return Array.from(set).sort();
+  }, [candidates]);
+
+  // Target candidates to print based on selective filter
+  const candidatesToPrint = useMemo(() => {
+    if (filterScope === "single") {
+      const c = candidates.find((cand) => cand.id === selectedCandidateId) || candidates[0];
+      return c ? [c] : [];
+    }
+    if (filterScope === "room") {
+      if (selectedRoomFilter === "all") return candidates;
+      return candidates.filter((c) => c.roomName === selectedRoomFilter);
+    }
+    if (filterScope === "class") {
+      if (selectedClassFilter === "all") return candidates;
+      return candidates.filter((c) => c.className === selectedClassFilter);
+    }
+    return candidates;
+  }, [candidates, filterScope, selectedCandidateId, selectedRoomFilter, selectedClassFilter]);
 
   const handlePrint = () => {
     window.print();
@@ -50,21 +74,22 @@ export function ConvocElevesSection({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+      {/* Header (hidden on print) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 print:hidden">
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-sky-100 text-sky-800">
               Documents Officiels
             </span>
             <span className="text-xs text-slate-500">
-              Convocations & Étiquettes de table
+              Impression ciblée : Convocations & Étiquettes
             </span>
           </div>
           <h2 className="text-xl font-bold text-slate-900 mt-1">
-            🎓 Convocations des Candidats & Étiquettes
+            🎓 Convocations des Candidats & Étiquettes de Table
           </h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            Génération nominative des convocations aux épreuves et impression des étiquettes de table avec découpe anonymat.
+            Imprimez uniquement les documents nécessaires (par élève, par salle ou par classe).
           </p>
         </div>
 
@@ -73,183 +98,259 @@ export function ConvocElevesSection({
           className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition shadow-xs flex items-center gap-2 self-start sm:self-auto"
         >
           <Printer className="h-4 w-4" />
-          <span>Imprimer le document</span>
+          <span>Imprimer la sélection ({candidatesToPrint.length})</span>
         </button>
       </div>
 
-      {/* Switcher & Selector */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setPrintMode("convocation")}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
-              printMode === "convocation"
-                ? "bg-[#3498db] text-white shadow-xs"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            }`}
-          >
-            📄 Convocation Individuelle
-          </button>
-          <button
-            onClick={() => setPrintMode("etiquettes")}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
-              printMode === "etiquettes"
-                ? "bg-[#3498db] text-white shadow-xs"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            }`}
-          >
-            🏷️ Planche d'Étiquettes de Table DNB / Bac
-          </button>
+      {/* Selective Filters Bar (hidden on print) */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-4 space-y-3 print:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Mode Switcher */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPrintMode("convocation")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                printMode === "convocation"
+                  ? "bg-[#3498db] text-white shadow-xs"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              📄 Convocations Nominatives
+            </button>
+            <button
+              onClick={() => setPrintMode("etiquettes")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                printMode === "etiquettes"
+                  ? "bg-[#3498db] text-white shadow-xs"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              🏷️ Planche d'Étiquettes de Table
+            </button>
+          </div>
+
+          {/* Filter Scope Radio Tabs */}
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg text-xs">
+            <span className="text-[11px] font-semibold text-slate-500 px-2 flex items-center gap-1">
+              <Filter className="h-3 w-3" />
+              <span>Périmètre :</span>
+            </span>
+            {[
+              { id: "single", label: "Élève unique" },
+              { id: "room", label: "Par salle" },
+              { id: "class", label: "Par classe" },
+              { id: "all", label: "Tous les élèves" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setFilterScope(tab.id as any)}
+                className={`px-2.5 py-1 rounded-md font-medium transition ${
+                  filterScope === tab.id
+                    ? "bg-white text-slate-900 shadow-2xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {printMode === "convocation" && (
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <span className="text-xs text-slate-500 font-semibold">Choisir l'élève :</span>
-            <select
-              value={selectedCandidateId}
-              onChange={(e) => setSelectedCandidateId(e.target.value)}
-              className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white max-w-xs"
-            >
-              {candidates.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.lastName.toUpperCase()} {c.firstName} ({c.className})
-                </option>
-              ))}
-            </select>
+        {/* Dynamic Secondary Filter */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 text-xs">
+          {filterScope === "single" && (
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 font-semibold">Candidat :</span>
+              <select
+                value={selectedCandidateId}
+                onChange={(e) => setSelectedCandidateId(e.target.value)}
+                className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white max-w-sm font-medium"
+              >
+                {candidates.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.lastName.toUpperCase()} {c.firstName} ({c.className} • {c.roomName || "Sans salle"})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {filterScope === "room" && (
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 font-semibold">Choisir la salle :</span>
+              <select
+                value={selectedRoomFilter}
+                onChange={(e) => setSelectedRoomFilter(e.target.value)}
+                className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-medium"
+              >
+                <option value="all">Toutes les salles</option>
+                {distinctRooms.map((r) => (
+                  <option key={r} value={r}>
+                    {r} ({candidates.filter((c) => c.roomName === r).length} élèves)
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {filterScope === "class" && (
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 font-semibold">Choisir la classe :</span>
+              <select
+                value={selectedClassFilter}
+                onChange={(e) => setSelectedClassFilter(e.target.value)}
+                className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-medium"
+              >
+                <option value="all">Toutes les classes</option>
+                {distinctClasses.map((cls) => (
+                  <option key={cls} value={cls}>
+                    {cls} ({candidates.filter((c) => c.className === cls).length} élèves)
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="text-xs text-slate-500 font-medium ml-auto">
+            Impression ciblée de <strong>{candidatesToPrint.length}</strong> document(s)
           </div>
-        )}
+        </div>
       </div>
 
-      {/* RENDER CONVOCATION */}
-      {printMode === "convocation" && candidate && (
-        <div className="bg-white rounded-2xl border border-slate-300 shadow-md p-8 max-w-3xl mx-auto printable-content space-y-6">
-          <div className="flex items-center justify-between border-b-2 border-slate-800 pb-4">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                RÉPUBLIQUE FRANÇAISE • AEFE
-              </p>
-              <h1 className="text-base font-black text-slate-900">
-                {siteInfo.title || "Lycée Français Jacques Prévert de Saly"}
-              </h1>
-              <p className="text-xs text-slate-600">
-                Session Officielle {siteInfo.schoolYear || "2025-2026"}
-              </p>
+      {/* ======================================================== */}
+      {/* 1. PRINTABLE CONVOCATIONS                                */}
+      {/* ======================================================== */}
+      {printMode === "convocation" && (
+        <div className="space-y-8">
+          {candidatesToPrint.length === 0 ? (
+            <div className="p-8 text-center bg-white rounded-xl border border-slate-200 text-slate-400 text-xs">
+              Aucun élève trouvé pour ce filtre d'impression.
             </div>
-            <div className="text-right">
-              <span className="px-3 py-1 rounded bg-slate-900 text-white font-bold text-xs uppercase">
-                CONVOCATION OFFICIELLE
-              </span>
-            </div>
-          </div>
+          ) : (
+            candidatesToPrint.map((candidate, idx) => (
+              <div
+                key={candidate.id}
+                className="bg-white rounded-2xl border border-slate-300 shadow-md p-8 max-w-3xl mx-auto printable-content space-y-6 print:border-none print:shadow-none print:p-0 print:my-0"
+                style={{ pageBreakAfter: idx < candidatesToPrint.length - 1 ? "always" : "auto" }}
+              >
+                <div className="flex items-center justify-between border-b-2 border-slate-800 pb-4">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      RÉPUBLIQUE FRANÇAISE • RÉSEAU AEFE
+                    </p>
+                    <h1 className="text-base font-black text-slate-900">
+                      {siteInfo.title || "Lycée Français Jacques Prévert de Saly"}
+                    </h1>
+                    <p className="text-xs text-slate-600">
+                      Session Officielle {siteInfo.schoolYear || "2025-2026"}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <span className="px-3 py-1 rounded bg-slate-900 text-white font-bold text-xs uppercase">
+                      CONVOCATION OFFICIELLE
+                    </span>
+                  </div>
+                </div>
 
-          {/* Student Info Card */}
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-2 gap-4 text-xs">
-            <div>
-              <p className="text-[11px] text-slate-500">Candidat(e) :</p>
-              <p className="text-sm font-black text-slate-900">
-                {candidate.lastName.toUpperCase()} {candidate.firstName}
-              </p>
-              <p className="text-xs text-slate-600 mt-1">Classe : {candidate.className}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[11px] text-slate-500">Salle d'Examen :</p>
-              <p className="text-sm font-black text-indigo-700">
-                {candidate.roomName || "Salle Principale"}
-              </p>
-              <p className="text-xs font-mono font-bold text-slate-800 mt-1">
-                Table N° {candidate.tableNumber || "1"} • Anonymat : {candidate.anonymatNumber || "DNB-01"}
-              </p>
-            </div>
-          </div>
+                {/* Student Info Card */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <p className="text-[11px] text-slate-500">Candidat(e) :</p>
+                    <p className="text-sm font-black text-slate-900">
+                      {candidate.lastName.toUpperCase()} {candidate.firstName}
+                    </p>
+                    <p className="text-xs text-slate-600 mt-1">Classe : {candidate.className}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[11px] text-slate-500">Salle d'Examen :</p>
+                    <p className="text-sm font-black text-indigo-700">
+                      {candidate.roomName || "Salle Principale"}
+                    </p>
+                    <p className="text-xs font-mono font-bold text-slate-800 mt-1">
+                      Table N° {candidate.tableNumber || "1"} • Anonymat : {candidate.anonymatNumber || `DNB-${String(idx + 101).padStart(4, "0")}`}
+                    </p>
+                  </div>
+                </div>
 
-          {/* Timetable of Exam */}
-          <div>
-            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800 mb-2">
-              Calendrier des Épreuves
-            </h3>
-            <table className="w-full text-left text-xs border border-slate-200 border-collapse">
-              <thead>
-                <tr className="bg-slate-100 border-b border-slate-200 font-bold text-slate-700">
-                  <th className="p-2 border-r border-slate-200">Épreuve</th>
-                  <th className="p-2 border-r border-slate-200">Horaire Standard</th>
-                  <th className="p-2">Horaire Tiers-Temps (+1/3)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
-                <tr>
-                  <td className="p-2 border-r border-slate-100 font-sans font-semibold">Français (Grammaire & Dictée)</td>
-                  <td className="p-2 border-r border-slate-100">08h00 - 09h30</td>
-                  <td className="p-2 text-purple-700 font-bold">08h00 - 10h00</td>
-                </tr>
-                <tr>
-                  <td className="p-2 border-r border-slate-100 font-sans font-semibold">Français (Rédaction)</td>
-                  <td className="p-2 border-r border-slate-100">09h45 - 11h15</td>
-                  <td className="p-2 text-purple-700 font-bold">09h45 - 11h45</td>
-                </tr>
-                <tr>
-                  <td className="p-2 border-r border-slate-100 font-sans font-semibold">Mathématiques</td>
-                  <td className="p-2 border-r border-slate-100">13h30 - 15h30</td>
-                  <td className="p-2 text-purple-700 font-bold">13h30 - 16h10</td>
-                </tr>
-                <tr>
-                  <td className="p-2 border-r border-slate-100 font-sans font-semibold">Histoire-Géographie & EMC</td>
-                  <td className="p-2 border-r border-slate-100">08h00 - 10h00</td>
-                  <td className="p-2 text-purple-700 font-bold">08h00 - 10h40</td>
-                </tr>
-                <tr>
-                  <td className="p-2 border-r border-slate-100 font-sans font-semibold">Sciences</td>
-                  <td className="p-2 border-r border-slate-100">10h15 - 11h15</td>
-                  <td className="p-2 text-purple-700 font-bold">10h15 - 11h35</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                {/* Accommodation Banner */}
+                {candidate.accommodation && candidate.accommodation !== "Aucun" && (
+                  <div className="p-3 rounded-lg bg-purple-50 border border-purple-200 text-xs text-purple-900 flex items-center justify-between">
+                    <span className="font-bold">Aménagement Réglementaire Accordé :</span>
+                    <span className="font-mono font-bold bg-white px-2 py-0.5 rounded border border-purple-300">
+                      {candidate.accommodation}
+                    </span>
+                  </div>
+                )}
 
-          {/* Consignes & Signatures */}
-          <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[11px] leading-relaxed">
-            <p className="font-bold">Instructions obligatoires :</p>
-            <p>
-              • Présentation obligatoire 15 minutes avant chaque épreuve avec cette convocation imprimée et une pièce d'identité originale.
-              <br />
-              • Téléphones portables et montres connectées strictement interdits (éteints dans les sacs).
-              <br />
-              • Calculatrices autorisées uniquement en Mode Examen avec voyant clignotant.
-            </p>
-          </div>
+                {/* Schedule Table */}
+                <div className="space-y-2 text-xs">
+                  <p className="font-bold text-slate-900">Calendrier des Épreuves :</p>
+                  <table className="w-full text-left border-collapse border border-slate-300 text-xs">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-700">
+                        <th className="p-2 border border-slate-300">Épreuve / Discipline</th>
+                        <th className="p-2 border border-slate-300">Horaire Appel</th>
+                        <th className="p-2 border border-slate-300">Horaires Épreuve</th>
+                        <th className="p-2 border border-slate-300">Salle Assignée</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="p-2 border border-slate-300 font-bold">{candidate.examName || "Examen Blanc"}</td>
+                        <td className="p-2 border border-slate-300 font-mono text-indigo-700 font-bold">
+                          {candidate.convocationTime || "07h45"}
+                        </td>
+                        <td className="p-2 border border-slate-300 font-mono">08h00 - 12h00</td>
+                        <td className="p-2 border border-slate-300 font-bold">{candidate.roomName || "Salle S12"}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
 
-          <div className="grid grid-cols-2 gap-6 pt-4 border-t border-slate-200 text-xs">
-            <div>
-              <p className="text-slate-500">Date d'émission :</p>
-              <p className="font-semibold text-slate-800">{new Date().toLocaleDateString("fr-FR")}</p>
-            </div>
-            <div className="text-right">
-              <p className="font-bold text-slate-800">Le Chef d'Établissement</p>
-              <p className="text-[11px] text-slate-500">Pour le Lycée Français Jacques Prévert</p>
-              <div className="h-12"></div>
-            </div>
-          </div>
+                {/* Official Instructions */}
+                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1">
+                  <p className="font-bold text-slate-900">Consignes Impératives aux Candidats :</p>
+                  <ul className="list-disc pl-4 space-y-0.5">
+                    <li>Se présenter 15 minutes avant le début de chaque épreuve avec sa convocation et sa pièce d'identité.</li>
+                    <li>Les téléphones portables et montres connectées doivent être éteints et déposés dans les sacs.</li>
+                    <li>L'usage de la calculatrice est soumis aux instructions du sujet (mode examen clignotant obligatoire).</li>
+                  </ul>
+                </div>
+
+                {/* Signature Block */}
+                <div className="pt-6 flex justify-between items-end text-xs border-t border-slate-200">
+                  <div className="text-center">
+                    <p className="text-[11px] text-slate-400">Signature du Candidat</p>
+                    <div className="w-40 h-10 border-b border-dashed border-slate-400 mt-2" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[11px] text-slate-500 font-semibold">Le Chef d'Établissement</p>
+                    <p className="font-serif italic text-slate-800 mt-4">Pour la Direction du LFJP</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 
-      {/* RENDER TABLE LABELS (ÉTIQUETTES DNB / BAC) */}
+      {/* ======================================================== */}
+      {/* 2. PRINTABLE TABLE LABELS (ÉTIQUETTES)                   */}
+      {/* ======================================================== */}
       {printMode === "etiquettes" && (
         <div className="bg-white rounded-2xl border border-slate-300 shadow-md p-6 max-w-4xl mx-auto printable-content">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-200 mb-6">
-            <div>
-              <h3 className="font-bold text-sm text-slate-900">
-                🏷️ Planche d'Étiquettes de Table — Format Officiel
-              </h3>
-              <p className="text-xs text-slate-500">
-                Partie gauche : Numéro d'Anonymat / Partie droite : Identité du candidat.
-              </p>
-            </div>
-            <span className="text-xs font-bold text-slate-600">
-              {candidates.length} étiquette(s)
+          <div className="border-b pb-3 mb-4 flex items-center justify-between">
+            <span className="font-bold text-sm text-slate-900">
+              🏷️ Planche d'Étiquettes de Table ({candidatesToPrint.length} étiquettes)
+            </span>
+            <span className="text-xs text-slate-500">
+              Découpe centrale : Anonymat / Identité candidat
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {candidates.map((cand, idx) => (
+            {candidatesToPrint.map((cand, idx) => (
               <div
                 key={cand.id}
                 className="border-2 border-dashed border-slate-400 rounded-xl p-3 flex divide-x-2 divide-dashed divide-slate-400 text-xs bg-slate-50/50"
@@ -261,7 +362,7 @@ export function ConvocElevesSection({
                       ANONYMAT EXAMEN
                     </span>
                     <p className="font-black text-sm text-slate-900 font-mono mt-0.5">
-                      {cand.anonymatNumber || `DNB-${idx + 101}`}
+                      {cand.anonymatNumber || `DNB-${String(idx + 101).padStart(4, "0")}`}
                     </p>
                   </div>
                   <div className="text-[10px] text-slate-500">
@@ -307,19 +408,17 @@ export function ConvocProfsSection({
   surveillances,
   siteInfo,
 }: ConvocProfsSectionProps) {
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string>(
-    teachers[0]?.id || ""
-  );
+  const [printScope, setPrintScope] = useState<"single" | "all">("single");
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>(teachers[0]?.id || "");
 
-  const teacher = teachers.find((t) => t.id === selectedTeacherId) || teachers[0];
-
-  const teacherSurvs = teacher
-    ? surveillances.filter(
-        (s) =>
-          s.teacherName.toLowerCase().includes(teacher.lastName.toLowerCase()) ||
-          s.teacherName.toLowerCase().includes(teacher.firstName.toLowerCase())
-      )
-    : [];
+  const teachersToPrint = useMemo(() => {
+    if (printScope === "single") {
+      const t = teachers.find((teach) => teach.id === selectedTeacherId) || teachers[0];
+      return t ? [t] : [];
+    }
+    // For all, include teachers who have at least one surveillance, or all teachers
+    return teachers;
+  }, [teachers, printScope, selectedTeacherId]);
 
   const handlePrint = () => {
     window.print();
@@ -327,14 +426,15 @@ export function ConvocProfsSection({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 print:hidden">
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800">
               Surveillance Officielle
             </span>
             <span className="text-xs text-slate-500">
-              Ordres de mission des enseignants
+              Impression ciblée des ordres de mission
             </span>
           </div>
           <h2 className="text-xl font-bold text-slate-900 mt-1">
@@ -350,107 +450,163 @@ export function ConvocProfsSection({
           className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition shadow-xs flex items-center gap-2 self-start sm:self-auto"
         >
           <Printer className="h-4 w-4" />
-          <span>Imprimer l'ordre de mission</span>
+          <span>Imprimer l'ordre de mission ({teachersToPrint.length})</span>
         </button>
       </div>
 
-      {/* Teacher selector */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 flex items-center justify-between gap-4">
+      {/* Selector Toolbar */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-4 flex flex-wrap items-center justify-between gap-4 print:hidden">
         <div className="flex items-center gap-2">
-          <Award className="h-4 w-4 text-[#3498db]" />
-          <span className="text-xs font-bold text-slate-700">Choisir l'enseignant :</span>
-          <select
-            value={selectedTeacherId}
-            onChange={(e) => setSelectedTeacherId(e.target.value)}
-            className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+          <button
+            type="button"
+            onClick={() => setPrintScope("single")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              printScope === "single"
+                ? "bg-[#3498db] text-white shadow-2xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
           >
-            {teachers.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.civility === "Madame" ? "Mme" : "M."} {t.lastName} {t.firstName} ({t.subject})
-              </option>
-            ))}
-          </select>
+            👤 Professeur Unique
+          </button>
+          <button
+            type="button"
+            onClick={() => setPrintScope("all")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              printScope === "all"
+                ? "bg-[#3498db] text-white shadow-2xs"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            👥 Tous les Professeurs ({teachers.length})
+          </button>
         </div>
 
-        <span className="text-xs text-slate-500">
-          {teacherSurvs.length} créneau(x) assigné(s)
-        </span>
+        {printScope === "single" && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 font-semibold">Choisir l'enseignant :</span>
+            <select
+              value={selectedTeacherId}
+              onChange={(e) => setSelectedTeacherId(e.target.value)}
+              className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white max-w-xs font-medium"
+            >
+              {teachers.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.civility === "Madame" ? "Mme" : "M."} {t.lastName} {t.firstName} ({t.subject})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
-      {/* Printable Mission Order */}
-      {teacher && (
-        <div className="bg-white rounded-2xl border border-slate-300 shadow-md p-8 max-w-3xl mx-auto printable-content space-y-6">
-          <div className="flex items-center justify-between border-b-2 border-slate-800 pb-4">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                RÉPUBLIQUE FRANÇAISE • AEFE
-              </p>
-              <h1 className="text-base font-black text-slate-900">
-                {siteInfo.title || "Lycée Français Jacques Prévert de Saly"}
-              </h1>
-              <p className="text-xs text-slate-600">
-                Organisation des Examens Blancs • Session {siteInfo.schoolYear || "2025-2026"}
-              </p>
-            </div>
-            <div className="text-right">
-              <span className="px-3 py-1 rounded bg-slate-900 text-white font-bold text-xs uppercase">
-                ORDRE DE MISSION
-              </span>
-            </div>
-          </div>
+      {/* Render Mission Orders */}
+      <div className="space-y-8">
+        {teachersToPrint.map((teacher, idx) => {
+          const teacherSurvs = surveillances.filter(
+            (s) =>
+              s.teacherName.toLowerCase().includes(teacher.lastName.toLowerCase()) ||
+              s.teacherName.toLowerCase().includes(teacher.firstName.toLowerCase())
+          );
 
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs">
-            <p className="text-slate-500">Destinataire :</p>
-            <p className="text-sm font-bold text-slate-900 mt-0.5">
-              {teacher.civility === "Madame" ? "Mme" : "M."} {teacher.lastName.toUpperCase()} {teacher.firstName}
-            </p>
-            <p className="text-slate-600">Professeur de : {teacher.subject}</p>
-            <p className="text-slate-600">Courriel : {teacher.email || "Non renseigné"}</p>
-          </div>
+          return (
+            <div
+              key={teacher.id}
+              className="bg-white rounded-2xl border border-slate-300 shadow-md p-8 max-w-3xl mx-auto printable-content space-y-6 print:border-none print:shadow-none print:p-0 print:my-0"
+              style={{ pageBreakAfter: idx < teachersToPrint.length - 1 ? "always" : "auto" }}
+            >
+              <div className="flex items-center justify-between border-b-2 border-slate-800 pb-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    RÉPUBLIQUE FRANÇAISE • AEFE
+                  </p>
+                  <h1 className="text-base font-black text-slate-900">
+                    {siteInfo.title || "Lycée Français Jacques Prévert de Saly"}
+                  </h1>
+                  <p className="text-xs text-slate-600">Direction des Examens et Concours</p>
+                </div>
+                <div className="text-right">
+                  <span className="px-3 py-1 rounded bg-slate-900 text-white font-bold text-xs uppercase">
+                    ORDRE DE MISSION • SURVEILLANCE
+                  </span>
+                </div>
+              </div>
 
-          <div>
-            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800 mb-2">
-              Créneaux de Surveillance Assignés
-            </h3>
-            {teacherSurvs.length > 0 ? (
-              <table className="w-full text-left text-xs border border-slate-200 border-collapse">
-                <thead>
-                  <tr className="bg-slate-100 border-b border-slate-200 font-bold text-slate-700">
-                    <th className="p-2 border-r border-slate-200">Date</th>
-                    <th className="p-2 border-r border-slate-200">Horaire</th>
-                    <th className="p-2 border-r border-slate-200">Salle</th>
-                    <th className="p-2">Mission</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-[11px]">
-                  {teacherSurvs.map((s) => (
-                    <tr key={s.id}>
-                      <td className="p-2 border-r border-slate-100 font-bold">{s.date}</td>
-                      <td className="p-2 border-r border-slate-100 font-mono">{s.timeSlot}</td>
-                      <td className="p-2 border-r border-slate-100 font-bold text-indigo-700">{s.roomName}</td>
-                      <td className="p-2">{s.mission || "Surveillant titulaire"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <p className="text-xs text-slate-500 italic p-4 bg-slate-50 rounded-lg text-center">
-                Aucun créneau de surveillance n'est affecté à cet enseignant pour le moment.
-              </p>
-            )}
-          </div>
+              {/* Teacher Info */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between text-xs">
+                <div>
+                  <p className="text-[11px] text-slate-500">Enseignant(e) Convoqué(e) :</p>
+                  <p className="text-sm font-black text-slate-900">
+                    {teacher.civility} {teacher.firstName} {teacher.lastName.toUpperCase()}
+                  </p>
+                  <p className="text-xs text-slate-600 mt-1">Discipline : {teacher.subject}</p>
+                </div>
+                <div className="text-right">
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px]">
+                    {teacherSurvs.length} créneau(x) assigné(s)
+                  </span>
+                </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-6 pt-6 border-t border-slate-200 text-xs">
-            <div>
-              <p className="text-slate-500">Date : {new Date().toLocaleDateString("fr-FR")}</p>
+              {/* Assigned slots */}
+              <div className="space-y-2 text-xs">
+                <p className="font-bold text-slate-900">Détail des Surveillances Assignées :</p>
+                {teacherSurvs.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic p-4 bg-slate-50 rounded-lg">
+                    Aucun créneau de surveillance n'est actuellement affecté à cet enseignant.
+                  </p>
+                ) : (
+                  <table className="w-full text-left border-collapse border border-slate-300 text-xs">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-700">
+                        <th className="p-2 border border-slate-300">Session d'Examen</th>
+                        <th className="p-2 border border-slate-300">Date</th>
+                        <th className="p-2 border border-slate-300">Horaire</th>
+                        <th className="p-2 border border-slate-300">Salle</th>
+                        <th className="p-2 border border-slate-300">Mission</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {teacherSurvs.map((s) => (
+                        <tr key={s.id}>
+                          <td className="p-2 border border-slate-300 font-bold">{s.examTitle}</td>
+                          <td className="p-2 border border-slate-300">{s.date}</td>
+                          <td className="p-2 border border-slate-300 font-mono font-bold text-indigo-700">
+                            {s.timeSlot}
+                          </td>
+                          <td className="p-2 border border-slate-300 font-bold">{s.roomName}</td>
+                          <td className="p-2 border border-slate-300">{s.mission || "Surveillant titulaire"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Instructions */}
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1">
+                <p className="font-bold text-slate-900">Rappels Réglementaires aux Surveillants :</p>
+                <ul className="list-disc pl-4 space-y-0.5">
+                  <li>Se présenter au secrétariat des examens 20 minutes avant le début de l'épreuve pour retirer la pochette.</li>
+                  <li>Vérifier scrupuleusement l'identité de chaque candidat lors de l'émargement.</li>
+                  <li>Ne pas utiliser de téléphone portable durant la surveillance dans la salle.</li>
+                </ul>
+              </div>
+
+              {/* Signatures */}
+              <div className="pt-6 flex justify-between items-end text-xs border-t border-slate-200">
+                <div className="text-center">
+                  <p className="text-[11px] text-slate-400">Émargement de l'enseignant</p>
+                  <div className="w-40 h-10 border-b border-dashed border-slate-400 mt-2" />
+                </div>
+                <div className="text-center">
+                  <p className="text-[11px] text-slate-500 font-semibold">Le Chef d'Établissement</p>
+                  <p className="font-serif italic text-slate-800 mt-4">Pour la Direction du LFJP</p>
+                </div>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="font-bold text-slate-800">Le Chef d'Établissement</p>
-              <div className="h-12"></div>
-            </div>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }

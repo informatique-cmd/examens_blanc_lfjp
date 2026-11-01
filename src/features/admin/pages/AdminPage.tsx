@@ -1337,8 +1337,16 @@ export default function AdminPage() {
               exams={cmsData.exams}
               announcements={cmsData.announcements}
               surveillances={cmsData.surveillances}
+              examSlots={cmsData.examSlots || []}
+              callouts={cmsData.callouts}
               onTogglePublishExam={(id, pub) => updateExam(id, { isPublished: pub })}
               onTogglePublishAnnouncement={(id, pub) => updateAnnouncement(id, { isPublished: pub })}
+              onAddAnnouncement={addAnnouncement}
+              onUpdateAnnouncement={updateAnnouncement}
+              onDeleteAnnouncement={deleteAnnouncement}
+              onAddExam={addExam}
+              onUpdateExam={updateExam}
+              onDeleteExam={deleteExam}
               onShowNotification={showNotification}
             />
           )}

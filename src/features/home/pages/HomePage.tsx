@@ -322,25 +322,95 @@ export default function HomePage() {
                     {/* Interactive Accordion for detailed schedule */}
                     {isExpanded && (
                       <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
-                        <p className="font-bold text-slate-800">
-                          Horaires Officiels & Aménagements Tiers-Temps :
-                        </p>
-                        <div className="space-y-1.5 text-[11px]">
-                          <div className="flex justify-between border-b pb-1">
-                            <span className="font-medium text-slate-700">Matin (Épreuve 1) :</span>
-                            <span className="font-mono text-slate-900">08h00 - 09h30 • <span className="text-purple-700 font-bold">TT : 10h00</span></span>
-                          </div>
-                          <div className="flex justify-between border-b pb-1">
-                            <span className="font-medium text-slate-700">Matin (Épreuve 2) :</span>
-                            <span className="font-mono text-slate-900">09h45 - 11h15 • <span className="text-purple-700 font-bold">TT : 11h45</span></span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="font-medium text-slate-700">Après-midi :</span>
-                            <span className="font-mono text-slate-900">13h30 - 15h30 • <span className="text-purple-700 font-bold">TT : 16h10</span></span>
-                          </div>
+                        <div className="flex items-center justify-between">
+                          <p className="font-bold text-slate-800">
+                            Programme Officiel des Épreuves :
+                          </p>
+                          <span className="text-[10px] text-slate-500">
+                            Conforme aux arrêtés du chef d'établissement
+                          </span>
                         </div>
+
+                        {(() => {
+                          const slots = (cmsData.examSlots || []).filter(
+                            (s) => s.examTitle === exam.title || s.examId === exam.id
+                          );
+
+                          if (slots.length === 0) {
+                            return (
+                              <p className="text-[11px] text-slate-500 italic py-1">
+                                Le calendrier détaillé des épreuves de cette session est en cours de finalisation par la direction pédagogique.
+                              </p>
+                            );
+                          }
+
+                          return (
+                            <div className="space-y-2 pt-1">
+                              {slots.map((s) => (
+                                <div
+                                  key={s.id}
+                                  className="p-2.5 rounded-lg bg-white border border-slate-200 space-y-1 shadow-2xs"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-bold text-xs text-slate-900">
+                                      {s.subject}
+                                    </span>
+                                    <span className="text-[10px] font-mono font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                                      {s.date}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1">
+                                    <div className="flex items-center gap-1.5 text-slate-700">
+                                      <Clock className="h-3 w-3 text-slate-400 shrink-0" />
+                                      <span>
+                                        Horaires standard :{" "}
+                                        <strong className="font-mono text-slate-900">
+                                          {s.startTime} ➔ {s.endTime}
+                                        </strong>
+                                      </span>
+                                    </div>
+
+                                    {s.tiersTempsEndTime && (
+                                      <div className="flex items-center gap-1.5 text-purple-800">
+                                        <Clock className="h-3 w-3 text-purple-500 shrink-0" />
+                                        <span>
+                                          Tiers-Temps (+1/3) :{" "}
+                                          <strong className="font-mono text-purple-900">
+                                            {s.startTime} ➔ {s.tiersTempsEndTime}
+                                          </strong>
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {s.roomNames && s.roomNames.length > 0 && (
+                                    <div className="text-[10px] text-slate-500 pt-0.5 flex flex-wrap gap-1 items-center">
+                                      <span className="font-medium">Salles mobilisées :</span>
+                                      {s.roomNames.map((rn) => (
+                                        <span
+                                          key={rn}
+                                          className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-700"
+                                        >
+                                          {rn}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {s.notes && (
+                                    <p className="text-[10px] text-slate-500 italic">
+                                      Consigne : {s.notes}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+
                         <p className="text-[10px] text-slate-500 italic pt-1">
-                          Les salles d'examen sont affichées sur les panneaux officiels de l'établissement.
+                          L'appel a lieu 15 minutes avant le début de chaque épreuve. Se munir impérativement de sa convocation et de sa pièce d'identité.
                         </p>
                       </div>
                     )}

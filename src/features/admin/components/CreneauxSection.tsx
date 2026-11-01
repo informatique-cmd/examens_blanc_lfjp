@@ -43,6 +43,7 @@ export default function CreneauxSection({
   const [formSubject, setFormSubject] = useState<string>("");
   const [formDate, setFormDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [formStartTime, setFormStartTime] = useState<string>("08:00");
+  const [formEndTime, setFormEndTime] = useState<string>("09:30");
   const [formDurationMinutes, setFormDurationMinutes] = useState<number>(90);
   const [formTargetLevel, setFormTargetLevel] = useState<string>("3ème");
   const [formSelectedRooms, setFormSelectedRooms] = useState<string[]>(rooms.map((r) => r.name));
@@ -63,11 +64,44 @@ export default function CreneauxSection({
     return `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
   };
 
-  // Auto-calculated tiers-temps (+1/3 rounded up to nearest 5 or standard)
-  const formEndTime = useMemo(() => {
-    return calculateEndTime(formStartTime, formDurationMinutes);
-  }, [formStartTime, formDurationMinutes]);
+  // Calculate difference in minutes between two HH:MM strings
+  const calculateDiffMinutes = (start: string, end: string): number => {
+    const [h1, m1] = start.split(":").map((v) => parseInt(v || "0", 10));
+    const [h2, m2] = end.split(":").map((v) => parseInt(v || "0", 10));
+    const total1 = (h1 || 0) * 60 + (m1 || 0);
+    const total2 = (h2 || 0) * 60 + (m2 || 0);
+    return total2 - total1;
+  };
 
+  // Handlers for two-way binding of Start Time, End Time, and Duration
+  const handleStartTimeChange = (newStart: string) => {
+    setFormStartTime(newStart);
+    if (formEndTime) {
+      const diff = calculateDiffMinutes(newStart, formEndTime);
+      if (diff > 0) {
+        setFormDurationMinutes(diff);
+      } else {
+        setFormEndTime(calculateEndTime(newStart, formDurationMinutes));
+      }
+    }
+  };
+
+  const handleEndTimeChange = (newEnd: string) => {
+    setFormEndTime(newEnd);
+    if (formStartTime) {
+      const diff = calculateDiffMinutes(formStartTime, newEnd);
+      if (diff > 0) {
+        setFormDurationMinutes(diff);
+      }
+    }
+  };
+
+  const handleDurationPresetChange = (mins: number) => {
+    setFormDurationMinutes(mins);
+    setFormEndTime(calculateEndTime(formStartTime, mins));
+  };
+
+  // Auto-calculated tiers-temps (+1/3 rounded up to nearest 5 or standard)
   const formTiersTempsDuration = useMemo(() => {
     return Math.round(formDurationMinutes * (4 / 3));
   }, [formDurationMinutes]);
@@ -83,6 +117,7 @@ export default function CreneauxSection({
     setFormSubject("");
     setFormDate(new Date().toISOString().split("T")[0]);
     setFormStartTime("08:00");
+    setFormEndTime("09:30");
     setFormDurationMinutes(90);
     setFormTargetLevel("3ème");
     setFormSelectedRooms(rooms.map((r) => r.name));
@@ -97,6 +132,8 @@ export default function CreneauxSection({
     setFormSubject(slot.subject);
     setFormDate(slot.date);
     setFormStartTime(slot.startTime);
+    const endT = slot.endTime || calculateEndTime(slot.startTime, slot.durationMinutes);
+    setFormEndTime(endT);
     setFormDurationMinutes(slot.durationMinutes);
     setFormTargetLevel(slot.targetLevel || "3ème");
     setFormSelectedRooms(slot.roomNames || rooms.map((r) => r.name));
@@ -499,93 +536,169 @@ export default function CreneauxSection({
                 />
               </div>
 
-              {/* Date, Start time, Duration */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Date, Heure Début, Heure Fin, Durée */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Date de l'épreuve
+                    Date de l'épreuve *
                   </label>
                   <input
                     type="date"
                     required
                     value={formDate}
                     onChange={(e) => setFormDate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-medium"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Heure de début (Appel)
+                    Heure de début (Appel) *
                   </label>
                   <input
                     type="time"
                     required
                     value={formStartTime}
-                    onChange={(e) => setFormStartTime(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    onChange={(e) => handleStartTimeChange(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono font-bold"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Durée standard (minutes)
+                    Heure de fin *
                   </label>
-                  <select
-                    value={formDurationMinutes}
-                    onChange={(e) => setFormDurationMinutes(parseInt(e.target.value, 10))}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value={60}>1h00 (60 min - Sciences)</option>
-                    <option value={90}>1h30 (90 min - Français partie)</option>
-                    <option value={120}>2h00 (120 min - Maths / HG)</option>
-                    <option value={180}>3h00 (180 min)</option>
-                    <option value={210}>3h30 (210 min - Spécialités)</option>
-                    <option value={240}>4h00 (240 min - EAF / Philo)</option>
-                  </select>
+                  <input
+                    type="time"
+                    required
+                    value={formEndTime}
+                    onChange={(e) => handleEndTimeChange(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono font-bold text-indigo-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Durée totale calculée
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={15}
+                      step={5}
+                      value={formDurationMinutes}
+                      onChange={(e) => handleDurationPresetChange(parseInt(e.target.value, 10) || 60)}
+                      className="w-20 px-2.5 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono font-bold"
+                    />
+                    <span className="text-xs text-slate-500 font-semibold">min ({Math.floor(formDurationMinutes / 60)}h{formDurationMinutes % 60 > 0 ? String(formDurationMinutes % 60).padStart(2, '0') : '00'})</span>
+                  </div>
                 </div>
               </div>
 
+              {/* Quick Presets Buttons */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[11px] font-semibold text-slate-500 mr-1">Présélections rapides :</span>
+                {[
+                  { label: "1h00 (Sciences)", val: 60 },
+                  { label: "1h30 (Français / Dictée)", val: 90 },
+                  { label: "2h00 (Maths / HG)", val: 120 },
+                  { label: "3h00 (Spécialités)", val: 180 },
+                  { label: "4h00 (Bac Philo / Français)", val: 240 },
+                ].map((preset) => (
+                  <button
+                    key={preset.val}
+                    type="button"
+                    onClick={() => handleDurationPresetChange(preset.val)}
+                    className={`px-2.5 py-1 text-[11px] rounded-lg border font-medium transition ${
+                      formDurationMinutes === preset.val
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
+                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+
               {/* Automated calculation summary banner */}
-              <div className="p-3.5 rounded-xl bg-indigo-50/80 border border-indigo-200 grid grid-cols-2 gap-3 text-xs">
+              <div className="p-3.5 rounded-xl bg-gradient-to-r from-indigo-50/90 to-purple-50/90 border border-indigo-200 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-indigo-700">Horaires Standard</span>
-                  <p className="font-mono font-bold text-slate-900 mt-0.5">
-                    {formStartTime} ➔ {formEndTime} ({formDurationMinutes} min)
+                  <span className="text-[10px] uppercase font-bold text-indigo-700 tracking-wider">
+                    Horaires Standard ({formDurationMinutes} min)
+                  </span>
+                  <p className="font-mono font-black text-slate-900 text-sm mt-0.5">
+                    {formStartTime} ➔ {formEndTime}
                   </p>
+                  <p className="text-[11px] text-slate-500">Fin de l'épreuve pour tous les candidats standard</p>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-bold text-purple-700">
-                    Horaires Tiers-Temps (+1/3 automatique)
+                  <span className="text-[10px] uppercase font-bold text-purple-700 tracking-wider">
+                    Aménagement Tiers-Temps +1/3 ({formTiersTempsDuration} min)
                   </span>
-                  <p className="font-mono font-bold text-purple-900 mt-0.5">
-                    {formStartTime} ➔ {formTiersTempsEndTime} ({formTiersTempsDuration} min)
+                  <p className="font-mono font-black text-purple-900 text-sm mt-0.5">
+                    {formStartTime} ➔ {formTiersTempsEndTime}
                   </p>
+                  <p className="text-[11px] text-purple-700/80">Calcul automatique réglementaire (+{formTiersTempsDuration - formDurationMinutes} min)</p>
                 </div>
               </div>
 
               {/* Salles mobilisées */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Salles d'examen mobilisées pour cette épreuve :
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs max-h-36 overflow-y-auto">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-slate-700">
+                    Salles d'examen mobilisées pour cette épreuve :
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      {formSelectedRooms.length} salle(s) • Capacité :{" "}
+                      <strong>
+                        {rooms
+                          .filter((r) => formSelectedRooms.includes(r.name))
+                          .reduce((acc, r) => acc + (r.capacity || 0), 0)}{" "}
+                        places
+                      </strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setFormSelectedRooms(rooms.map((r) => r.name))}
+                      className="text-[11px] text-indigo-600 hover:underline font-semibold"
+                    >
+                      Toutes
+                    </button>
+                    <span className="text-slate-300">|</span>
+                    <button
+                      type="button"
+                      onClick={() => setFormSelectedRooms([])}
+                      className="text-[11px] text-slate-500 hover:underline"
+                    >
+                      Aucune
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs max-h-40 overflow-y-auto">
                   {rooms.map((room) => {
                     const isChecked = formSelectedRooms.includes(room.name);
                     return (
                       <label
                         key={room.id}
-                        className={`flex items-center gap-2 p-1.5 rounded-lg cursor-pointer transition ${
-                          isChecked ? "bg-white border border-indigo-300 font-bold text-indigo-900" : "text-slate-600"
+                        className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition border ${
+                          isChecked
+                            ? "bg-white border-indigo-300 font-bold text-indigo-950 shadow-2xs"
+                            : "bg-slate-50/50 border-transparent text-slate-600 hover:bg-slate-100"
                         }`}
                       >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleToggleRoom(room.name)}
-                          className="rounded text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="truncate">{room.name}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleRoom(room.name)}
+                            className="rounded text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="truncate">{room.name}</span>
+                        </div>
+                        <span className="text-[10px] font-semibold text-slate-400 shrink-0 ml-1">
+                          {room.capacity} pl.
+                        </span>
                       </label>
                     );
                   })}
