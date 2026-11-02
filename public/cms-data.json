@@ -198,6 +198,15 @@
   ],
   "announcements": [
     {
+      "title": "Repport des examens",
+      "content": "yftftfvhv",
+      "target": "all",
+      "priority": "information",
+      "isPublished": true,
+      "date": "02/11/2026",
+      "id": "ann-1793633446863"
+    },
+    {
       "id": "ann-1",
       "title": "Rappel des horaires de convocation",
       "content": "Les candidats doivent se présenter 15 minutes avant l'heure indiquée sur la convocation avec leur pièce d'identité et leur matériel obligatoire.",
