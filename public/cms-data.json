@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-02T11:26:09.998Z",
+  "updatedAt": "2026-11-02T14:00:03.476Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Espace examens blancs LFJP",
@@ -226,7 +226,145 @@
     }
   ],
   "exams": [],
-  "examSlots": [],
+  "examSlots": [
+    {
+      "id": "slot-dnb-1",
+      "examId": "exam-2",
+      "examTitle": "DNB blanc",
+      "subject": "Français (1ère partie : Grammaire, Dictée & Compréhension)",
+      "date": "2026-03-24",
+      "startTime": "08:00",
+      "endTime": "09:30",
+      "durationMinutes": 90,
+      "tiersTempsEndTime": "10:00",
+      "tiersTempsDurationMinutes": 120,
+      "targetLevel": "3ème",
+      "roomNames": [
+        "Salle S12",
+        "Salle S14",
+        "Salle S04 (Tiers-Temps)",
+        "Salle Polyvalente"
+      ],
+      "notes": "Dictée à 08h30. Matériel standard."
+    },
+    {
+      "id": "slot-dnb-2",
+      "examId": "exam-2",
+      "examTitle": "DNB blanc",
+      "subject": "Français (2ème partie : Rédaction)",
+      "date": "2026-03-24",
+      "startTime": "09:45",
+      "endTime": "11:15",
+      "durationMinutes": 90,
+      "tiersTempsEndTime": "11:45",
+      "tiersTempsDurationMinutes": 120,
+      "targetLevel": "3ème",
+      "roomNames": [
+        "Salle S12",
+        "Salle S14",
+        "Salle S04 (Tiers-Temps)",
+        "Salle Polyvalente"
+      ],
+      "notes": "Dictionnaires unilingues autorisés."
+    },
+    {
+      "id": "slot-dnb-3",
+      "examId": "exam-2",
+      "examTitle": "DNB blanc",
+      "subject": "Mathématiques",
+      "date": "2026-03-24",
+      "startTime": "13:30",
+      "endTime": "15:30",
+      "durationMinutes": 120,
+      "tiersTempsEndTime": "16:10",
+      "tiersTempsDurationMinutes": 160,
+      "targetLevel": "3ème",
+      "roomNames": [
+        "Salle S12",
+        "Salle S14",
+        "Salle S04 (Tiers-Temps)",
+        "Salle Polyvalente"
+      ],
+      "notes": "Calculatrice autorisée en mode examen."
+    },
+    {
+      "id": "slot-dnb-4",
+      "examId": "exam-2",
+      "examTitle": "DNB blanc",
+      "subject": "Histoire-Géographie & EMC",
+      "date": "2026-03-25",
+      "startTime": "08:00",
+      "endTime": "10:00",
+      "durationMinutes": 120,
+      "tiersTempsEndTime": "10:40",
+      "tiersTempsDurationMinutes": 160,
+      "targetLevel": "3ème",
+      "roomNames": [
+        "Salle S12",
+        "Salle S14",
+        "Salle S04 (Tiers-Temps)",
+        "Salle Polyvalente"
+      ],
+      "notes": "Crayons de couleur autorisés pour le croquis."
+    },
+    {
+      "id": "slot-dnb-5",
+      "examId": "exam-2",
+      "examTitle": "DNB blanc",
+      "subject": "Sciences (Physique-Chimie / SVT / Techno)",
+      "date": "2026-03-25",
+      "startTime": "10:15",
+      "endTime": "11:15",
+      "durationMinutes": 60,
+      "tiersTempsEndTime": "11:35",
+      "tiersTempsDurationMinutes": 80,
+      "targetLevel": "3ème",
+      "roomNames": [
+        "Salle S12",
+        "Salle S14",
+        "Salle S04 (Tiers-Temps)",
+        "Salle Polyvalente"
+      ],
+      "notes": "Deux disciplines au programme."
+    },
+    {
+      "id": "slot-bac-1",
+      "examId": "exam-4",
+      "examTitle": "Baccalauréat blanc 1ère et Terminale (Session Avril)",
+      "subject": "Français EAF (Écrit - 1ère)",
+      "date": "2026-04-07",
+      "startTime": "08:00",
+      "endTime": "12:00",
+      "durationMinutes": 240,
+      "tiersTempsEndTime": "13:20",
+      "tiersTempsDurationMinutes": 320,
+      "targetLevel": "1ère",
+      "roomNames": [
+        "Salle S12",
+        "Salle S14",
+        "Salle S04 (Tiers-Temps)"
+      ],
+      "notes": "Dissertation ou commentaire de texte."
+    },
+    {
+      "id": "slot-bac-2",
+      "examId": "exam-4",
+      "examTitle": "Baccalauréat blanc 1ère et Terminale (Session Avril)",
+      "subject": "Philosophie (Terminale)",
+      "date": "2026-04-07",
+      "startTime": "08:00",
+      "endTime": "12:00",
+      "durationMinutes": 240,
+      "tiersTempsEndTime": "13:20",
+      "tiersTempsDurationMinutes": 320,
+      "targetLevel": "Terminale",
+      "roomNames": [
+        "Salle Polyvalente",
+        "Salle S04 (Tiers-Temps)"
+      ],
+      "notes": "Épreuve terminale."
+    }
+  ],
   "rooms": [],
   "teachers": [],
   "surveillances": [],
