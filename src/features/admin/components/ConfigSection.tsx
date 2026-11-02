@@ -14,6 +14,7 @@ import {
   Image as ImageIcon,
   Plus,
   RotateCcw,
+  Key,
 } from "lucide-react";
 import type { SiteInfo, CmsExam } from "../../../shared/services/cms-store";
 
@@ -83,6 +84,29 @@ export default function ConfigSection({
   // Direction & Signature
   const [directorCiv, setDirectorCiv] = useState<string>("M. le Proviseur");
   const [directorName, setDirectorName] = useState<string>("Proviseur du LFJP");
+
+  // Proviseur Auth Credentials (managed by SuperAdmin)
+  const [proviseurEmail, setProviseurEmail] = useState<string>(
+    siteInfo.proviseurAuth?.email || "proviseur@lfjpsaly.org"
+  );
+  const [proviseurPassword, setProviseurPassword] = useState<string>(
+    siteInfo.proviseurAuth?.password || "ProviseurLFJP2026!"
+  );
+  const [proviseurName, setProviseurName] = useState<string>(
+    siteInfo.proviseurAuth?.name || "M. le Proviseur"
+  );
+  const [showProviseurPassword, setShowProviseurPassword] = useState<boolean>(false);
+
+  const handleSaveProviseurCredentials = () => {
+    onUpdateSiteInfo({
+      proviseurAuth: {
+        email: proviseurEmail.trim(),
+        password: proviseurPassword.trim(),
+        name: proviseurName.trim(),
+      },
+    });
+    onShowNotification("🔐 Identifiants de connexion du Proviseur mis à jour avec succès !");
+  };
 
   // Alert banner state
   const [alertEnabled, setAlertEnabled] = useState(siteInfo.bannerAlert?.enabled ?? false);
@@ -571,6 +595,88 @@ export default function ConfigSection({
               Ce titre apparaîtra au bas des convocations officielles et sur les feuilles d'émargement des surveillants.
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Card: 🔐 Compte de Connexion du Proviseur (Direction) */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-4">
+        <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <Key className="h-4 w-4 text-emerald-600" />
+              <span>Identifiants de Connexion du Proviseur (Espace Direction)</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Configurez l'adresse email et le mot de passe que le Chef d'Établissement utilise pour se connecter à l'espace d'administration.
+            </p>
+          </div>
+          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+            Accès Direction
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Email de connexion Proviseur
+            </label>
+            <input
+              type="email"
+              value={proviseurEmail}
+              onChange={(e) => setProviseurEmail(e.target.value)}
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden"
+              placeholder="proviseur@lfjpsaly.org"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Mot de passe Proviseur
+            </label>
+            <div className="relative">
+              <input
+                type={showProviseurPassword ? "text" : "password"}
+                value={proviseurPassword}
+                onChange={(e) => setProviseurPassword(e.target.value)}
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden pr-16 font-mono"
+                placeholder="Mot de passe"
+              />
+              <button
+                type="button"
+                onClick={() => setShowProviseurPassword(!showProviseurPassword)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 hover:text-slate-700 font-semibold"
+              >
+                {showProviseurPassword ? "Masquer" : "Afficher"}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Nom / Titre du Chef d'Établissement
+            </label>
+            <input
+              type="text"
+              value={proviseurName}
+              onChange={(e) => setProviseurName(e.target.value)}
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden"
+              placeholder="M. le Proviseur"
+            />
+          </div>
+        </div>
+
+        <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-slate-100">
+          <p className="text-[11px] text-slate-500">
+            Ces identifiants permettent au Proviseur de se connecter via l'onglet <strong>Connexion Proviseur</strong> sans avoir besoin d'un compte GitHub.
+          </p>
+          <button
+            type="button"
+            onClick={handleSaveProviseurCredentials}
+            className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 shrink-0"
+          >
+            <Save className="h-3.5 w-3.5" />
+            <span>Enregistrer les identifiants Proviseur</span>
+          </button>
         </div>
       </div>
 

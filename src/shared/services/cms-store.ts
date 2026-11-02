@@ -5,6 +5,21 @@ import {
   type HomeCalloutCategory,
 } from "../../features/home/constants";
 
+export interface ProviseurAuth {
+  email: string;
+  password: string;
+  name: string;
+}
+
+export interface PendingDeploymentInfo {
+  requestedAt?: string;
+  requestedBy?: string;
+  summary?: string;
+  savedAt: string;
+  savedBy: string;
+  notes: string;
+}
+
 export interface SiteInfo {
   title: string;
   subtitle: string;
@@ -17,6 +32,8 @@ export interface SiteInfo {
     message: string;
     type: "info" | "warning" | "urgent" | "success";
   };
+  proviseurAuth?: ProviseurAuth;
+  pendingDeployment?: PendingDeploymentInfo | null;
 }
 
 export interface CmsCallout {
@@ -146,6 +163,12 @@ export const DEFAULT_CMS_DATA: CmsData = {
       message: "Veuillez vous présenter 15 minutes avant le début de chaque épreuve muni de votre convocation et d'une pièce d'identité.",
       type: "info",
     },
+    proviseurAuth: {
+      email: "proviseur@lfjpsaly.org",
+      password: "ProviseurLFJP2026!",
+      name: "M. le Proviseur",
+    },
+    pendingDeployment: null,
   },
   callouts: HOME_CALLOUT_ENTRIES.map((entry, index) => ({
     id: `callout-${index + 1}`,
@@ -521,6 +544,49 @@ export function importCmsDataJson(jsonString: string): { success: boolean; error
 }
 
 /**
+ * Marks that the Proviseur saved modifications, storing a pending deployment notification.
+ */
+export function markProviseurSaved(
+  notes: string = "Mise à jour des examens effectuée par le Proviseur",
+  savedBy: string = "Proviseur"
+): CmsData {
+  const current = getCmsData();
+  const next: CmsData = {
+    ...current,
+    updatedAt: new Date().toISOString(),
+    siteInfo: {
+      ...current.siteInfo,
+      pendingDeployment: {
+        savedAt: new Date().toISOString(),
+        savedBy,
+        notes,
+        requestedAt: new Date().toISOString(),
+        requestedBy: savedBy,
+        summary: notes,
+      },
+    },
+  };
+  saveCmsData(next);
+  return next;
+}
+
+/**
+ * Clears the pending deployment flag after SuperAdmin successfully deploys to GitHub / Vercel.
+ */
+export function clearPendingDeployment(): CmsData {
+  const current = getCmsData();
+  const next: CmsData = {
+    ...current,
+    siteInfo: {
+      ...current.siteInfo,
+      pendingDeployment: null,
+    },
+  };
+  saveCmsData(next);
+  return next;
+}
+
+/**
  * Generates the TypeScript code that can be committed to GitHub
  * to permanently bake CMS changes into the Vercel production build.
  */
@@ -575,6 +641,7 @@ export const HOME_CALLOUT_ENTRIES: HomeCalloutEntry[] = ${JSON.stringify(
 
 /**
  * React hook to consume and update CMS state reactively.
+ * Handles automatic cross-browser synchronization from the deployed cms-data.json.
  */
 export function useCmsData() {
   const [data, setData] = useState<CmsData>(() => getCmsData());
@@ -587,11 +654,72 @@ export function useCmsData() {
     window.addEventListener(CMS_EVENT_NAME, handleUpdate);
     window.addEventListener("storage", handleUpdate);
 
+    // Cross-browser synchronization from remote /cms-data.json (GitHub / Vercel deployment)
+    const syncFromRemote = async () => {
+      try {
+        const res = await fetch(`/cms-data.json?_t=${Date.now()}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const remote = (await res.json()) as CmsData;
+        if (!remote || typeof remote !== "object") return;
+
+        const local = getCmsData();
+        const remoteTime = remote.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
+        const localTime = local.updatedAt ? new Date(local.updatedAt).getTime() : 0;
+        const hasCustomLocalStorage = Boolean(localStorage.getItem(CMS_STORAGE_KEY));
+
+        // If this browser has no custom local changes or the server has a newer commit, adopt it!
+        if (!hasCustomLocalStorage || (remoteTime > 0 && remoteTime > localTime)) {
+          saveCmsData(remote);
+          setData(remote);
+        }
+      } catch (err) {
+        console.warn("Could not sync remote cms-data.json", err);
+      }
+    };
+
+    syncFromRemote();
+    window.addEventListener("focus", syncFromRemote);
+
     return () => {
       window.removeEventListener(CMS_EVENT_NAME, handleUpdate);
       window.removeEventListener("storage", handleUpdate);
+      window.removeEventListener("focus", syncFromRemote);
     };
   }, []);
+
+  const markProviseurSaved = (summary?: string) => {
+    const text = summary || "Mises à jour des examens, créneaux et répartitions";
+    const next: CmsData = {
+      ...data,
+      siteInfo: {
+        ...data.siteInfo,
+        pendingDeployment: {
+          savedAt: new Date().toISOString(),
+          savedBy: "Proviseur",
+          notes: text,
+          requestedAt: new Date().toISOString(),
+          requestedBy: "Proviseur",
+          summary: text,
+        },
+      },
+    };
+    saveCmsData(next);
+    setData(next);
+    return next;
+  };
+
+  const clearPendingDeployment = () => {
+    const next: CmsData = {
+      ...data,
+      siteInfo: {
+        ...data.siteInfo,
+        pendingDeployment: null,
+      },
+    };
+    saveCmsData(next);
+    setData(next);
+    return next;
+  };
 
   const updateSiteInfo = (info: Partial<SiteInfo>) => {
     const next: CmsData = {
@@ -992,5 +1120,7 @@ export function useCmsData() {
     saveEntireData,
     resetToDefaults: handleReset,
     resetForNewSchoolYear,
+    markProviseurSaved,
+    clearPendingDeployment,
   };
 }

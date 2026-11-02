@@ -32,12 +32,17 @@ import {
   AlertTriangle,
   RefreshCw,
   Shuffle,
+  Bell,
+  Save,
+  UserCheck,
 } from "lucide-react";
 
 import {
   useCmsData,
   exportCmsDataJson,
   importCmsDataJson,
+  markProviseurSaved,
+  clearPendingDeployment,
   type CmsAnnouncement,
   type CmsExam,
   type CmsRoom,
@@ -104,17 +109,49 @@ export default function AdminPage() {
     setCandidates,
     resetToDefaults,
     resetForNewSchoolYear,
+    markProviseurSaved,
+    clearPendingDeployment,
   } = useCmsData();
 
-  // GitHub Auth & Sync hook
+  // Active role-based session: 'proviseur' | 'superadmin'
+  const [adminSession, setAdminSession] = useState<{
+    role: "proviseur" | "superadmin";
+    email: string;
+    name: string;
+  } | null>(() => {
+    try {
+      const raw = sessionStorage.getItem("lfjp_admin_active_session");
+      if (raw) return JSON.parse(raw);
+    } catch {
+      // ignore
+    }
+    return null;
+  });
+
+  // Login tabs: 'proviseur' | 'superadmin'
+  const [authTab, setAuthTab] = useState<"proviseur" | "superadmin">("proviseur");
+
+  // Proviseur Login state
+  const [proviseurEmailInput, setProviseurEmailInput] = useState<string>("proviseur@lfjpsaly.org");
+  const [proviseurPasswordInput, setProviseurPasswordInput] = useState<string>("");
+  const [showProviseurLoginPass, setShowProviseurLoginPass] = useState<boolean>(false);
+  const [proviseurLoginError, setProviseurLoginError] = useState<string | null>(null);
+
+  // Proviseur Save confirmation modal
+  const [proviseurSaveModalOpen, setProviseurSaveModalOpen] = useState<boolean>(false);
+
+  // GitHub Auth & Sync hook (SuperAdmin)
   const {
-    isAuthenticated,
+    isAuthenticated: isGitHubAuthenticated,
     user: githubUser,
     config: githubConfig,
     token: githubToken,
     login: loginGitHub,
     logout: logoutGitHub,
   } = useGitHubAuth();
+
+  // Overall authentication check
+  const isAuthenticated = Boolean(adminSession);
 
   // Navigation hook for redirect
   const navigate = useNavigate();
@@ -221,10 +258,60 @@ export default function AdminPage() {
     }
   }, [githubToken]);
 
-  // Logout handler with immediate home redirect
+  // Logout handler with immediate session reset
   const handleLogout = () => {
+    try {
+      sessionStorage.removeItem("lfjp_admin_active_session");
+    } catch {
+      // ignore
+    }
+    setAdminSession(null);
     logoutGitHub();
-    navigate("/");
+    showNotification("Vous avez été déconnecté de l'espace d'administration.");
+  };
+
+  // Proviseur Email/Password Login
+  const handleProviseurLogin = (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    setProviseurLoginError(null);
+
+    const configured = cmsData.siteInfo.proviseurAuth || {
+      email: "proviseur@lfjpsaly.org",
+      password: "ProviseurLFJP2026!",
+      name: "M. le Proviseur",
+    };
+
+    const emailMatch =
+      proviseurEmailInput.trim().toLowerCase() === configured.email.trim().toLowerCase();
+    const passMatch = proviseurPasswordInput.trim() === configured.password.trim();
+
+    if (!emailMatch || !passMatch) {
+      setProviseurLoginError(
+        "Identifiants incorrects. Veuillez vérifier l'adresse email et le mot de passe Direction."
+      );
+      return;
+    }
+
+    const newSession = {
+      role: "proviseur" as const,
+      email: configured.email,
+      name: configured.name || "M. le Proviseur",
+    };
+    try {
+      sessionStorage.setItem("lfjp_admin_active_session", JSON.stringify(newSession));
+    } catch {
+      // ignore
+    }
+    setAdminSession(newSession);
+    setCurrentSection("sessions-examens");
+    showNotification(`Connexion réussie ! Bienvenue ${newSession.name}.`);
+  };
+
+  // Proviseur Save Changes
+  const handleProviseurSave = () => {
+    markProviseurSaved("Mise à jour des examens effectuée par le Proviseur");
+    setProviseurSaveModalOpen(true);
+    showNotification("💾 Modifications enregistrées avec succès !");
   };
 
   // Open GitHub OAuth / Token page in popup/tab
@@ -287,7 +374,19 @@ export default function AdminPage() {
     if (!result.success) {
       setLoginError(result.error || "Impossible de se connecter à GitHub avec cette clé.");
     } else {
-      showNotification(`Connexion réussie ! Bienvenue ${result.user?.name || result.user?.login}.`);
+      const newSession = {
+        role: "superadmin" as const,
+        email: result.user?.login || "admin",
+        name: result.user?.name || result.user?.login || "SuperAdmin Technique",
+      };
+      try {
+        sessionStorage.setItem("lfjp_admin_active_session", JSON.stringify(newSession));
+      } catch {
+        // ignore
+      }
+      setAdminSession(newSession);
+      setCurrentSection("config");
+      showNotification(`Connexion réussie ! Bienvenue ${newSession.name}.`);
     }
   };
 
@@ -311,6 +410,7 @@ export default function AdminPage() {
     setIsSyncing(false);
     setSyncResult(res);
     if (res.success) {
+      clearPendingDeployment();
       showNotification("Modifications publiées sur GitHub ! Vercel redéploie votre site en ligne.");
     }
   };
@@ -487,8 +587,15 @@ export default function AdminPage() {
         <div className="w-full max-w-md">
           {/* School Badge & Header */}
           <div className="text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-700 text-white font-bold text-lg shadow-sm">
-              LFJP
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white border border-slate-200 p-1 shadow-xs">
+              <img
+                src="/assets/aistudio/logo-lfjp_62451311.png"
+                alt="LFJP Logo"
+                className="h-full w-full object-contain"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "/logo-lfjp.png";
+                }}
+              />
             </div>
             <h1 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">
               Portail d'Administration
@@ -497,167 +604,225 @@ export default function AdminPage() {
               Lycée Français Jacques Prévert de Saly • Réseau AEFE
             </p>
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800">
-              <span>Gestion des examens blancs & DNB</span>
+              <span>Session {cmsData.siteInfo.schoolYear || "2025-2026"}</span>
             </div>
           </div>
 
-          {/* Login Card */}
+          {/* Login Card with Role Tabs */}
           <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-7 shadow-lg">
-            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white">
-                <Github className="h-5 w-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Connexion avec GitHub</h2>
-                <p className="text-xs text-slate-500">
-                  Accès réservé aux administrateurs autorisés
-                </p>
-              </div>
-            </div>
-
-            {loginError && (
-              <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs text-rose-800">
-                <p className="font-bold">Erreur d'authentification</p>
-                <p className="mt-0.5">{loginError}</p>
-              </div>
-            )}
-
-            <div className="mt-5 space-y-4">
-              {/* Single direct GitHub button */}
+            {/* Role Selection Tabs */}
+            <div className="flex rounded-xl bg-slate-100 p-1 mb-5">
               <button
                 type="button"
-                id="btn-login-github"
-                onClick={handleStartGitHubConnect}
-                className="flex w-full items-center justify-center gap-3 rounded-2xl bg-slate-900 px-5 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.99]"
+                id="tab-login-proviseur"
+                onClick={() => {
+                  setAuthTab("proviseur");
+                  setLoginError(null);
+                  setProviseurLoginError(null);
+                }}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
+                  authTab === "proviseur"
+                    ? "bg-white text-emerald-800 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
               >
-                <Github className="h-5 w-5" />
-                <span>Se connecter avec GitHub</span>
+                <UserCheck className="h-4 w-4 text-emerald-600" />
+                <span>👔 Proviseur (Direction)</span>
               </button>
+              <button
+                type="button"
+                id="tab-login-superadmin"
+                onClick={() => {
+                  setAuthTab("superadmin");
+                  setLoginError(null);
+                  setProviseurLoginError(null);
+                }}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
+                  authTab === "superadmin"
+                    ? "bg-white text-blue-800 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Shield className="h-4 w-4 text-blue-600" />
+                <span>🛠️ SuperAdmin (DSI)</span>
+              </button>
+            </div>
 
-              <div className="relative flex items-center justify-center">
-                <div className="border-t border-slate-200 w-full" />
-                <span className="bg-white px-3 text-[11px] font-medium text-slate-400 uppercase tracking-wider">
-                  ou saisie de votre clé
-                </span>
-              </div>
-
-              {hasOpenedGitHub && (
-                <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-3.5 text-xs text-slate-700 space-y-1">
-                  <p className="font-semibold text-blue-900 flex items-center gap-1.5">
-                    <CheckCircle2 className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                    <span>Fenêtre GitHub ouverte</span>
-                  </p>
-                  <p className="text-slate-600">
-                    Connectez-vous à votre compte sur GitHub, puis cliquez sur <strong>Generate token</strong> en bas pour générer votre clé. Collez-la ci-dessous :
-                  </p>
+            {/* TAB 1: PROVISEUR EMAIL & PASSWORD */}
+            {authTab === "proviseur" ? (
+              <form onSubmit={handleProviseurLogin} className="space-y-4">
+                <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                    <UserCheck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900">Espace Direction & Examens</h2>
+                    <p className="text-[11px] text-slate-500">
+                      Connectez-vous avec vos identifiants Chef d'Établissement
+                    </p>
+                  </div>
                 </div>
-              )}
 
-              <form onSubmit={handleLoginSubmit} className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">Adresse Email</label>
+                  <input
+                    type="email"
+                    value={proviseurEmailInput}
+                    onChange={(e) => setProviseurEmailInput(e.target.value)}
+                    placeholder="proviseur@lfjpsaly.org"
+                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 shadow-xs focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                    required
+                  />
+                </div>
+
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Jeton d'accès personnel GitHub (Token)
-                    </label>
+                    <label className="text-xs font-semibold text-slate-700">Mot de passe</label>
                     <button
                       type="button"
-                      onClick={handlePasteClipboard}
-                      className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-800"
+                      onClick={() => setShowProviseurLoginPass(!showProviseurLoginPass)}
+                      className="text-[11px] text-slate-500 hover:text-slate-800 font-medium"
                     >
-                      <ClipboardPaste className="h-3 w-3" />
-                      <span>Coller depuis le presse-papier</span>
+                      {showProviseurLoginPass ? "Masquer" : "Afficher"}
                     </button>
                   </div>
-                  <div className="relative">
-                    <input
-                      type={showToken ? "text" : "password"}
-                      value={loginTokenInput}
-                      onChange={(e) => setLoginTokenInput(e.target.value)}
-                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                      className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-mono text-slate-900 shadow-xs focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowToken(!showToken)}
-                      className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-600"
-                    >
-                      {showToken ? "Masquer" : "Afficher"}
-                    </button>
+                  <input
+                    type={showProviseurLoginPass ? "text" : "password"}
+                    value={proviseurPasswordInput}
+                    onChange={(e) => setProviseurPasswordInput(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-mono text-slate-900 shadow-xs focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                    required
+                  />
+                </div>
+
+                {proviseurLoginError && (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+                    {proviseurLoginError}
                   </div>
-                  {DEFAULT_GITHUB_TOKEN && loginTokenInput !== DEFAULT_GITHUB_TOKEN && (
-                    <div className="pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setLoginTokenInput(DEFAULT_GITHUB_TOKEN)}
-                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-900"
-                      >
-                        <Key className="h-3 w-3" />
-                        <span>Insérer le jeton ({DEFAULT_GITHUB_TOKEN.slice(0, 7)}••••••••{DEFAULT_GITHUB_TOKEN.slice(-4)})</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Collapsible advanced repo configuration */}
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvancedConfig(!showAdvancedConfig)}
-                    className="flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-slate-800"
-                  >
-                    <ChevronDown className={`h-3 w-3 transition-transform ${showAdvancedConfig ? "rotate-180" : ""}`} />
-                    <span>Paramètres du dépôt ({loginOwnerInput}/{loginRepoInput})</span>
-                  </button>
-
-                  {showAdvancedConfig && (
-                    <div className="mt-2 grid grid-cols-3 gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                      <div>
-                        <label className="font-semibold text-slate-600">Propriétaire</label>
-                        <input
-                          type="text"
-                          value={loginOwnerInput}
-                          onChange={(e) => setLoginOwnerInput(e.target.value)}
-                          className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="font-semibold text-slate-600">Dépôt</label>
-                        <input
-                          type="text"
-                          value={loginRepoInput}
-                          onChange={(e) => setLoginRepoInput(e.target.value)}
-                          className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="font-semibold text-slate-600">Branche</label>
-                        <input
-                          type="text"
-                          value={loginBranchInput}
-                          onChange={(e) => setLoginBranchInput(e.target.value)}
-                          className="mt-1 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs font-mono"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                )}
 
                 <button
                   type="submit"
-                  disabled={isLoggingIn || !loginTokenInput.trim()}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-blue-800 disabled:opacity-50"
+                  id="btn-submit-proviseur-login"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-emerald-700 active:scale-[0.99]"
                 >
-                  {isLoggingIn ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Vérification de l'accès...</span>
-                    </>
-                  ) : (
-                    <span>Valider et accéder à l'administration</span>
-                  )}
+                  <UserCheck className="h-4 w-4" />
+                  <span>Accéder à l'Espace Proviseur</span>
                 </button>
+
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-[11px] text-slate-600 space-y-1">
+                  <p className="font-semibold text-slate-800 flex items-center gap-1.5">
+                    <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Fonctionnalités Proviseur :</span>
+                  </p>
+                  <p>
+                    Sessions d'examen, créneaux, import Pronote (élèves, professeurs, salles, aménagements), répartition et brassage, planning EDT, convocations et bouton de mise à jour instantanée.
+                  </p>
+                </div>
               </form>
-            </div>
+            ) : (
+              /* TAB 2: SUPERADMIN GITHUB ACCESS */
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white">
+                    <Github className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900">Administration Technique (DSI)</h2>
+                    <p className="text-[11px] text-slate-500">
+                      Accès complet avec jeton GitHub et déploiements Vercel
+                    </p>
+                  </div>
+                </div>
+
+                {loginError && (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+                    <p className="font-bold">Erreur d'authentification</p>
+                    <p className="mt-0.5">{loginError}</p>
+                  </div>
+                )}
+
+                {/* Single direct GitHub button */}
+                <button
+                  type="button"
+                  id="btn-login-github"
+                  onClick={handleStartGitHubConnect}
+                  className="flex w-full items-center justify-center gap-3 rounded-2xl bg-slate-900 px-5 py-3 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.99]"
+                >
+                  <Github className="h-4 w-4" />
+                  <span>Se connecter avec GitHub</span>
+                </button>
+
+                <div className="relative flex items-center justify-center">
+                  <div className="border-t border-slate-200 w-full" />
+                  <span className="bg-white px-3 text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                    ou saisie de votre clé
+                  </span>
+                </div>
+
+                <form onSubmit={handleLoginSubmit} className="space-y-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-700">
+                        Jeton personnel GitHub (Token)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handlePasteClipboard}
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-800"
+                      >
+                        <ClipboardPaste className="h-3 w-3" />
+                        <span>Coller</span>
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showToken ? "text" : "password"}
+                        value={loginTokenInput}
+                        onChange={(e) => setLoginTokenInput(e.target.value)}
+                        placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono text-slate-900 shadow-xs focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowToken(!showToken)}
+                        className="absolute right-3 top-2 text-xs text-slate-400 hover:text-slate-600"
+                      >
+                        {showToken ? "Masquer" : "Afficher"}
+                      </button>
+                    </div>
+                    {DEFAULT_GITHUB_TOKEN && loginTokenInput !== DEFAULT_GITHUB_TOKEN && (
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setLoginTokenInput(DEFAULT_GITHUB_TOKEN)}
+                          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue-700 hover:text-blue-900"
+                        >
+                          <Key className="h-3 w-3" />
+                          <span>Insérer jeton LFJP configuré</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoggingIn || !loginTokenInput.trim()}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-blue-800 disabled:opacity-50"
+                  >
+                    {isLoggingIn ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Vérification de l'accès...</span>
+                      </>
+                    ) : (
+                      <span>Accéder à l'Administration Complète</span>
+                    )}
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
 
           <div className="mt-6 text-center">
@@ -711,16 +876,28 @@ export default function AdminPage() {
 
         {/* User profile & Actions */}
         <div className="flex items-center gap-3">
-          {/* GitHub User badge */}
-          {githubUser && (
-            <div className="hidden sm:flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs">
-              <img
-                src={githubUser.avatar_url}
-                alt={githubUser.login}
-                className="h-5 w-5 rounded-full border border-slate-300"
-              />
-              <span className="font-semibold text-slate-800">@{githubUser.login}</span>
+          {/* User badge */}
+          {adminSession?.role === "proviseur" ? (
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-950 font-bold shadow-xs">
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>👔 Direction : {adminSession.name || "Proviseur"}</span>
             </div>
+          ) : (
+            githubUser ? (
+              <div className="hidden sm:flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs">
+                <img
+                  src={githubUser.avatar_url}
+                  alt={githubUser.login}
+                  className="h-5 w-5 rounded-full border border-slate-300"
+                />
+                <span className="font-semibold text-slate-800">@{githubUser.login}</span>
+                <span className="rounded bg-blue-100 text-blue-700 px-1.5 py-0.5 text-[10px] font-bold">SuperAdmin</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs text-blue-900 font-bold">
+                <span>⚡ SuperAdmin</span>
+              </div>
+            )
           )}
 
           <Link
@@ -756,31 +933,46 @@ export default function AdminPage() {
             <span className="hidden sm:inline">Espace Impression</span>
           </Link>
 
-          {/* Bouton Config Jeton GitHub */}
-          <button
-            onClick={() => {
-              setSyncResult(null);
-              setIsSyncModalOpen(true);
-            }}
-            title="Modifier ou renouveler votre jeton d'accès GitHub"
-            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-blue-700"
-          >
-            <Key className="h-3.5 w-3.5 text-slate-500" />
-            <span className="hidden md:inline">Jeton GitHub</span>
-          </button>
+          {/* Actions spécifiques selon le profil */}
+          {adminSession?.role === "proviseur" ? (
+            <button
+              id="btn-proviseur-save-header"
+              onClick={handleProviseurSave}
+              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.98]"
+              title="Enregistrer toutes les modifications dans l'application"
+            >
+              <Save className="h-4 w-4" />
+              <span>Enregistrer & Mettre à jour</span>
+            </button>
+          ) : (
+            <>
+              {/* Bouton Config Jeton GitHub */}
+              <button
+                onClick={() => {
+                  setSyncResult(null);
+                  setIsSyncModalOpen(true);
+                }}
+                title="Modifier ou renouveler votre jeton d'accès GitHub"
+                className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-blue-700"
+              >
+                <Key className="h-3.5 w-3.5 text-slate-500" />
+                <span className="hidden md:inline">Jeton GitHub</span>
+              </button>
 
-          {/* LE BOUTON UNIQUE DE SYNCHRONISATION GITHUB & VERCEL */}
-          <button
-            id="btn-single-sync-github-vercel"
-            onClick={() => {
-              setSyncResult(null);
-              setIsSyncModalOpen(true);
-            }}
-            className="flex items-center gap-2 rounded-xl bg-blue-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-blue-800 active:scale-[0.98]"
-          >
-            <UploadCloud className="h-4 w-4" />
-            <span>Mettre à jour GitHub & Vercel</span>
-          </button>
+              {/* LE BOUTON UNIQUE DE SYNCHRONISATION GITHUB & VERCEL */}
+              <button
+                id="btn-single-sync-github-vercel"
+                onClick={() => {
+                  setSyncResult(null);
+                  setIsSyncModalOpen(true);
+                }}
+                className="flex items-center gap-2 rounded-xl bg-blue-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-blue-800 active:scale-[0.98]"
+              >
+                <UploadCloud className="h-4 w-4" />
+                <span>Mettre à jour GitHub & Vercel</span>
+              </button>
+            </>
+          )}
 
           {/* Bouton Déconnexion avec redirection automatique vers l'accueil */}
           <button
@@ -794,6 +986,67 @@ export default function AdminPage() {
           </button>
         </div>
       </header>
+
+      {/* SuperAdmin Notification Banner: Pending Deployment from Proviseur */}
+      {adminSession?.role === "superadmin" && cmsData.siteInfo.pendingDeployment && (
+        <div className="border-b border-amber-300 bg-gradient-to-r from-amber-50 via-amber-100/70 to-orange-50 px-6 py-3 shadow-xs">
+          <div className="mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 max-w-7xl">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-white shadow-xs shrink-0">
+                <Bell className="h-5 w-5 animate-bounce" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-amber-950">
+                  🔔 Notification Direction : Le Proviseur ({cmsData.siteInfo.pendingDeployment.savedBy}) a enregistré des modifications prêtes pour déploiement en ligne !
+                </p>
+                <p className="text-[11px] text-amber-800">
+                  Dernier enregistrement : {new Date(cmsData.siteInfo.pendingDeployment.savedAt).toLocaleString("fr-FR")} — « {cmsData.siteInfo.pendingDeployment.notes} »
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => {
+                  setSyncResult(null);
+                  setIsSyncModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-amber-700 active:scale-95"
+              >
+                <UploadCloud className="h-4 w-4" />
+                <span>Déployer maintenant sur GitHub & Vercel</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Proviseur Save Confirmation Modal */}
+      {proviseurSaveModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-3xl border border-emerald-200 bg-white p-7 shadow-2xl animate-in fade-in zoom-in-95 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 mb-4 shadow-xs">
+              <CheckCircle2 className="h-8 w-8" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">
+              Modifications enregistrées avec succès !
+            </h3>
+            <p className="text-xs text-slate-600 leading-relaxed mb-6">
+              Vos programmations, examens, créneaux et répartitions ont été sauvegardés.
+              <br /><br />
+              <span className="block rounded-xl bg-blue-50 border border-blue-200 p-3 text-blue-900 font-medium text-left">
+                📢 <strong>Notification envoyée au Super-Administrateur</strong> :
+                Les enregistrements effectués seront déployés en ligne par le Super-Administrateur, qui recevra un avis sur son espace pour lancer le déploiement officiel sur GitHub & Vercel.
+              </span>
+            </p>
+            <button
+              onClick={() => setProviseurSaveModalOpen(false)}
+              className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-emerald-700"
+            >
+              Compris, continuer
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Notification Toast */}
       {notification && (
@@ -1119,6 +1372,8 @@ export default function AdminPage() {
           examsCount={cmsData.exams.length}
           examSlotsCount={cmsData.examSlots?.length || 0}
           schoolYear={cmsData.siteInfo.schoolYear || "2025-2026"}
+          role={adminSession?.role}
+          onProviseurSave={handleProviseurSave}
         />
 
         {/* Main Content Area */}

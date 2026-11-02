@@ -36,9 +36,14 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [studentSearchQuery, setStudentSearchQuery] = useState<string>("");
 
-  // Selected student for full downloadable convocation modal
+  // Exam-specific search queries (one per exam session)
+  const [examSearchQueries, setExamSearchQueries] = useState<Record<string, string>>({});
+
+  // Selected student & exam for full downloadable convocation modal
   const [selectedStudentForConvocation, setSelectedStudentForConvocation] =
     useState<CmsCandidate | null>(null);
+  const [selectedExamForConvocation, setSelectedExamForConvocation] =
+    useState<CmsExam | null>(null);
 
   // Expanded exam ID
   const [expandedExamId, setExpandedExamId] = useState<string | null>(null);
@@ -126,8 +131,8 @@ export default function HomePage() {
     }
   };
 
-  // Helper to generate full personalized exam schedule for a candidate
-  const getCandidateSchedule = (cand: CmsCandidate) => {
+  // Helper to generate personalized exam schedule for a candidate (optionally filtered by specific exam session)
+  const getCandidateSchedule = (cand: CmsCandidate, specificExam?: CmsExam | null) => {
     const isTiersTemps = Boolean(
       cand.accommodation &&
         cand.accommodation !== "Aucun" &&
@@ -138,8 +143,17 @@ export default function HomePage() {
           cand.accommodation.toLowerCase().includes("1/3"))
     );
 
-    // 1. Try to find real configured slots matching candidate's exam or class level
+    // 1. Try to find real configured slots matching candidate's exam session or class level
     const matchedSlots = (cmsData.examSlots || []).filter((slot) => {
+      if (specificExam) {
+        if (slot.examId && specificExam.id && slot.examId === specificExam.id) return true;
+        if (slot.examTitle && specificExam.title) {
+          const sTit = slot.examTitle.toLowerCase();
+          const eTit = specificExam.title.toLowerCase();
+          if (sTit.includes(eTit) || eTit.includes(sTit)) return true;
+        }
+        if (specificExam.targetLevel && slot.targetLevel && specificExam.targetLevel === slot.targetLevel) return true;
+      }
       if (cand.examName && slot.examTitle && cand.examName.toLowerCase().includes(slot.examTitle.toLowerCase())) return true;
       if (cand.className && slot.targetLevel && cand.className.toLowerCase().includes(slot.targetLevel.toLowerCase())) return true;
       if (cand.className.includes("3ème") && (slot.targetLevel?.includes("3ème") || slot.examTitle?.toLowerCase().includes("dnb"))) return true;
@@ -391,115 +405,23 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* 4. RECHERCHE RAPIDE CANDIDAT (Trouver ma salle & Télécharger ma convocation) */}
-      <section className="w-full max-w-4xl rounded-2xl bg-white border-2 border-blue-900/10 shadow-sm p-5 sm:p-6 text-slate-800 text-left relative overflow-hidden space-y-4">
-        {/* Establishment Brand Accent Bar */}
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#002060] via-[#002060] to-[#c92a2a]" />
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-600" />
-              <span className="text-[11px] font-bold uppercase tracking-wider text-red-600">
-                Espace Candidats & Familles
-              </span>
-            </div>
-            <h3 className="text-lg font-black text-[#002060] flex items-center gap-2 mt-0.5">
-              <Search className="h-5 w-5 text-[#002060]" />
-              <span>Trouver ma salle & Télécharger ma convocation officielle</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Saisissez votre nom, prénom ou N° anonymat pour accéder exclusivement à votre convocation individuelle et à vos horaires (+1/3 temps).
-            </p>
+      {/* 4. GUIDE CONVOCATIONS & SESSIONS */}
+      <div className="w-full max-w-4xl rounded-2xl bg-gradient-to-r from-[#002060] to-[#001746] text-white p-5 sm:p-6 text-left shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
+              Espace Candidats & Familles
+            </span>
           </div>
-
-          <div className="relative w-full sm:w-72 shrink-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input
-              type="text"
-              value={studentSearchQuery}
-              onChange={(e) => setStudentSearchQuery(e.target.value)}
-              placeholder="Ex: Diop, Faye, LFJP-0042..."
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-[#002060] focus:ring-2 focus:ring-blue-100 focus:outline-hidden transition font-medium"
-            />
-          </div>
+          <h3 className="text-base sm:text-lg font-black tracking-tight">
+            Trouver ma salle & Télécharger ma convocation officielle par session
+          </h3>
+          <p className="text-xs text-slate-200">
+            Consultez votre session d'examen ci-dessous (DNB, Baccalauréat...). Dans chaque session, utilisez l'espace recherche pour voir vos matières, horaires (+1/3 temps) et imprimer votre convocation individuelle officielle.
+          </p>
         </div>
-
-        {/* Results */}
-        {studentSearchQuery.trim().length >= 2 && (
-          <div className="pt-4 border-t border-slate-100 space-y-3">
-            {searchedStudents.length === 0 ? (
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                <p className="text-xs text-slate-500">
-                  Aucun élève trouvé pour "<strong>{studentSearchQuery}</strong>". Veuillez vérifier l'orthographe exacte de votre nom ou votre numéro d'anonymat.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {searchedStudents.map((cand) => (
-                  <div
-                    key={cand.id}
-                    className="p-4 rounded-xl bg-white border border-slate-200 hover:border-blue-300 transition shadow-2xs space-y-3 flex flex-col justify-between"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <span className="font-black text-sm text-[#002060] block">
-                            {cand.lastName.toUpperCase()} {cand.firstName}
-                          </span>
-                          <span className="text-[11px] text-slate-400 font-mono">
-                            N° {cand.anonymatNumber || `LFJP-${cand.id.slice(-4)}`}
-                          </span>
-                        </div>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-[#002060] border border-blue-200 shrink-0">
-                          {cand.className}
-                        </span>
-                      </div>
-
-                      <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1">
-                        <div className="flex justify-between items-center">
-                          <span className="text-[11px] text-slate-500">Salle assignée :</span>
-                          <span className="font-bold text-[#002060] font-mono text-xs">
-                            {cand.roomName || "Non définie"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[11px] text-slate-500">Table d'examen :</span>
-                          <span className="font-bold text-slate-800 font-mono text-[11px]">
-                            Table N° {cand.tableNumber || "1"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[11px] text-slate-500">Heure d'appel :</span>
-                          <span className="font-mono text-emerald-700 font-bold text-xs">
-                            {cand.convocationTime || "07h45"}
-                          </span>
-                        </div>
-                      </div>
-
-                      {cand.accommodation && cand.accommodation !== "Aucun" && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-50 border border-purple-200 text-purple-900 text-[10px] font-bold">
-                          <span>♿</span>
-                          <span>{cand.accommodation} (+1/3 temps)</span>
-                        </span>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStudentForConvocation(cand)}
-                      className="w-full py-2 px-3 rounded-lg bg-[#002060] hover:bg-[#001746] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-2xs group"
-                    >
-                      <Printer className="h-3.5 w-3.5 text-amber-300 group-hover:scale-110 transition" />
-                      <span>Télécharger Convocation (PDF)</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </section>
+      </div>
 
       {/* 5. SESSIONS D'EXAMENS & CRÉNEAUX DES ÉPREUVES */}
       <section className="w-full max-w-4xl space-y-4 text-left">
@@ -741,6 +663,176 @@ export default function HomePage() {
                           );
                         })
                       )}
+
+                      {/* ESPACE CANDIDAT INTÉGRÉ : TROUVER MA SALLE & TÉLÉCHARGER MA CONVOCATION POUR CET EXAMEN */}
+                      <div className="pt-4 border-t-2 border-slate-200/80 space-y-4">
+                        <div className="p-4 sm:p-5 rounded-2xl bg-white border-2 border-blue-900/15 shadow-2xs space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-red-600" />
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-red-600">
+                                  Convocation Officielle • {exam.title}
+                                </span>
+                              </div>
+                              <h4 className="text-sm sm:text-base font-black text-[#002060] flex items-center gap-1.5 mt-0.5">
+                                <Search className="h-4 w-4 text-[#002060]" />
+                                <span>Trouver ma salle & Télécharger ma convocation pour cette session</span>
+                              </h4>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                Saisissez votre nom ou N° d'anonymat pour consulter vos matières, horaires (+1/3 temps) et imprimer votre convocation nominative.
+                              </p>
+                            </div>
+
+                            <div className="relative w-full sm:w-64 shrink-0">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                              <input
+                                type="text"
+                                value={examSearchQueries[exam.id] || ""}
+                                onChange={(e) =>
+                                  setExamSearchQueries((prev) => ({
+                                    ...prev,
+                                    [exam.id]: e.target.value,
+                                  }))
+                                }
+                                placeholder="Votre nom ou N°..."
+                                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-[#002060] focus:ring-2 focus:ring-blue-100 focus:outline-hidden font-medium"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Candidate search results for this exam session */}
+                          {(() => {
+                            const query = (examSearchQueries[exam.id] || "").trim().toLowerCase();
+                            if (query.length < 2) return null;
+
+                            const matchedCandidates = cmsData.candidates.filter((cand) => {
+                              const lastName = (cand.lastName || "").toLowerCase();
+                              const firstName = (cand.firstName || "").toLowerCase();
+                              const fullName = `${lastName} ${firstName}`;
+                              const reverseName = `${firstName} ${lastName}`;
+                              const anonymat = (cand.anonymatNumber || "").toLowerCase();
+                              const id = (cand.id || "").toLowerCase();
+
+                              const nameMatches =
+                                lastName.includes(query) ||
+                                firstName.includes(query) ||
+                                fullName.includes(query) ||
+                                reverseName.includes(query) ||
+                                anonymat.includes(query) ||
+                                id.includes(query);
+
+                              if (!nameMatches) return false;
+
+                              // Must match this exam or level
+                              if (cand.examName && exam.title) {
+                                const cEx = cand.examName.toLowerCase();
+                                const eTit = exam.title.toLowerCase();
+                                if (cEx.includes(eTit) || eTit.includes(cEx)) return true;
+                              }
+                              if (exam.targetLevel && cand.className && cand.className.includes(exam.targetLevel)) return true;
+                              if (exam.title?.toLowerCase().includes("dnb") && cand.className?.includes("3ème")) return true;
+                              if (exam.title?.toLowerCase().includes("bac") && (cand.className?.includes("1ère") || cand.className?.includes("Terminale"))) return true;
+
+                              return false;
+                            });
+
+                            if (matchedCandidates.length === 0) {
+                              return (
+                                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                                  <p className="text-xs text-slate-500">
+                                    Aucun élève trouvé pour "<strong>{examSearchQueries[exam.id]}</strong>" dans cette session d'examen. Vérifiez l'orthographe ou le numéro d'anonymat.
+                                  </p>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                                {matchedCandidates.map((cand) => (
+                                  <div
+                                    key={cand.id}
+                                    className="p-4 rounded-xl bg-slate-50 border border-slate-300 space-y-3"
+                                  >
+                                    <div className="flex items-start justify-between gap-2 border-b border-slate-200 pb-2">
+                                      <div>
+                                        <span className="font-black text-sm text-[#002060] block">
+                                          {cand.lastName.toUpperCase()} {cand.firstName}
+                                        </span>
+                                        <span className="text-[11px] text-slate-500 font-mono">
+                                          N° Anonymat : {cand.anonymatNumber || `LFJP-${cand.id.slice(-4)}`}
+                                        </span>
+                                      </div>
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-[#002060]">
+                                        {cand.className}
+                                      </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                      <div className="p-2 bg-white rounded-lg border border-slate-200">
+                                        <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                                          Salle assignée
+                                        </span>
+                                        <strong className="text-xs font-black text-[#002060]">
+                                          {cand.roomName || "Salle principale"}
+                                        </strong>
+                                      </div>
+                                      <div className="p-2 bg-white rounded-lg border border-slate-200">
+                                        <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                                          Table d'examen
+                                        </span>
+                                        <strong className="text-xs font-bold text-slate-800 font-mono">
+                                          Table N° {cand.tableNumber || "1"}
+                                        </strong>
+                                      </div>
+                                    </div>
+
+                                    {/* Matières programmées pour cette session */}
+                                    <div className="space-y-1">
+                                      <span className="text-[10px] uppercase font-bold text-slate-600 block">
+                                        Matières programmées pour cet examen ({examSlots.length}) :
+                                      </span>
+                                      <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
+                                        {examSlots.map((slot, idx) => (
+                                          <div
+                                            key={slot.id || idx}
+                                            className="flex items-center justify-between text-[11px] bg-white px-2 py-1 rounded border border-slate-200"
+                                          >
+                                            <span className="font-semibold text-slate-800 truncate mr-2">
+                                              {slot.subject}
+                                            </span>
+                                            <span className="font-mono text-slate-500 text-[10px] shrink-0">
+                                              {slot.date} ({slot.startTime} - {cand.accommodation && cand.accommodation !== "Aucun" && slot.tiersTempsEndTime ? `${slot.tiersTempsEndTime} +1/3` : slot.endTime})
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+
+                                    {cand.accommodation && cand.accommodation !== "Aucun" && (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-100 text-purple-900 text-[10px] font-bold">
+                                        <span>♿ {cand.accommodation} (+1/3 temps)</span>
+                                      </span>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedExamForConvocation(exam);
+                                        setSelectedStudentForConvocation(cand);
+                                      }}
+                                      className="w-full py-2 px-3 rounded-lg bg-[#002060] hover:bg-[#001746] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs group"
+                                    >
+                                      <Printer className="h-3.5 w-3.5 text-amber-300 group-hover:scale-110 transition" />
+                                      <span>Télécharger ma convocation ({exam.title})</span>
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -878,9 +970,15 @@ export default function HomePage() {
                 <h1 className="text-base sm:text-lg font-black text-[#002060] uppercase tracking-wide">
                   CONVOCATION INDIVIDUELLE DU CANDIDAT
                 </h1>
-                <p className="text-xs text-slate-500">
-                  Délivrée par la Direction et le Secrétariat des Examens du Lycée Français Jacques Prévert
-                </p>
+                {selectedExamForConvocation ? (
+                  <p className="text-xs font-black text-red-600 uppercase tracking-wider">
+                    {selectedExamForConvocation.title} • {selectedExamForConvocation.period}
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    Délivrée par la Direction et le Secrétariat des Examens du Lycée Français Jacques Prévert
+                  </p>
+                )}
               </div>
 
               {/* Candidate Info Box */}
@@ -972,7 +1070,7 @@ export default function HomePage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white">
-                      {getCandidateSchedule(selectedStudentForConvocation).map((slot, sIdx) => (
+                      {getCandidateSchedule(selectedStudentForConvocation, selectedExamForConvocation).map((slot, sIdx) => (
                         <tr key={sIdx} className="hover:bg-slate-50">
                           <td className="py-2 px-3 font-semibold text-slate-900 whitespace-nowrap">
                             {slot.date}

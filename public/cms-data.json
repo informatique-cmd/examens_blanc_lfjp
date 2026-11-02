@@ -21,7 +21,13 @@
       "title": "Consigne d'organisation des épreuves",
       "message": "Veuillez vous présenter 15 minutes avant le début de chaque épreuve muni de votre convocation et d'une pièce d'identité.",
       "type": "info"
-    }
+    },
+    "proviseurAuth": {
+      "email": "proviseur@lfjpsaly.org",
+      "password": "ProviseurLFJP2026!",
+      "name": "M. le Proviseur"
+    },
+    "pendingDeployment": null
   },
   "callouts": [
     {

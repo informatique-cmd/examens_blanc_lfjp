@@ -70,6 +70,8 @@ interface AdminSidebarProps {
   examsCount: number;
   examSlotsCount?: number;
   schoolYear: string;
+  role?: "proviseur" | "superadmin";
+  onProviseurSave?: () => void;
 }
 
 export default function AdminSidebar({
@@ -86,6 +88,8 @@ export default function AdminSidebar({
   examsCount,
   examSlotsCount = 0,
   schoolYear,
+  role = "superadmin",
+  onProviseurSave,
 }: AdminSidebarProps) {
   const isDataActive = [
     "data-eleves",
@@ -137,20 +141,22 @@ export default function AdminSidebar({
 
       {/* Navigation List */}
       <nav className="flex-1 overflow-y-auto py-2">
-        {/* 1. Configuration & Logo */}
-        <button
-          onClick={() => onSelectSection("config")}
-          className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
-            currentSection === "config"
-              ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
-              : "hover:bg-white/5 hover:text-white"
-          }`}
-        >
-          <div className="flex items-center gap-2.5">
-            <Settings className="h-4 w-4 shrink-0 text-white/80" />
-            <span>⚙️ 1. Paramètres & Logo</span>
-          </div>
-        </button>
+        {/* 1. Configuration & Logo (SuperAdmin) */}
+        {role === "superadmin" && (
+          <button
+            onClick={() => onSelectSection("config")}
+            className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
+              currentSection === "config"
+                ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
+                : "hover:bg-white/5 hover:text-white"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Settings className="h-4 w-4 shrink-0 text-white/80" />
+              <span>⚙️ Paramètres & Accès</span>
+            </div>
+          </button>
+        )}
 
         {/* 2. Données (Submenu) */}
         <div>
@@ -535,28 +541,41 @@ export default function AdminSidebar({
           </span>
         </button>
 
-        {/* 11. Déploiement Git & Vercel */}
-        <button
-          onClick={() => onSelectSection("deployment")}
-          className={`w-full flex items-center gap-2.5 px-4 py-3 text-left transition border-b border-white/5 ${
-            currentSection === "deployment"
-              ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
-              : "hover:bg-white/5 hover:text-white"
-          }`}
-        >
-          <UploadCloud className="h-4 w-4 shrink-0 text-sky-400" />
-          <span>🚀 11. Déploiement Git & Vercel</span>
-        </button>
+        {/* 11. Déploiement Git & Vercel (SuperAdmin) */}
+        {role === "superadmin" && (
+          <button
+            onClick={() => onSelectSection("deployment")}
+            className={`w-full flex items-center gap-2.5 px-4 py-3 text-left transition border-b border-white/5 ${
+              currentSection === "deployment"
+                ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
+                : "hover:bg-white/5 hover:text-white"
+            }`}
+          >
+            <UploadCloud className="h-4 w-4 shrink-0 text-sky-400" />
+            <span>🚀 11. Déploiement Git & Vercel</span>
+          </button>
+        )}
       </nav>
 
       {/* Sidebar Footer: Save / Load / Reset / Direct Link to Showcase */}
       <div className="p-4 bg-black/20 border-t border-white/10 space-y-2 mt-auto">
+        {role === "proviseur" && onProviseurSave && (
+          <button
+            type="button"
+            onClick={onProviseurSave}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md border border-emerald-400/30"
+          >
+            <Save className="h-4 w-4" />
+            <span>💾 Enregistrer & Mettre à jour</span>
+          </button>
+        )}
+
         <Link
           to="/"
           target="_blank"
-          className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs"
+          className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold transition shadow-xs"
         >
-          <Eye className="h-3.5 w-3.5" />
+          <Eye className="h-3.5 w-3.5 text-emerald-400" />
           <span>Ouvrir la Vitrine Publique ↗</span>
         </Link>
 
