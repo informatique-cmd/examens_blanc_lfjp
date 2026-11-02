@@ -203,7 +203,7 @@
       "content": "Les candidats doivent se présenter 15 minutes avant l'heure indiquée sur la convocation avec leur pièce d'identité et leur matériel obligatoire.",
       "priority": "important",
       "target": "all",
-      "isPublished": true,
+      "isPublished": false,
       "date": "02/11/2026"
     },
     {
