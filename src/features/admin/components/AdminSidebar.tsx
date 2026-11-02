@@ -118,15 +118,20 @@ export default function AdminSidebar({
       {/* Sidebar Header */}
       <div className="p-4 bg-black/15 border-b border-white/10 text-center">
         <div className="flex items-center justify-center gap-2 mb-1">
-          <div className="w-8 h-8 rounded-lg bg-[#3498db] text-white flex items-center justify-center font-bold text-sm shadow-sm">
-            LFJP
-          </div>
+          <img
+            src="/assets/aistudio/logo-lfjp_62451311.png"
+            alt="LFJP Logo"
+            className="w-8 h-8 object-contain bg-white rounded-lg p-0.5 shadow-2xs"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/logo-lfjp.png";
+            }}
+          />
           <h2 className="text-white font-bold text-[0.95rem] tracking-wide">
             Orga Examens
           </h2>
         </div>
-        <p className="text-[11px] text-white/70">
-          Session {schoolYear} • Saly Sénégal
+        <p className="text-[11px] text-white/80">
+          Session <span className="font-bold text-amber-300">{schoolYear}</span> • Saly Sénégal
         </p>
       </div>
 

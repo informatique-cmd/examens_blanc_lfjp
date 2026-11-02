@@ -37,26 +37,18 @@ export default function HomeHero({
 
   return (
     <div className="max-w-4xl space-y-5 text-center mx-auto">
-      {/* Logos Centered */}
-      <div className="flex w-full flex-wrap items-center justify-center gap-4 sm:gap-6">
-        {displayLogos.map((logo, idx) => (
-          <div
-            key={logo.src || idx}
-            className="h-24 sm:h-28 px-4 py-2 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-center transition hover:shadow-xs"
-          >
-            <img
-              src={logo.src}
-              alt={logo.alt ?? "Logo Établissement"}
-              className="max-h-full w-auto object-contain"
-              loading="lazy"
-              onError={(e) => {
-                if (logo.src.includes("logo-lfjp")) {
-                  (e.currentTarget as HTMLImageElement).src = "/logo-lfjp.png";
-                }
-              }}
-            />
-          </div>
-        ))}
+      {/* Centered combined LFJP + AEFE institutional banner */}
+      <div className="flex w-full items-center justify-center">
+        <div className="px-5 py-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-center max-w-xl transition hover:shadow-xs">
+          <img
+            src="/assets/aistudio/image_4a9bdc36.png"
+            alt="Lycée Français Jacques Prévert • Établissement partenaire AEFE"
+            className="h-20 sm:h-24 md:h-28 w-auto max-w-full object-contain"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/logo-lfjp-aefe.png";
+            }}
+          />
+        </div>
       </div>
 
       <div className="space-y-3">

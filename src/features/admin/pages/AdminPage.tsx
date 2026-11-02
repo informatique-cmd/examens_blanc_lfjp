@@ -681,14 +681,21 @@ export default function AdminPage() {
       {/* Top Header Bar */}
       <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3 shadow-xs">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-700 text-white font-bold text-sm shadow-xs">
-            LFJP
+          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 p-0.5 shadow-2xs">
+            <img
+              src="/assets/aistudio/logo-lfjp_62451311.png"
+              alt="LFJP Logo"
+              className="h-full w-full object-contain"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/logo-lfjp.png";
+              }}
+            />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base font-bold text-slate-900">Administration Examens LFJP</h1>
-              <span className="rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
-                {cmsData.siteInfo.schoolYear}
+              <span className="rounded-full bg-blue-100 border border-blue-300 px-2.5 py-0.5 text-xs font-bold text-[#002060]">
+                Année scolaire {cmsData.siteInfo.schoolYear || "2025-2026"}
               </span>
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-500">

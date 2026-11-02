@@ -276,8 +276,12 @@ export default function ConfigSection({
             <input
               type="text"
               value={sessionYear}
-              onChange={(e) => setSessionYear(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden"
+              onChange={(e) => {
+                const val = e.target.value;
+                setSessionYear(val);
+                onUpdateSiteInfo({ schoolYear: val });
+              }}
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden font-bold text-[#002060]"
               placeholder="Ex: 2025-2026"
             />
           </div>

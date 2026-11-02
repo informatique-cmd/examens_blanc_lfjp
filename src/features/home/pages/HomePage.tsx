@@ -71,18 +71,28 @@ export default function HomePage() {
     return cmsData.announcements.filter((ann) => ann.isPublished);
   }, [cmsData.announcements]);
 
-  // Candidate quick room locator
+  // Candidate quick room locator - STRICT individual candidate search
   const searchedStudents = useMemo(() => {
     const q = studentSearchQuery.trim().toLowerCase();
     if (!q || q.length < 2) return [];
 
-    return cmsData.candidates.filter(
-      (c) =>
-        c.lastName.toLowerCase().includes(q) ||
-        c.firstName.toLowerCase().includes(q) ||
-        c.className.toLowerCase().includes(q) ||
-        c.roomName.toLowerCase().includes(q)
-    );
+    return cmsData.candidates.filter((c) => {
+      const lastName = (c.lastName || "").toLowerCase();
+      const firstName = (c.firstName || "").toLowerCase();
+      const fullName = `${lastName} ${firstName}`;
+      const reverseName = `${firstName} ${lastName}`;
+      const anonymat = (c.anonymatNumber || "").toLowerCase();
+      const id = (c.id || "").toLowerCase();
+
+      return (
+        lastName.includes(q) ||
+        firstName.includes(q) ||
+        fullName.includes(q) ||
+        reverseName.includes(q) ||
+        anonymat.includes(q) ||
+        id.includes(q)
+      );
+    });
   }, [cmsData.candidates, studentSearchQuery]);
 
   // Exam Countdown helper
@@ -399,7 +409,7 @@ export default function HomePage() {
               <span>Trouver ma salle & Télécharger ma convocation officielle</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Saisissez votre nom ou votre classe pour afficher vos affectations d'examen, vos horaires (+1/3 temps) et imprimer votre convocation individuelle.
+              Saisissez votre nom, prénom ou N° anonymat pour accéder exclusivement à votre convocation individuelle et à vos horaires (+1/3 temps).
             </p>
           </div>
 
@@ -409,7 +419,7 @@ export default function HomePage() {
               type="text"
               value={studentSearchQuery}
               onChange={(e) => setStudentSearchQuery(e.target.value)}
-              placeholder="Ex: Diop, Faye, 3ème A..."
+              placeholder="Ex: Diop, Faye, LFJP-0042..."
               className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-[#002060] focus:ring-2 focus:ring-blue-100 focus:outline-hidden transition font-medium"
             />
           </div>
@@ -421,7 +431,7 @@ export default function HomePage() {
             {searchedStudents.length === 0 ? (
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
                 <p className="text-xs text-slate-500">
-                  Aucun élève trouvé pour "<strong>{studentSearchQuery}</strong>". Vérifiez l'orthographe du nom ou essayez avec votre classe.
+                  Aucun élève trouvé pour "<strong>{studentSearchQuery}</strong>". Veuillez vérifier l'orthographe exacte de votre nom ou votre numéro d'anonymat.
                 </p>
               </div>
             ) : (
@@ -830,37 +840,35 @@ export default function HomePage() {
               className="p-6 sm:p-8 bg-white text-slate-900 space-y-5 text-left"
             >
               {/* Institutional Header with Logo */}
-              <div className="flex items-center justify-between border-b-2 border-[#002060] pb-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="h-18 w-18 p-1 flex items-center justify-center shrink-0 border border-slate-200 rounded-xl bg-white shadow-2xs">
-                    <img
-                      src="/assets/aistudio/logo-lfjp_62451311.png"
-                      alt="Lycée Français Jacques Prévert"
-                      className="max-h-full w-auto object-contain"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = "/logo-lfjp.png";
-                      }}
-                    />
-                  </div>
+              <div className="flex items-center justify-between border-b-2 border-[#002060] pb-3 gap-4">
+                <div className="flex items-center gap-3">
+                  <img
+                    src="/assets/aistudio/logo-lfjp_62451311.png"
+                    alt="Lycée Français Jacques Prévert"
+                    className="h-11 sm:h-12 w-auto object-contain shrink-0"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = "/logo-lfjp.png";
+                    }}
+                  />
                   <div>
                     <p className="text-[10px] uppercase font-bold tracking-widest text-red-600">
                       RÉPUBLIQUE FRANÇAISE • RÉSEAU AEFE
                     </p>
-                    <h2 className="text-base sm:text-lg font-black text-[#002060] leading-tight">
+                    <h2 className="text-sm sm:text-base font-black text-[#002060] leading-tight">
                       LYCÉE FRANÇAIS JACQUES PRÉVERT
                     </h2>
-                    <p className="text-xs text-slate-600">
+                    <p className="text-[11px] text-slate-600">
                       Saly Portudal • Sénégal • Code RNE 9930032S
                     </p>
                   </div>
                 </div>
 
-                <div className="text-right hidden sm:block">
-                  <span className="px-3 py-1 rounded-lg bg-blue-50 border border-blue-200 text-[#002060] font-bold text-xs block">
+                <div className="text-right flex flex-col items-end gap-1 shrink-0">
+                  <span className="px-2.5 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-[#002060] font-bold text-xs">
                     Session {cmsData.siteInfo.schoolYear || "2025-2026"}
                   </span>
-                  <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold block mt-1">
-                    Épreuves d'Examens Blancs
+                  <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+                    Convocation Officielle
                   </span>
                 </div>
               </div>

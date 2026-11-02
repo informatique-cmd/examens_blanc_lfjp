@@ -40,11 +40,11 @@ export default function HomeLayout({ children, schoolYear = "2025-2026" }: HomeL
             </div>
           </Link>
 
-          <div className="text-right hidden sm:block">
-            <span className="text-xs font-bold text-[#002060] block">
+          <div className="text-right flex flex-col items-end">
+            <span className="text-xs sm:text-sm font-bold text-[#002060] block">
               Année scolaire {schoolYear}
             </span>
-            <span className="text-[10px] text-slate-400 font-medium block">
+            <span className="text-[10px] text-slate-400 font-medium hidden sm:block">
               Portail Officiel des Examens
             </span>
           </div>
