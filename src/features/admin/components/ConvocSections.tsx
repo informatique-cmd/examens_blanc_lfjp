@@ -68,8 +68,18 @@ export function ConvocElevesSection({
     return candidates;
   }, [candidates, filterScope, selectedCandidateId, selectedRoomFilter, selectedClassFilter]);
 
-  const handlePrint = () => {
+  const handlePrint = (singleCand?: CmsCandidate) => {
+    const cand = singleCand || candidatesToPrint[0];
+    const prevTitle = document.title;
+    if (cand) {
+      document.title = `Convocation_${cand.lastName.toUpperCase()}_${cand.firstName}_${cand.className}`.replace(/[\s/\\?%*:|"<>]+/g, "_");
+    } else {
+      document.title = `Convocations_Officielles_LFJP`;
+    }
     window.print();
+    setTimeout(() => {
+      document.title = prevTitle;
+    }, 2000);
   };
 
   return (
@@ -94,7 +104,7 @@ export function ConvocElevesSection({
         </div>
 
         <button
-          onClick={handlePrint}
+          onClick={() => handlePrint()}
           className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition shadow-xs flex items-center gap-2 self-start sm:self-auto"
         >
           <Printer className="h-4 w-4" />
@@ -234,6 +244,22 @@ export function ConvocElevesSection({
                 className="bg-white rounded-2xl border border-slate-300 shadow-md p-8 max-w-3xl mx-auto printable-content space-y-6 print:border-none print:shadow-none print:p-0 print:my-0"
                 style={{ pageBreakAfter: idx < candidatesToPrint.length - 1 ? "always" : "auto" }}
               >
+                {/* Individual Action Bar (Hidden on print) */}
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100 print:hidden text-xs">
+                  <span className="text-slate-600 font-medium">
+                    Élève {idx + 1}/{candidatesToPrint.length} : <strong className="text-slate-900">{candidate.lastName.toUpperCase()} {candidate.firstName}</strong> ({candidate.className})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handlePrint(candidate)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold transition border border-indigo-200"
+                    title={`Imprimer uniquement la convocation de ${candidate.firstName} ${candidate.lastName}`}
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    <span>Imprimer cette convocation</span>
+                  </button>
+                </div>
+
                 <div className="flex items-center justify-between border-b-2 border-slate-800 pb-4">
                   <div className="flex items-center gap-3">
                     <img
@@ -249,10 +275,10 @@ export function ConvocElevesSection({
                         RÉPUBLIQUE FRANÇAISE • RÉSEAU AEFE
                       </p>
                       <h1 className="text-base font-black text-[#002060]">
-                        {siteInfo.title || "Lycée Français Jacques Prévert de Saly"}
+                        LYCÉE FRANÇAIS JACQUES PRÉVERT DE SALY
                       </h1>
                       <p className="text-xs text-slate-600">
-                        Session Officielle {siteInfo.schoolYear || "2025-2026"} • Code RNE 9930032S
+                        Session Officielle {siteInfo.schoolYear || "2026-2027"} • Code RNE 9930032S
                       </p>
                     </div>
                   </div>
@@ -431,8 +457,18 @@ export function ConvocProfsSection({
     return teachers;
   }, [teachers, printScope, selectedTeacherId]);
 
-  const handlePrint = () => {
+  const handlePrint = (singleTeacher?: CmsTeacher) => {
+    const t = singleTeacher || teachersToPrint[0];
+    const prevTitle = document.title;
+    if (t) {
+      document.title = `Ordre_Mission_${t.lastName.toUpperCase()}_${t.firstName}`.replace(/[\s/\\?%*:|"<>]+/g, "_");
+    } else {
+      document.title = `Ordres_de_Mission_Surveillances_LFJP`;
+    }
     window.print();
+    setTimeout(() => {
+      document.title = prevTitle;
+    }, 2000);
   };
 
   return (
@@ -457,7 +493,7 @@ export function ConvocProfsSection({
         </div>
 
         <button
-          onClick={handlePrint}
+          onClick={() => handlePrint()}
           className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition shadow-xs flex items-center gap-2 self-start sm:self-auto"
         >
           <Printer className="h-4 w-4" />
@@ -525,6 +561,22 @@ export function ConvocProfsSection({
               className="bg-white rounded-2xl border border-slate-300 shadow-md p-8 max-w-3xl mx-auto printable-content space-y-6 print:border-none print:shadow-none print:p-0 print:my-0"
               style={{ pageBreakAfter: idx < teachersToPrint.length - 1 ? "always" : "auto" }}
             >
+              {/* Individual Print Button (Hidden on print) */}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 print:hidden text-xs">
+                <span className="text-slate-600 font-medium">
+                  Enseignant {idx + 1}/{teachersToPrint.length} : <strong className="text-slate-900">{teacher.civility} {teacher.lastName.toUpperCase()} {teacher.firstName}</strong> ({teacher.subject})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handlePrint(teacher)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold transition border border-amber-200"
+                  title={`Imprimer uniquement l'ordre de mission de ${teacher.firstName} ${teacher.lastName}`}
+                >
+                  <Printer className="h-3.5 w-3.5 text-amber-700" />
+                  <span>Imprimer cet ordre de mission</span>
+                </button>
+              </div>
+
               <div className="flex items-center justify-between border-b-2 border-slate-800 pb-4">
                 <div className="flex items-center gap-3">
                   <img
@@ -540,9 +592,9 @@ export function ConvocProfsSection({
                       RÉPUBLIQUE FRANÇAISE • RÉSEAU AEFE
                     </p>
                     <h1 className="text-base font-black text-[#002060]">
-                      {siteInfo.title || "Lycée Français Jacques Prévert de Saly"}
+                      LYCÉE FRANÇAIS JACQUES PRÉVERT DE SALY
                     </h1>
-                    <p className="text-xs text-slate-600">Direction des Examens et Concours • Session {siteInfo.schoolYear || "2025-2026"}</p>
+                    <p className="text-xs text-slate-600">Direction des Examens et Concours • Session {siteInfo.schoolYear || "2026-2027"}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -630,31 +682,6 @@ export function ConvocProfsSection({
         })}
       </div>
 
-      {/* Global Print-Only CSS */}
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden !important;
-          }
-          .printable-content,
-          .printable-content * {
-            visibility: visible !important;
-          }
-          .printable-content {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            padding: 10mm !important;
-            margin: 0 !important;
-            box-shadow: none !important;
-            border: none !important;
-          }
-          aside, header, nav, button, .print\\:hidden {
-            display: none !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

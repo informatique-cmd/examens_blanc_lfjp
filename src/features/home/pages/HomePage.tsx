@@ -892,7 +892,16 @@ export default function HomePage() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => window.print()}
+                  onClick={() => {
+                    const prevTitle = document.title;
+                    if (selectedStudentForConvocation) {
+                      document.title = `Convocation_${selectedStudentForConvocation.lastName.toUpperCase()}_${selectedStudentForConvocation.firstName}_${selectedStudentForConvocation.className}`.replace(/[\s/\\?%*:|"<>]+/g, "_");
+                    }
+                    window.print();
+                    setTimeout(() => {
+                      document.title = prevTitle;
+                    }, 2000);
+                  }}
                   className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                 >
                   <Printer className="h-3.5 w-3.5" />

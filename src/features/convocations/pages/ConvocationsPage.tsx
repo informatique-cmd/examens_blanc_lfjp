@@ -85,9 +85,22 @@ export default function ConvocationsPage() {
     );
   }, [cmsData.surveillances, selectedTeacherName]);
 
-  // Print triggered
+  // Print triggered with personalized file naming for PDF download
   const handlePrint = () => {
+    const prevTitle = document.title;
+    if (viewMode === "candidat" && currentCandidate) {
+      document.title = `Convocation_${currentCandidate.lastName.toUpperCase()}_${currentCandidate.firstName}_${currentCandidate.className}`.replace(/[\s/\\?%*:|"<>]+/g, "_");
+    } else if (viewMode === "classe_lot") {
+      document.title = `Convocations_Classe_${selectedClass}`.replace(/[\s/\\?%*:|"<>]+/g, "_");
+    } else if (viewMode === "enseignant") {
+      document.title = `Ordre_Mission_Surveillances_${selectedTeacherName}`.replace(/[\s/\\?%*:|"<>]+/g, "_");
+    } else {
+      document.title = `Emargement_LFJP_${selectedRoomName}`.replace(/[\s/\\?%*:|"<>]+/g, "_");
+    }
     window.print();
+    setTimeout(() => {
+      document.title = prevTitle;
+    }, 2000);
   };
 
   // Helper to build simulated timetable for candidate's exam

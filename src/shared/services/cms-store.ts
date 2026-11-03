@@ -168,7 +168,7 @@ export const DEFAULT_CMS_DATA: CmsData = {
     title: HOME_PAGE_CONTENT.title,
     subtitle: HOME_PAGE_CONTENT.subtitle,
     description: HOME_PAGE_CONTENT.description,
-    schoolYear: "2025-2026",
+    schoolYear: "2026-2027",
     logos: [...HOME_PAGE_CONTENT.logos],
     bannerAlert: {
       enabled: false,

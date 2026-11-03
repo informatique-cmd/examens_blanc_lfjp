@@ -18,7 +18,7 @@ export default function HomeHero({
   subtitle,
   title,
   description,
-  schoolYear = "2025-2026",
+  schoolYear = "2026-2027",
 }: HomeHeroProps) {
   // If logos not supplied or empty, fallback to official LFJP + AEFE
   const displayLogos =
@@ -66,12 +66,12 @@ export default function HomeHero({
         </p>
 
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#002060] tracking-tight leading-tight">
-          {title || "Organisation des Examens & Épreuves Blanches"}
+          {title || "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP"}
         </h1>
 
         <p className="text-sm sm:text-base leading-relaxed text-slate-600 max-w-2xl mx-auto">
           {description ||
-            "Portail officiel d'information : consultez les calendriers d'épreuves, les créneaux officiels (+1/3 temps), la répartition nominative des salles, les surveillances et téléchargez directement votre convocation individuelle."}
+            "Cet espace réunit l'ensemble des informations pratiques nécessaires pour préparer, coordonner et faire vivre les épreuves. Vous y trouverez les documents, convocations, affectations de salles et les consignes indispensables pour guider sereinement chaque étape du déroulement des examens blancs."}
         </p>
       </div>
     </div>

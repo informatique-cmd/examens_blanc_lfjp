@@ -7,7 +7,7 @@ interface HomeLayoutProps {
   schoolYear?: string;
 }
 
-export default function HomeLayout({ children, schoolYear = "2025-2026" }: HomeLayoutProps) {
+export default function HomeLayout({ children, schoolYear = "2026-2027" }: HomeLayoutProps) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans selection:bg-blue-100 selection:text-blue-900">
       {/* Top Institutional Header */}

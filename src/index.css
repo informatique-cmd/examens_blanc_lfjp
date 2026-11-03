@@ -10,3 +10,69 @@ body {
   margin: 0;
   @apply bg-slate-50 text-slate-800;
 }
+
+/* Bulletproof Print Styling for Official Exam Documents */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  header,
+  aside,
+  nav,
+  footer,
+  button,
+  .print\:hidden,
+  .print-hidden,
+  [data-print-hidden="true"],
+  .no-print {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Reset outer application wrappers to flow cleanly */
+  html,
+  body,
+  #root,
+  #root > div,
+  main {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+  }
+
+  /* Isolated printable container */
+  .printable-content {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: black !important;
+    border: none !important;
+    box-shadow: none !important;
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .printable-content:last-child {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+}

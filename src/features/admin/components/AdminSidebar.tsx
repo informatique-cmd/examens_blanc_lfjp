@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 
 export type AdminSection =
+  | "dashboard"
   | "config"
   | "data-eleves"
   | "data-salles"
@@ -118,9 +119,13 @@ export default function AdminSidebar({
   ].includes(currentSection);
 
   return (
-    <aside className="w-full lg:w-[260px] bg-[#2c3e50] text-[#bdc3c7] flex flex-col flex-shrink-0 min-h-[calc(100vh-65px)] lg:min-h-screen border-r border-[#1a252f] select-none text-[0.88rem]">
+    <aside className="w-full lg:w-[260px] bg-[#2c3e50] text-[#bdc3c7] flex flex-col flex-shrink-0 min-h-[calc(100vh-65px)] lg:min-h-screen border-r border-[#1a252f] select-none text-[0.88rem] print:hidden">
       {/* Sidebar Header */}
-      <div className="p-4 bg-black/15 border-b border-white/10 text-center">
+      <div
+        onClick={() => onSelectSection("dashboard")}
+        className="p-4 bg-black/15 border-b border-white/10 text-center cursor-pointer hover:bg-black/25 transition"
+        title="Accéder au Tableau de Bord"
+      >
         <div className="flex items-center justify-center gap-2 mb-1">
           <img
             src="/assets/aistudio/logo-lfjp_62451311.png"
@@ -141,6 +146,24 @@ export default function AdminSidebar({
 
       {/* Navigation List */}
       <nav className="flex-1 overflow-y-auto py-2">
+        {/* 0. Tableau de Bord */}
+        <button
+          onClick={() => onSelectSection("dashboard")}
+          className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
+            currentSection === "dashboard"
+              ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
+              : "hover:bg-white/5 hover:text-white"
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="text-base">📊</span>
+            <span>Tableau de Bord</span>
+          </div>
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/15 text-white">
+            Accueil
+          </span>
+        </button>
+
         {/* 1. Configuration & Logo (SuperAdmin) */}
         {role === "superadmin" && (
           <button

@@ -60,6 +60,7 @@ import {
 } from "../../../shared/services/github-service";
 
 import AdminSidebar, { type AdminSection } from "../components/AdminSidebar";
+import AdminDashboardSection from "../components/AdminDashboardSection";
 import ConfigSection from "../components/ConfigSection";
 import VitrinePublishSection from "../components/VitrinePublishSection";
 import DataAmenagementsSection from "../components/DataAmenagementsSection";
@@ -189,7 +190,7 @@ export default function AdminPage() {
   const [tokenUpdateSuccess, setTokenUpdateSuccess] = useState<string | null>(null);
 
   // Navigation state matching target site
-  const [currentSection, setCurrentSection] = useState<AdminSection>("config");
+  const [currentSection, setCurrentSection] = useState<AdminSection>("dashboard");
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
     dataMenu: true,
     planningMenu: false,
@@ -412,6 +413,34 @@ export default function AdminPage() {
     if (res.success) {
       clearPendingDeployment();
       showNotification("Modifications publiées sur GitHub ! Vercel redéploie votre site en ligne.");
+    }
+  };
+
+  // Handle direct Push to GitHub & Vercel without opening any modal window
+  const handlePushToGitHubDirect = async () => {
+    setIsSyncing(true);
+    setSyncStep("Connexion au dépôt GitHub & commit...");
+    setSyncResult(null);
+    showNotification("🚀 Déploiement en cours : commit & push direct vers GitHub et Vercel...");
+
+    const tokenToPass = (dashboardTokenInput || githubToken || DEFAULT_GITHUB_TOKEN).trim();
+    const now = new Date();
+    const commitMsg = `Mise à jour examens LFJP (${now.toLocaleDateString("fr-FR")} ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })})`;
+
+    const res = await pushCmsChangesToGitHub({
+      cmsData,
+      commitMessage: commitMsg,
+      overrideToken: tokenToPass,
+      onProgress: (status) => setSyncStep(status),
+    });
+
+    setIsSyncing(false);
+    setSyncResult(res);
+    if (res.success) {
+      clearPendingDeployment();
+      showNotification("✅ Déploiement réussi ! Site vitrine mis à jour en ligne sur Vercel.");
+    } else {
+      showNotification(`❌ Erreur de déploiement : ${res.error || "Échec"}`);
     }
   };
 
@@ -844,9 +873,13 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800">
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 p-0.5 shadow-2xs">
+      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3 shadow-xs print:hidden">
+        <div
+          onClick={() => setCurrentSection("dashboard")}
+          className="flex items-center gap-3 cursor-pointer group"
+          title="Retourner au Tableau de Bord"
+        >
+          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 p-0.5 shadow-2xs group-hover:scale-105 group-hover:border-blue-400 transition">
             <img
               src="/assets/aistudio/logo-lfjp_62451311.png"
               alt="LFJP Logo"
@@ -858,9 +891,9 @@ export default function AdminPage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold text-slate-900">Administration Examens LFJP</h1>
+              <h1 className="text-base font-bold text-slate-900 group-hover:text-blue-700 transition">Administration Examens LFJP</h1>
               <span className="rounded-full bg-blue-100 border border-blue-300 px-2.5 py-0.5 text-xs font-bold text-[#002060]">
-                Année scolaire {cmsData.siteInfo.schoolYear || "2025-2026"}
+                Année scolaire {cmsData.siteInfo.schoolYear || "2026-2027"}
               </span>
             </div>
             <div className="flex items-center gap-2 text-xs text-slate-500">
@@ -1351,12 +1384,13 @@ export default function AdminPage() {
         {/* Main Content Area */}
         <main className="flex-1 p-6 lg:p-8 overflow-y-auto max-w-7xl">
           {/* Chronological Workflow Stepper Bar */}
-          <div className="mb-6 p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs overflow-x-auto">
+          <div className="mb-6 p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs overflow-x-auto print:hidden">
             <div className="flex items-center gap-1.5 min-w-max text-xs">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-2">
                 Workflow chronologique :
               </span>
               {[
+                { id: "dashboard", label: "0. Tableau de Bord", icon: "📊" },
                 { id: "config", label: "1. Paramètres & Logo", icon: "⚙️" },
                 { id: "data-eleves", label: "2. Données Pronote", icon: "📂" },
                 { id: "sessions-examens", label: "3. Sessions", icon: "📋" },
@@ -1398,6 +1432,24 @@ export default function AdminPage() {
               })}
             </div>
           </div>
+
+          {/* 0. TABLEAU DE BORD CENTRAL */}
+          {currentSection === "dashboard" && (
+            <AdminDashboardSection
+              siteInfo={cmsData.siteInfo}
+              candidates={cmsData.candidates}
+              rooms={cmsData.rooms}
+              teachers={cmsData.teachers}
+              exams={cmsData.exams}
+              examSlots={cmsData.examSlots || []}
+              surveillances={cmsData.surveillances}
+              announcements={cmsData.announcements}
+              onNavigateSection={(sec) => setCurrentSection(sec)}
+              onDeployNow={handlePushToGitHubDirect}
+              isDeploying={isSyncing}
+              deployStatus={syncStep}
+            />
+          )}
 
           {/* 1. CONFIGURATION & LOGO */}
           {currentSection === "config" && (
@@ -1644,17 +1696,55 @@ export default function AdminPage() {
 
                   <div className="flex flex-wrap items-center gap-2">
                     <button
-                      onClick={() => {
-                        setSyncResult(null);
-                        setIsSyncModalOpen(true);
-                      }}
-                      className="flex items-center gap-2 rounded-xl bg-blue-700 px-5 py-2.5 text-xs font-bold text-white shadow transition hover:bg-blue-800 active:scale-[0.98]"
+                      onClick={handlePushToGitHubDirect}
+                      disabled={isSyncing}
+                      className="flex items-center gap-2 rounded-xl bg-blue-700 hover:bg-blue-800 disabled:opacity-50 px-5 py-2.5 text-xs font-bold text-white shadow transition active:scale-[0.98]"
                     >
-                      <UploadCloud className="h-4 w-4" />
-                      <span>Mettre à jour GitHub & Vercel maintenant</span>
+                      {isSyncing ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin text-white" />
+                          <span>{syncStep || "Déploiement en cours..."}</span>
+                        </>
+                      ) : (
+                        <>
+                          <UploadCloud className="h-4 w-4" />
+                          <span>Mettre à jour GitHub & Vercel maintenant</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
+
+                {/* Real-time Status / Notification when syncing directly */}
+                {isSyncing && (
+                  <div className="p-3 bg-blue-100 border border-blue-300 rounded-xl text-xs text-blue-900 flex items-center gap-2 animate-pulse">
+                    <Loader2 className="h-4 w-4 animate-spin shrink-0 text-blue-700" />
+                    <span><strong>Déploiement direct en cours :</strong> {syncStep}</span>
+                  </div>
+                )}
+                {syncResult && (
+                  <div className={`p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 ${
+                    syncResult.success ? "bg-emerald-50 border-emerald-300 text-emerald-900" : "bg-rose-50 border-rose-300 text-rose-900"
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      {syncResult.success ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+                      )}
+                      <span>
+                        {syncResult.success
+                          ? "Déploiement direct réussi ! Commit envoyé sur GitHub (branche main). Vercel redéploie le site en ligne."
+                          : `Échec du déploiement : ${syncResult.error || "Erreur de synchronisation"}`}
+                      </span>
+                    </div>
+                    {syncResult.commitSha && (
+                      <span className="font-mono text-[11px] bg-white px-2 py-0.5 rounded border border-emerald-200">
+                        SHA : {syncResult.commitSha.substring(0, 7)}
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 <div className="border-t border-blue-100 pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
                   <div className="flex-1 flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs">
