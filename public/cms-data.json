@@ -262,7 +262,7 @@
     {
       "title": "test",
       "content": "tres important",
-      "priority": "important",
+      "priority": "urgent",
       "target": "all",
       "isPublished": true,
       "date": "2026-11-03",
