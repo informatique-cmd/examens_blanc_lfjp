@@ -3,6 +3,7 @@ import {
   Save,
   Check,
   Eye,
+  EyeOff,
   AlertCircle,
   Clock,
   Sparkles,
@@ -10,13 +11,37 @@ import {
   UserCheck,
   FileText,
   Trash2,
+  Edit2,
   Upload,
   Image as ImageIcon,
   Plus,
   RotateCcw,
   Key,
+  X,
+  Bell,
+  CheckSquare,
+  Square,
+  Flame,
 } from "lucide-react";
-import type { SiteInfo, CmsExam } from "../../../shared/services/cms-store";
+import type {
+  SiteInfo,
+  CmsExam,
+  CmsAnnouncement,
+} from "../../../shared/services/cms-store";
+
+export interface StandardSlotItem {
+  id: string;
+  name: string;
+  durationStd: number;
+  standardHours: string;
+  tiersTempsHours: string;
+}
+
+export interface ScienceSubjectItem {
+  id: string;
+  name: string;
+  enabled: boolean;
+}
 
 interface ConfigSectionProps {
   siteInfo: SiteInfo;
@@ -24,9 +49,65 @@ interface ConfigSectionProps {
   exams: CmsExam[];
   onTogglePublishExam: (id: string, isPublished: boolean) => void;
   onShowNotification: (msg: string) => void;
-  onResetToDefaults?: () => void;
   onResetForNewSchoolYear?: (newYear: string, preserveCatalogs?: boolean) => void;
+  announcements?: CmsAnnouncement[];
+  onAddAnnouncement?: (item: Omit<CmsAnnouncement, "id">) => void;
+  onUpdateAnnouncement?: (id: string, updates: Partial<CmsAnnouncement>) => void;
+  onDeleteAnnouncement?: (id: string) => void;
 }
+
+const DEFAULT_STANDARD_SLOTS: StandardSlotItem[] = [
+  {
+    id: "fr-1",
+    name: "Français (Grammaire, Dictée & Compréhension)",
+    durationStd: 90,
+    standardHours: "08h00 - 09h30",
+    tiersTempsHours: "08h00 - 10h00 (+30 min)",
+  },
+  {
+    id: "fr-2",
+    name: "Français (Rédaction / Expression écrite)",
+    durationStd: 90,
+    standardHours: "09h45 - 11h15",
+    tiersTempsHours: "09h45 - 11h45 (+30 min)",
+  },
+  {
+    id: "maths",
+    name: "Mathématiques",
+    durationStd: 120,
+    standardHours: "13h30 - 15h30",
+    tiersTempsHours: "13h30 - 16h10 (+40 min)",
+  },
+  {
+    id: "hg-emc",
+    name: "Histoire-Géographie & EMC",
+    durationStd: 120,
+    standardHours: "08h00 - 10h00",
+    tiersTempsHours: "08h00 - 10h40 (+40 min)",
+  },
+  {
+    id: "sciences",
+    name: "Sciences (SVT & Physique-Chimie)",
+    durationStd: 60,
+    standardHours: "10h15 - 11h15",
+    tiersTempsHours: "10h15 - 11h35 (+20 min)",
+  },
+];
+
+const DEFAULT_EVALUATION_TYPES: string[] = [
+  "DNB Blanc (Collège 3ème)",
+  "DNB Officiel (Brevet)",
+  "Bac Blanc 1ère (Français EAF)",
+  "Bac Blanc Terminale",
+  "Devoir Commun",
+  "Grand Oral Blanc",
+];
+
+const DEFAULT_SCIENCES_SUBJECTS: ScienceSubjectItem[] = [
+  { id: "svt", name: "SVT (Sciences de la Vie et de la Terre)", enabled: true },
+  { id: "pc", name: "Physique-Chimie", enabled: true },
+  { id: "techno", name: "Technologie", enabled: true },
+];
 
 export default function ConfigSection({
   siteInfo,
@@ -34,16 +115,88 @@ export default function ConfigSection({
   exams,
   onTogglePublishExam,
   onShowNotification,
-  onResetToDefaults,
   onResetForNewSchoolYear,
+  announcements = [],
+  onAddAnnouncement,
+  onUpdateAnnouncement,
+  onDeleteAnnouncement,
 }: ConfigSectionProps) {
+  // 1. School Information
   const [schoolName, setSchoolName] = useState(siteInfo.title || "Lycée Français Jacques Prévert");
   const [schoolCity, setSchoolCity] = useState("Saly, Sénégal");
   const [sessionYear, setSessionYear] = useState(siteInfo.schoolYear || "2025-2026");
-  const [examType, setExamType] = useState<string>("DNB Blanc");
-  const [customExamName, setCustomExamName] = useState<string>("");
 
-  // Logo management state
+  // 2. Evaluation Types (CRUD)
+  const [evalTypes, setEvalTypes] = useState<string[]>(
+    siteInfo.evaluationTypes && siteInfo.evaluationTypes.length > 0
+      ? siteInfo.evaluationTypes
+      : DEFAULT_EVALUATION_TYPES
+  );
+  const [newEvalType, setNewEvalType] = useState("");
+  const [editingEvalTypeIndex, setEditingEvalTypeIndex] = useState<number | null>(null);
+  const [editingEvalTypeValue, setEditingEvalTypeValue] = useState("");
+
+  // 3. Sciences Subjects (CRUD + Cocher/Décocher)
+  const [sciencesSubjects, setSciencesSubjects] = useState<ScienceSubjectItem[]>(
+    siteInfo.sciencesSubjects && siteInfo.sciencesSubjects.length > 0
+      ? siteInfo.sciencesSubjects
+      : DEFAULT_SCIENCES_SUBJECTS
+  );
+  const [newScienceName, setNewScienceName] = useState("");
+  const [editingScienceId, setEditingScienceId] = useState<string | null>(null);
+  const [editingScienceName, setEditingScienceName] = useState("");
+
+  // 4. Standard Exam Slots & Tiers-Temps (CRUD)
+  const [slots, setSlots] = useState<StandardSlotItem[]>(
+    siteInfo.standardSlots && siteInfo.standardSlots.length > 0
+      ? siteInfo.standardSlots
+      : DEFAULT_STANDARD_SLOTS
+  );
+  const [isSlotModalOpen, setIsSlotModalOpen] = useState(false);
+  const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
+  const [slotFormName, setSlotFormName] = useState("");
+  const [slotFormDuration, setSlotFormDuration] = useState(90);
+  const [slotFormStdHours, setSlotFormStdHours] = useState("08h00 - 09h30");
+  const [slotFormTTHours, setSlotFormTTHours] = useState("08h00 - 10h00 (+30 min)");
+
+  // Helper auto calculation for tiers-temps
+  const calculateTTHours = (stdHours: string, durationMin: number) => {
+    try {
+      const match = stdHours.match(/(\d{1,2})[h:](\d{2})\s*-\s*(\d{1,2})[h:](\d{2})/);
+      if (!match) return stdHours;
+      const startH = parseInt(match[1], 10);
+      const startM = parseInt(match[2], 10);
+      const ttExtraMin = Math.round(durationMin / 3);
+      const totalMin = startH * 60 + startM + durationMin + ttExtraMin;
+      const endH = Math.floor(totalMin / 60) % 24;
+      const endM = totalMin % 60;
+      const pad = (n: number) => String(n).padStart(2, "0");
+      return `${pad(startH)}h${pad(startM)} - ${pad(endH)}h${pad(endM)} (+${ttExtraMin} min)`;
+    } catch {
+      return stdHours;
+    }
+  };
+
+  // 5. Official Banner & Consignes (Announcements) CRUD
+  const [alertEnabled, setAlertEnabled] = useState(siteInfo.bannerAlert?.enabled ?? false);
+  const [alertTitle, setAlertTitle] = useState(siteInfo.bannerAlert?.title || "Consigne officielle de direction");
+  const [alertMessage, setAlertMessage] = useState(
+    siteInfo.bannerAlert?.message || "Présentez-vous 15 min avant l'épreuve avec votre convocation et pièce d'identité."
+  );
+  const [alertType, setAlertType] = useState<"info" | "warning" | "urgent" | "success">(
+    siteInfo.bannerAlert?.type || "info"
+  );
+
+  // Announcement Modal
+  const [isAnnModalOpen, setIsAnnModalOpen] = useState(false);
+  const [editingAnnId, setEditingAnnId] = useState<string | null>(null);
+  const [annTitle, setAnnTitle] = useState("");
+  const [annContent, setAnnContent] = useState("");
+  const [annPriority, setAnnPriority] = useState<"information" | "important" | "urgent">("information");
+  const [annTarget, setAnnTarget] = useState<"all" | "bac" | "dnb" | "teachers">("all");
+  const [annIsPublished, setAnnIsPublished] = useState(true);
+
+  // 6. Logos
   const [logos, setLogos] = useState<Array<{ src: string; alt?: string }>>(
     siteInfo.logos && siteInfo.logos.length > 0
       ? siteInfo.logos
@@ -52,10 +205,16 @@ export default function ConfigSection({
           { src: "https://aefe.fr/sites/default/files/asset/document/logo-aefe-bleu-et-orange_0.svg", alt: "Réseau AEFE" },
         ]
   );
-  const [newLogoUrl, setNewLogoUrl] = useState<string>("");
-  const [newLogoAlt, setNewLogoAlt] = useState<string>("");
+  const [newLogoUrl, setNewLogoUrl] = useState("");
+  const [newLogoAlt, setNewLogoAlt] = useState("");
 
-  // Next school year reset state
+  // 7. Proviseur Credentials
+  const [proviseurEmail, setProviseurEmail] = useState(siteInfo.proviseurAuth?.email || "proviseur@lfjpsaly.org");
+  const [proviseurPassword, setProviseurPassword] = useState(siteInfo.proviseurAuth?.password || "ProviseurLFJP2026!");
+  const [proviseurName, setProviseurName] = useState(siteInfo.proviseurAuth?.name || "M. le Proviseur");
+  const [showProviseurPassword, setShowProviseurPassword] = useState(false);
+
+  // 8. Next School Year Reset
   const [nextYearInput, setNextYearInput] = useState<string>(() => {
     const cur = siteInfo.schoolYear || "2025-2026";
     const parts = cur.split("-");
@@ -65,77 +224,227 @@ export default function ConfigSection({
     return "2026-2027";
   });
   const [preserveCatalogs, setPreserveCatalogs] = useState(true);
-  const [confirmModal, setConfirmModal] = useState<"nextYear" | "factory" | null>(null);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
-  // Sync sessionYear with siteInfo prop if updated externally
-  React.useEffect(() => {
-    if (siteInfo.schoolYear) {
-      setSessionYear(siteInfo.schoolYear);
-    }
-  }, [siteInfo.schoolYear]);
-
-  // Sciences checkboxes
-  const [sciencesConfig, setSciencesConfig] = useState({
-    svt: true,
-    pc: true,
-    techno: true,
-  });
-
-  // Direction & Signature
-  const [directorCiv, setDirectorCiv] = useState<string>("M. le Proviseur");
-  const [directorName, setDirectorName] = useState<string>("Proviseur du LFJP");
-
-  // Proviseur Auth Credentials (managed by SuperAdmin)
-  const [proviseurEmail, setProviseurEmail] = useState<string>(
-    siteInfo.proviseurAuth?.email || "proviseur@lfjpsaly.org"
-  );
-  const [proviseurPassword, setProviseurPassword] = useState<string>(
-    siteInfo.proviseurAuth?.password || "ProviseurLFJP2026!"
-  );
-  const [proviseurName, setProviseurName] = useState<string>(
-    siteInfo.proviseurAuth?.name || "M. le Proviseur"
-  );
-  const [showProviseurPassword, setShowProviseurPassword] = useState<boolean>(false);
-
-  const handleSaveProviseurCredentials = () => {
+  // Save all main settings
+  const handleSaveAll = () => {
     onUpdateSiteInfo({
+      title: schoolName.trim(),
+      schoolYear: sessionYear.trim(),
+      logos,
+      bannerAlert: {
+        enabled: alertEnabled,
+        title: alertTitle.trim(),
+        message: alertMessage.trim(),
+        type: alertType,
+      },
+      evaluationTypes: evalTypes,
+      sciencesSubjects: sciencesSubjects,
+      standardSlots: slots,
       proviseurAuth: {
         email: proviseurEmail.trim(),
         password: proviseurPassword.trim(),
         name: proviseurName.trim(),
       },
     });
-    onShowNotification("🔐 Identifiants de connexion du Proviseur mis à jour avec succès !");
+    onShowNotification("⚙️ Tous les paramètres ont été enregistrés et synchronisés avec le site vitrine !");
   };
 
-  // Alert banner state
-  const [alertEnabled, setAlertEnabled] = useState(siteInfo.bannerAlert?.enabled ?? false);
-  const [alertTitle, setAlertTitle] = useState(siteInfo.bannerAlert?.title || "Consigne officielle");
-  const [alertMessage, setAlertMessage] = useState(
-    siteInfo.bannerAlert?.message || "Présentez-vous 15 min avant l'épreuve avec votre convocation et pièce d'identité."
-  );
-  const [alertType, setAlertType] = useState<"info" | "warning" | "urgent" | "success">(
-    siteInfo.bannerAlert?.type || "info"
-  );
+  // Evaluation Type Handlers
+  const handleAddEvalType = () => {
+    if (!newEvalType.trim()) return;
+    const updated = [...evalTypes, newEvalType.trim()];
+    setEvalTypes(updated);
+    onUpdateSiteInfo({ evaluationTypes: updated });
+    setNewEvalType("");
+    onShowNotification("Type d'évaluation ajouté !");
+  };
 
-  const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      alert("Veuillez sélectionner un fichier image valide (PNG, JPEG, SVG, WebP).");
-      return;
+  const handleSaveEditingEvalType = (idx: number) => {
+    if (!editingEvalTypeValue.trim()) return;
+    const updated = [...evalTypes];
+    updated[idx] = editingEvalTypeValue.trim();
+    setEvalTypes(updated);
+    onUpdateSiteInfo({ evaluationTypes: updated });
+    setEditingEvalTypeIndex(null);
+    setEditingEvalTypeValue("");
+    onShowNotification("Type d'évaluation modifié !");
+  };
+
+  const handleDeleteEvalType = (idx: number) => {
+    const updated = evalTypes.filter((_, i) => i !== idx);
+    setEvalTypes(updated);
+    onUpdateSiteInfo({ evaluationTypes: updated });
+    onShowNotification("Type d'évaluation supprimé.");
+  };
+
+  // Sciences Handlers
+  const handleToggleScience = (id: string) => {
+    const updated = sciencesSubjects.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s));
+    setSciencesSubjects(updated);
+    onUpdateSiteInfo({ sciencesSubjects: updated });
+    onShowNotification("Statut de la matière scientifique mis à jour !");
+  };
+
+  const handleAddScience = () => {
+    if (!newScienceName.trim()) return;
+    const newId = `sci-${Date.now()}`;
+    const updated = [...sciencesSubjects, { id: newId, name: newScienceName.trim(), enabled: true }];
+    setSciencesSubjects(updated);
+    onUpdateSiteInfo({ sciencesSubjects: updated });
+    setNewScienceName("");
+    onShowNotification("Matière scientifique ajoutée !");
+  };
+
+  const handleSaveEditingScience = (id: string) => {
+    if (!editingScienceName.trim()) return;
+    const updated = sciencesSubjects.map((s) => (s.id === id ? { ...s, name: editingScienceName.trim() } : s));
+    setSciencesSubjects(updated);
+    onUpdateSiteInfo({ sciencesSubjects: updated });
+    setEditingScienceId(null);
+    setEditingScienceName("");
+    onShowNotification("Matière scientifique renommée !");
+  };
+
+  const handleDeleteScience = (id: string) => {
+    const updated = sciencesSubjects.filter((s) => s.id !== id);
+    setSciencesSubjects(updated);
+    onUpdateSiteInfo({ sciencesSubjects: updated });
+    onShowNotification("Matière scientifique supprimée.");
+  };
+
+  // Standard Slots Handlers
+  const openNewSlotModal = () => {
+    setEditingSlotId(null);
+    setSlotFormName("");
+    setSlotFormDuration(90);
+    setSlotFormStdHours("08h00 - 09h30");
+    setSlotFormTTHours("08h00 - 10h00 (+30 min)");
+    setIsSlotModalOpen(true);
+  };
+
+  const openEditSlotModal = (slot: StandardSlotItem) => {
+    setEditingSlotId(slot.id);
+    setSlotFormName(slot.name);
+    setSlotFormDuration(slot.durationStd);
+    setSlotFormStdHours(slot.standardHours);
+    setSlotFormTTHours(slot.tiersTempsHours);
+    setIsSlotModalOpen(true);
+  };
+
+  const handleSaveSlot = () => {
+    if (!slotFormName.trim()) return;
+    let updated: StandardSlotItem[];
+    if (editingSlotId) {
+      updated = slots.map((s) =>
+        s.id === editingSlotId
+          ? {
+              ...s,
+              name: slotFormName.trim(),
+              durationStd: Number(slotFormDuration) || 60,
+              standardHours: slotFormStdHours.trim(),
+              tiersTempsHours: slotFormTTHours.trim(),
+            }
+          : s
+      );
+      onShowNotification("Horaire officiel modifié !");
+    } else {
+      const newSlot: StandardSlotItem = {
+        id: `slot-${Date.now()}`,
+        name: slotFormName.trim(),
+        durationStd: Number(slotFormDuration) || 60,
+        standardHours: slotFormStdHours.trim(),
+        tiersTempsHours: slotFormTTHours.trim(),
+      };
+      updated = [...slots, newSlot];
+      onShowNotification("Nouvel horaire officiel ajouté !");
     }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        const next = [...logos, { src: dataUrl, alt: file.name.replace(/\.[^/.]+$/, "") }];
-        setLogos(next);
-        onUpdateSiteInfo({ logos: next });
-        onShowNotification("Logo de l'école téléversé avec succès !");
+    setSlots(updated);
+    onUpdateSiteInfo({ standardSlots: updated });
+    setIsSlotModalOpen(false);
+  };
+
+  const handleDeleteSlot = (id: string) => {
+    const updated = slots.filter((s) => s.id !== id);
+    setSlots(updated);
+    onUpdateSiteInfo({ standardSlots: updated });
+    onShowNotification("Horaire officiel supprimé.");
+  };
+
+  // Announcement Handlers
+  const openNewAnnouncementModal = () => {
+    setEditingAnnId(null);
+    setAnnTitle("");
+    setAnnContent("");
+    setAnnPriority("information");
+    setAnnTarget("all");
+    setAnnIsPublished(true);
+    setIsAnnModalOpen(true);
+  };
+
+  const openEditAnnouncementModal = (ann: CmsAnnouncement) => {
+    setEditingAnnId(ann.id);
+    setAnnTitle(ann.title);
+    setAnnContent(ann.content);
+    setAnnPriority(ann.priority);
+    setAnnTarget(ann.target);
+    setAnnIsPublished(ann.isPublished);
+    setIsAnnModalOpen(true);
+  };
+
+  const handleSaveAnnouncement = () => {
+    if (!annTitle.trim() || !annContent.trim()) return;
+    if (editingAnnId) {
+      if (onUpdateAnnouncement) {
+        onUpdateAnnouncement(editingAnnId, {
+          title: annTitle.trim(),
+          content: annContent.trim(),
+          priority: annPriority,
+          target: annTarget,
+          isPublished: annIsPublished,
+        });
       }
-    };
-    reader.readAsDataURL(file);
+      onShowNotification("Consigne officielle mise à jour !");
+    } else {
+      if (onAddAnnouncement) {
+        onAddAnnouncement({
+          title: annTitle.trim(),
+          content: annContent.trim(),
+          priority: annPriority,
+          target: annTarget,
+          isPublished: annIsPublished,
+          date: new Date().toISOString().split("T")[0],
+        });
+      }
+      onShowNotification("Nouvelle consigne officielle publiée !");
+    }
+    setIsAnnModalOpen(false);
+  };
+
+  const handleTogglePublishAnnouncement = (ann: CmsAnnouncement) => {
+    if (onUpdateAnnouncement) {
+      onUpdateAnnouncement(ann.id, { isPublished: !ann.isPublished });
+      onShowNotification(
+        !ann.isPublished
+          ? "Consigne publiée sur le site vitrine !"
+          : "Consigne dépubliée (mise en brouillon)."
+      );
+    }
+  };
+
+  const handleDeleteAnnouncement = (id: string) => {
+    if (onDeleteAnnouncement) {
+      onDeleteAnnouncement(id);
+      onShowNotification("Consigne supprimée.");
+    }
+  };
+
+  // Logos handlers
+  const handleRemoveLogo = (idx: number) => {
+    const next = logos.filter((_, i) => i !== idx);
+    setLogos(next);
+    onUpdateSiteInfo({ logos: next });
+    onShowNotification("Logo retiré.");
   };
 
   const handleAddLogoByUrl = () => {
@@ -145,90 +454,22 @@ export default function ConfigSection({
     onUpdateSiteInfo({ logos: next });
     setNewLogoUrl("");
     setNewLogoAlt("");
-    onShowNotification("Nouveau logo ajouté par URL !");
+    onShowNotification("Logo ajouté !");
   };
 
-  const handleRemoveLogo = (index: number) => {
-    const next = logos.filter((_, i) => i !== index);
-    setLogos(next);
-    onUpdateSiteInfo({ logos: next });
-    onShowNotification("Logo retiré.");
+  const handleResetSchoolLogos = () => {
+    const defaultLogos = [
+      { src: "/assets/aistudio/logo-lfjp_62451311.png", alt: "Lycée Français Jacques Prévert - Saly, Sénégal" },
+      { src: "https://aefe.fr/sites/default/files/asset/document/logo-aefe-bleu-et-orange_0.svg", alt: "Agence pour l'Enseignement Français à l'Étranger (AEFE)" },
+    ];
+    setLogos(defaultLogos);
+    onUpdateSiteInfo({ logos: defaultLogos });
+    onShowNotification("Logos officiels LFJP & AEFE rétablis !");
   };
-
-  const handleSetPresetLogo = (preset: "lfjp" | "aefe" | "both") => {
-    let next: Array<{ src: string; alt?: string }> = [];
-    if (preset === "lfjp") {
-      next = [{ src: "/assets/aistudio/logo-lfjp_62451311.png", alt: "Lycée Français Jacques Prévert - Saly, Sénégal" }];
-    } else if (preset === "aefe") {
-      next = [{ src: "https://aefe.fr/sites/default/files/asset/document/logo-aefe-bleu-et-orange_0.svg", alt: "Agence pour l'Enseignement Français à l'Étranger (AEFE)" }];
-    } else {
-      next = [
-        { src: "/assets/aistudio/logo-lfjp_62451311.png", alt: "Lycée Français Jacques Prévert - Saly, Sénégal" },
-        { src: "https://aefe.fr/sites/default/files/asset/document/logo-aefe-bleu-et-orange_0.svg", alt: "Agence pour l'Enseignement Français à l'Étranger (AEFE)" },
-      ];
-    }
-    setLogos(next);
-    onUpdateSiteInfo({ logos: next });
-    onShowNotification("Logos officiels LFJP & AEFE rétablis avec succès !");
-  };
-
-  const handleSaveParams = () => {
-    onUpdateSiteInfo({
-      title: schoolName,
-      schoolYear: sessionYear,
-      logos: logos,
-      bannerAlert: {
-        enabled: alertEnabled,
-        title: alertTitle,
-        message: alertMessage,
-        type: alertType,
-      },
-    });
-    onShowNotification("⚙️ Configuration enregistrée et synchronisée avec la vitrine !");
-  };
-
-  // Standard exam slots with auto tier-temps (+1/3)
-  const defaultExamSubjects = [
-    {
-      id: "fr-1",
-      name: "Français (Grammaire, Dictée & Compréhension)",
-      durationStd: 90,
-      standardHours: "08h00 - 09h30",
-      tiersTempsHours: "08h00 - 10h00 (+30 min)",
-    },
-    {
-      id: "fr-2",
-      name: "Français (Rédaction / Expression écrite)",
-      durationStd: 90,
-      standardHours: "09h45 - 11h15",
-      tiersTempsHours: "09h45 - 11h45 (+30 min)",
-    },
-    {
-      id: "maths",
-      name: "Mathématiques",
-      durationStd: 120,
-      standardHours: "13h30 - 15h30",
-      tiersTempsHours: "13h30 - 16h10 (+40 min)",
-    },
-    {
-      id: "hg-emc",
-      name: "Histoire-Géographie & EMC",
-      durationStd: 120,
-      standardHours: "08h00 - 10h00",
-      tiersTempsHours: "08h00 - 10h40 (+40 min)",
-    },
-    {
-      id: "sciences",
-      name: `Sciences (${sciencesConfig.svt ? "SVT " : ""}${sciencesConfig.pc ? "Physique " : ""}${sciencesConfig.techno ? "Techno" : ""})`,
-      durationStd: 60,
-      standardHours: "10h15 - 11h15",
-      tiersTempsHours: "10h15 - 11h35 (+20 min)",
-    },
-  ];
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner Header */}
+    <div className="space-y-8 max-w-6xl">
+      {/* Top Header with Global Save */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
@@ -236,66 +477,66 @@ export default function ConfigSection({
               Module Central
             </span>
             <span className="text-xs text-slate-500">
-              Paramètres généraux & Identité officielle
+              Identité de l'établissement & Paramètres officiels
             </span>
           </div>
           <h2 className="text-xl font-bold text-slate-900 mt-1">
-            ⚙️ Configuration des Examens & Publication
+            ⚙️ Configuration des Examens & Vitrine
           </h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            Configurez l'établissement, les épreuves, les horaires (+1/3 temps) et publiez directement vers la vitrine officielle des acteurs.
+            Gérez les horaires officiels (+1/3 temps), les consignes, les types d'évaluations et préparez la nouvelle année scolaire.
           </p>
         </div>
 
         <button
-          onClick={handleSaveParams}
-          className="px-5 py-2.5 rounded-xl bg-[#27ae60] hover:bg-[#219653] text-white font-bold text-xs transition shadow-xs flex items-center gap-2 self-start sm:self-auto"
+          onClick={handleSaveAll}
+          className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-md flex items-center gap-2 self-start sm:self-auto"
         >
           <Save className="h-4 w-4" />
           <span>Enregistrer les paramètres</span>
         </button>
       </div>
 
-      {/* Card 1: Paramètres & Logo */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-5">
+      {/* 1. Établissement & Année scolaire */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
         <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
           <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-            <Building className="h-4 w-4 text-[#3498db]" />
-            <span>Paramètres de l'Établissement & Type d'Évaluation</span>
+            <Building className="h-4 w-4 text-[#002060]" />
+            <span>Identité de l'Établissement & Année Scolaire</span>
           </h3>
-          <span className="text-[11px] text-slate-400">Identité LFJP</span>
+          <span className="text-[11px] font-semibold text-slate-400">LFJP Saly</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Nom de l'établissement
+              Nom officiel de l'établissement
             </label>
             <input
               type="text"
               value={schoolName}
               onChange={(e) => setSchoolName(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden"
-              placeholder="Ex: Lycée Français Jacques Prévert"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
+              placeholder="Lycée Français Jacques Prévert"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Ville d'exercice
+              Ville et Pays d'exercice
             </label>
             <input
               type="text"
               value={schoolCity}
               onChange={(e) => setSchoolCity(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden"
-              placeholder="Ex: Saly, Sénégal"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
+              placeholder="Saly, Sénégal"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Session / Année scolaire
+              Session / Année scolaire active
             </label>
             <input
               type="text"
@@ -305,301 +546,517 @@ export default function ConfigSection({
                 setSessionYear(val);
                 onUpdateSiteInfo({ schoolYear: val });
               }}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden font-bold text-[#002060]"
-              placeholder="Ex: 2025-2026"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-hidden font-bold text-[#002060]"
+              placeholder="Ex: 2026-2027"
             />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Type d'évaluation
-            </label>
-            <select
-              value={examType}
-              onChange={(e) => setExamType(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-[#3498db] focus:outline-hidden"
-            >
-              <option value="DNB Blanc">DNB Blanc (Collège 3ème)</option>
-              <option value="DNB Officiel">DNB Officiel (Brevet)</option>
-              <option value="Bac Blanc 1ère">Bac Blanc 1ère (Français EAF)</option>
-              <option value="Bac Blanc Terminale">Bac Blanc Terminale</option>
-              <option value="Devoir Commun">Devoir Commun</option>
-              <option value="CUSTOM">✏️ Intitulé personnalisé...</option>
-            </select>
-
-            {examType === "CUSTOM" && (
-              <input
-                type="text"
-                value={customExamName}
-                onChange={(e) => setCustomExamName(e.target.value)}
-                placeholder="Saisissez l'intitulé de l'examen..."
-                className="w-full mt-2 px-3 py-2 text-xs border border-dashed border-[#3498db] rounded-lg bg-sky-50 focus:ring-2 focus:ring-[#3498db] focus:outline-hidden"
-              />
-            )}
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Matières Sciences au DNB (cocher les 2 ou 3 épreuves)
-            </label>
-            <div className="flex items-center gap-4 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={sciencesConfig.svt}
-                  onChange={(e) =>
-                    setSciencesConfig((prev) => ({ ...prev, svt: e.target.checked }))
-                  }
-                  className="rounded text-[#3498db] focus:ring-[#3498db]"
-                />
-                <span className="font-semibold text-slate-800">SVT</span>
-              </label>
-
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={sciencesConfig.pc}
-                  onChange={(e) =>
-                    setSciencesConfig((prev) => ({ ...prev, pc: e.target.checked }))
-                  }
-                  className="rounded text-[#3498db] focus:ring-[#3498db]"
-                />
-                <span className="font-semibold text-slate-800">Physique-Chimie</span>
-              </label>
-
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={sciencesConfig.techno}
-                  onChange={(e) =>
-                    setSciencesConfig((prev) => ({ ...prev, techno: e.target.checked }))
-                  }
-                  className="rounded text-[#3498db] focus:ring-[#3498db]"
-                />
-                <span className="font-semibold text-slate-800">Technologie</span>
-              </label>
-            </div>
+            <p className="text-[10px] text-slate-400 mt-1">
+              S'affiche instantanément sur le site vitrine et les convocations
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Card: Logo de l'École & Identité Visuelle */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-5">
+      {/* 2. Type d'Évaluation (CRUD Complet) */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+        <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <FileText className="h-4 w-4 text-blue-600" />
+              <span>Types d'Évaluation (Ajouter, Modifier, Supprimer)</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Définissez les catégories d'épreuves officielles proposées dans l'établissement.
+            </p>
+          </div>
+          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">
+            {evalTypes.length} type(s)
+          </span>
+        </div>
+
+        {/* Add Type Form */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newEvalType}
+            onChange={(e) => setNewEvalType(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddEvalType()}
+            placeholder="Ajouter un type d'évaluation (ex: Épreuves Communes 2nde)..."
+            className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
+          />
+          <button
+            type="button"
+            onClick={handleAddEvalType}
+            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 transition"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Ajouter</span>
+          </button>
+        </div>
+
+        {/* Types List */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
+          {evalTypes.map((type, idx) => (
+            <div
+              key={idx}
+              className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white transition group"
+            >
+              {editingEvalTypeIndex === idx ? (
+                <div className="flex items-center gap-1.5 flex-1 mr-2">
+                  <input
+                    type="text"
+                    value={editingEvalTypeValue}
+                    onChange={(e) => setEditingEvalTypeValue(e.target.value)}
+                    className="w-full px-2 py-1 text-xs border border-blue-500 rounded bg-white"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => handleSaveEditingEvalType(idx)}
+                    className="p-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                    title="Valider"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setEditingEvalTypeIndex(null)}
+                    className="p-1 rounded bg-slate-300 text-slate-700 hover:bg-slate-400"
+                    title="Annuler"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <span className="font-semibold text-xs text-slate-800 truncate mr-2">{type}</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingEvalTypeIndex(idx);
+                        setEditingEvalTypeValue(type);
+                      }}
+                      className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition"
+                      title="Modifier ce type d'évaluation"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteEvalType(idx)}
+                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
+                      title="Supprimer ce type"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 3. Matières Scientifiques (CRUD + Cocher/Décocher) */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+        <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <Flame className="h-4 w-4 text-amber-600" />
+              <span>Matières Scientifiques (DNB & Épreuves)</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Cochez les matières retenues pour la session, modifiez leurs intitulés ou ajoutez-en de nouvelles.
+            </p>
+          </div>
+          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+            {sciencesSubjects.filter((s) => s.enabled).length} active(s)
+          </span>
+        </div>
+
+        {/* Add Science Form */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newScienceName}
+            onChange={(e) => setNewScienceName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddScience()}
+            placeholder="Ajouter une discipline scientifique (ex: Sciences de l'Ingénieur)..."
+            className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+          />
+          <button
+            type="button"
+            onClick={handleAddScience}
+            className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1.5 transition"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Ajouter</span>
+          </button>
+        </div>
+
+        {/* Sciences List with Checkboxes */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+          {sciencesSubjects.map((subject) => (
+            <div
+              key={subject.id}
+              className={`flex items-center justify-between p-3 rounded-xl border transition ${
+                subject.enabled
+                  ? "border-amber-300 bg-amber-50/50"
+                  : "border-slate-200 bg-slate-50 opacity-70"
+              }`}
+            >
+              {editingScienceId === subject.id ? (
+                <div className="flex items-center gap-1.5 flex-1 mr-2">
+                  <input
+                    type="text"
+                    value={editingScienceName}
+                    onChange={(e) => setEditingScienceName(e.target.value)}
+                    className="w-full px-2 py-1 text-xs border border-amber-500 rounded bg-white"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => handleSaveEditingScience(subject.id)}
+                    className="p-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                    title="Valider"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setEditingScienceId(null)}
+                    className="p-1 rounded bg-slate-300 text-slate-700 hover:bg-slate-400"
+                    title="Annuler"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <label className="flex items-center gap-2 cursor-pointer min-w-0 mr-2">
+                    <input
+                      type="checkbox"
+                      checked={subject.enabled}
+                      onChange={() => handleToggleScience(subject.id)}
+                      className="rounded border-slate-300 text-amber-600 focus:ring-amber-500 h-4 w-4 shrink-0"
+                    />
+                    <span className={`text-xs font-semibold truncate ${subject.enabled ? "text-slate-900" : "text-slate-500"}`}>
+                      {subject.name}
+                    </span>
+                  </label>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingScienceId(subject.id);
+                        setEditingScienceName(subject.name);
+                      }}
+                      className="p-1 text-slate-400 hover:text-amber-700 hover:bg-amber-100 rounded transition"
+                      title="Modifier l'intitulé"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteScience(subject.id)}
+                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
+                      title="Supprimer cette discipline"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. Horaires Officiels & Aménagements Tiers-Temps (+1/3 temps) (CRUD) */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+        <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <Clock className="h-4 w-4 text-purple-600" />
+              <span>Horaires Officiels des Épreuves & Calcul Tiers-Temps (+1/3 temps)</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Ajoutez, modifiez ou supprimez les créneaux types et majorez automatiquement le temps pour les candidats PAP/PPS.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={openNewSlotModal}
+            className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 transition self-start sm:self-auto shrink-0 shadow-xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Ajouter un horaire officiel</span>
+          </button>
+        </div>
+
+        <div className="overflow-x-auto border border-slate-200 rounded-xl">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                <th className="p-3">Discipline / Épreuve</th>
+                <th className="p-3 text-center">Durée Standard</th>
+                <th className="p-3">Horaires Standard</th>
+                <th className="p-3">Horaires Tiers-Temps (+1/3 temps)</th>
+                <th className="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {slots.map((slot) => (
+                <tr key={slot.id} className="hover:bg-slate-50/70 transition">
+                  <td className="p-3 font-bold text-slate-900">{slot.name}</td>
+                  <td className="p-3 text-center">
+                    <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-mono font-bold text-[11px]">
+                      {slot.durationStd} min
+                    </span>
+                  </td>
+                  <td className="p-3 text-slate-800 font-mono text-[11px] font-semibold">
+                    {slot.standardHours}
+                  </td>
+                  <td className="p-3 font-mono text-[11px]">
+                    <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 font-bold">
+                      {slot.tiersTempsHours}
+                    </span>
+                  </td>
+                  <td className="p-3 text-right whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openEditSlotModal(slot)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition"
+                        title="Modifier cet horaire"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSlot(slot.id)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition"
+                        title="Supprimer cet horaire"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 5. Bannière Officielle & Consignes de Direction (CRUD + Publier/Dépublier) */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-6">
+        <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <Bell className="h-4 w-4 text-emerald-600" />
+              <span>Bannière Officielle & Consignes de Direction</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Rédigez les consignes impératives, publiez ou dépubliez-les en un clic vers la vitrine publique.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={openNewAnnouncementModal}
+            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition self-start sm:self-auto shrink-0 shadow-xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Ajouter une consigne</span>
+          </button>
+        </div>
+
+        {/* Global Alert Banner Configuration */}
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <label className="flex items-center gap-2 font-bold text-xs text-slate-800 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={alertEnabled}
+                onChange={(e) => setAlertEnabled(e.target.checked)}
+                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+              />
+              <span>Activer la bannière d'alerte prioritaire en tête de la vitrine</span>
+            </label>
+
+            <select
+              value={alertType}
+              onChange={(e) => setAlertType(e.target.value as any)}
+              className="px-2.5 py-1 text-xs border border-slate-300 rounded-lg bg-white font-medium"
+            >
+              <option value="info">ℹ️ Information générale (Bleu)</option>
+              <option value="warning">⚠️ Vigilance (Orange)</option>
+              <option value="urgent">🚨 Urgent (Rouge)</option>
+              <option value="success">✅ Validé / Réussite (Vert)</option>
+            </select>
+          </div>
+
+          {alertEnabled && (
+            <div className="space-y-2 pt-2 border-t border-slate-200">
+              <input
+                type="text"
+                value={alertTitle}
+                onChange={(e) => setAlertTitle(e.target.value)}
+                placeholder="Titre de la consigne (ex: Consigne d'appel et d'émargement)"
+                className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+              />
+              <textarea
+                value={alertMessage}
+                onChange={(e) => setAlertMessage(e.target.value)}
+                rows={2}
+                placeholder="Message à afficher à l'ensemble des acteurs..."
+                className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Announcements List */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+            Consignes & Communiqués enregistrés ({announcements.length}) :
+          </h4>
+
+          {announcements.length === 0 ? (
+            <div className="p-6 text-center border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-xs">
+              Aucune consigne rédigée pour le moment. Cliquez sur "Ajouter une consigne" ci-dessus.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {announcements.map((ann) => (
+                <div
+                  key={ann.id}
+                  className={`p-4 rounded-xl border transition space-y-2 ${
+                    ann.isPublished
+                      ? "border-emerald-200 bg-emerald-50/30"
+                      : "border-slate-200 bg-slate-50/70 opacity-75"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-bold text-xs text-slate-900 truncate">{ann.title}</p>
+                      <p className="text-[10px] text-slate-400">
+                        Cible : {ann.target === "all" ? "Tous" : ann.target === "teachers" ? "Professeurs" : "Élèves"} • Date : {ann.date}
+                      </p>
+                    </div>
+
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                        ann.isPublished
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-slate-200 text-slate-600"
+                      }`}
+                    >
+                      {ann.isPublished ? "✓ Publié" : "Brouillon"}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                    {ann.content}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePublishAnnouncement(ann)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition flex items-center gap-1 ${
+                        ann.isPublished
+                          ? "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                          : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      }`}
+                    >
+                      {ann.isPublished ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      <span>{ann.isPublished ? "Dépublier" : "Publier sur Vitrine"}</span>
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openEditAnnouncementModal(ann)}
+                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        title="Modifier cette consigne"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAnnouncement(ann.id)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                        title="Supprimer cette consigne"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 6. Logo & Identité Visuelle */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
         <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
           <div>
             <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-[#e67e22]" />
-              <span>Logo de l'Établissement & En-tête Officiel</span>
+              <span>Logos Officiels de l'Établissement (LFJP & AEFE)</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Téléversez ou modifiez le logo du lycée affiché sur la vitrine publique, les convocations et les bordereaux.
+              Ces visuels s'affichent sur le bandeau supérieur, les convocations d'examen et les documents officiels.
             </p>
           </div>
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-            Identité Visuelle
-          </span>
+          <button
+            type="button"
+            onClick={handleResetSchoolLogos}
+            className="px-3 py-1 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+          >
+            Rétablir logos LFJP + AEFE
+          </button>
         </div>
 
-        {/* Existing Logos Grid & Previews */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-2">
-            Logos actifs ({logos.length}) :
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {logos.map((logo, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/80 hover:bg-slate-50 transition group"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-14 h-14 rounded-lg border border-slate-200 bg-white p-1 flex items-center justify-center flex-shrink-0 shadow-2xs">
-                    <img
-                      src={logo.src}
-                      alt={logo.alt || "Logo"}
-                      className="max-h-full max-w-full object-contain"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900 truncate">
-                      {logo.alt || `Logo ${idx + 1}`}
-                    </p>
-                    <p className="text-[10px] text-slate-400 truncate">
-                      {logo.src.startsWith("data:") ? "Image importée locale" : logo.src}
-                    </p>
-                  </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          {logos.map((logo, idx) => (
+            <div
+              key={idx}
+              className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/80 hover:bg-white transition"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-14 h-14 rounded-lg border border-slate-200 bg-white p-1 flex items-center justify-center shrink-0">
+                  <img
+                    src={logo.src}
+                    alt={logo.alt || "Logo"}
+                    className="max-h-full max-w-full object-contain"
+                  />
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleRemoveLogo(idx)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                  title="Supprimer ce logo"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-900 truncate">
+                    {logo.alt || `Logo ${idx + 1}`}
+                  </p>
+                  <p className="text-[10px] text-slate-400 truncate">{logo.src}</p>
+                </div>
               </div>
-            ))}
 
-            {logos.length === 0 && (
-              <div className="col-span-full p-6 text-center border-2 border-dashed border-slate-200 rounded-xl text-slate-400 text-xs">
-                Aucun logo configuré. Téléversez une image ou choisissez un modèle prédéfini ci-dessous.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Add Logo: File Upload + URL Input */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-          {/* File Upload */}
-          <div className="p-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-[#3498db] bg-slate-50/50 hover:bg-sky-50/30 transition text-center flex flex-col items-center justify-center">
-            <Upload className="h-6 w-6 text-[#3498db] mb-1.5" />
-            <p className="text-xs font-bold text-slate-800">
-              Téléverser un fichier logo
-            </p>
-            <p className="text-[11px] text-slate-500 mb-2">
-              Formats acceptés : PNG transparent, JPEG, SVG ou WebP
-            </p>
-            <label className="cursor-pointer px-4 py-2 rounded-lg bg-[#3498db] hover:bg-[#2980b9] text-white text-xs font-bold transition shadow-2xs">
-              <span>Choisir un fichier sur votre appareil</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleLogoFileUpload}
-                className="hidden"
-              />
-            </label>
-          </div>
-
-          {/* Add by URL */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-2.5 flex flex-col justify-between">
-            <div>
-              <p className="text-xs font-bold text-slate-800">
-                Ou ajouter via un lien web direct (URL)
-              </p>
-              <p className="text-[11px] text-slate-500 mb-2">
-                Entrez l'URL publique de l'image du lycée.
-              </p>
-              <div className="space-y-1.5">
-                <input
-                  type="url"
-                  value={newLogoUrl}
-                  onChange={(e) => setNewLogoUrl(e.target.value)}
-                  placeholder="https://.../logo-ecole.png"
-                  className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden"
-                />
-                <input
-                  type="text"
-                  value={newLogoAlt}
-                  onChange={(e) => setNewLogoAlt(e.target.value)}
-                  placeholder="Description du logo (ex: Lycée Français Jacques Prévert)"
-                  className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden"
-                />
-              </div>
+              <button
+                type="button"
+                onClick={() => handleRemoveLogo(idx)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                title="Supprimer ce logo"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
-
-            <button
-              type="button"
-              disabled={!newLogoUrl.trim()}
-              onClick={handleAddLogoByUrl}
-              className="w-full py-1.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-900 disabled:opacity-40 text-white text-xs font-bold transition flex items-center justify-center gap-1.5"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>Ajouter ce logo</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Quick presets */}
-        <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100">
-          <span className="text-xs text-slate-500 font-medium">
-            Rétablir un modèle officiel en 1 clic :
-          </span>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => handleSetPresetLogo("lfjp")}
-              className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-semibold text-slate-700 transition"
-            >
-              LFJP Saly seul
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSetPresetLogo("aefe")}
-              className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-semibold text-slate-700 transition"
-            >
-              Réseau AEFE seul
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSetPresetLogo("both")}
-              className="px-2.5 py-1 text-xs rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 font-bold text-indigo-700 transition"
-            >
-              LFJP + AEFE (Défaut officiel)
-            </button>
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* Card 2: Direction & Signature */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-4">
-        <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-          <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-            <UserCheck className="h-4 w-4 text-[#27ae60]" />
-            <span>Direction & Signature Officielle</span>
-          </h3>
-          <span className="text-[11px] text-slate-400">Pour convocations & PV</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-2">
-              Titre de Direction
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                "M. le Proviseur",
-                "Mme la Proviseure",
-                "M. le Principal",
-                "Mme la Principale",
-              ].map((civ) => (
-                <button
-                  key={civ}
-                  type="button"
-                  onClick={() => setDirectorCiv(civ)}
-                  className={`p-2 rounded-lg border text-xs text-center font-medium transition ${
-                    directorCiv === civ
-                      ? "border-[#3498db] bg-sky-50 text-[#2980b9] font-bold ring-1 ring-[#3498db]"
-                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {civ}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Nom & Prénom du signataire
-            </label>
-            <input
-              type="text"
-              value={directorName}
-              onChange={(e) => setDirectorName(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden"
-              placeholder="Ex: Chef d'établissement du LFJP"
-            />
-            <p className="text-[11px] text-slate-400 mt-1.5">
-              Ce titre apparaîtra au bas des convocations officielles et sur les feuilles d'émargement des surveillants.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Card: 🔐 Compte de Connexion du Proviseur (Direction) */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-4">
+      {/* 7. Identifiants Proviseur */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
         <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
           <div>
             <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
@@ -607,7 +1064,7 @@ export default function ConfigSection({
               <span>Identifiants de Connexion du Proviseur (Espace Direction)</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Configurez l'adresse email et le mot de passe que le Chef d'Établissement utilise pour se connecter à l'espace d'administration.
+              Permet au Proviseur de se connecter avec son email et mot de passe sans passer par GitHub.
             </p>
           </div>
           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
@@ -624,7 +1081,7 @@ export default function ConfigSection({
               type="email"
               value={proviseurEmail}
               onChange={(e) => setProviseurEmail(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
               placeholder="proviseur@lfjpsaly.org"
             />
           </div>
@@ -638,7 +1095,7 @@ export default function ConfigSection({
                 type={showProviseurPassword ? "text" : "password"}
                 value={proviseurPassword}
                 onChange={(e) => setProviseurPassword(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden pr-16 font-mono"
+                className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-hidden pr-16 font-mono"
                 placeholder="Mot de passe"
               />
               <button
@@ -653,211 +1110,47 @@ export default function ConfigSection({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Nom / Titre du Chef d'Établissement
+              Nom / Titre officiel
             </label>
             <input
               type="text"
               value={proviseurName}
               onChange={(e) => setProviseurName(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
               placeholder="M. le Proviseur"
             />
           </div>
         </div>
-
-        <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-slate-100">
-          <p className="text-[11px] text-slate-500">
-            Ces identifiants permettent au Proviseur de se connecter via l'onglet <strong>Connexion Proviseur</strong> sans avoir besoin d'un compte GitHub.
-          </p>
-          <button
-            type="button"
-            onClick={handleSaveProviseurCredentials}
-            className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 shrink-0"
-          >
-            <Save className="h-3.5 w-3.5" />
-            <span>Enregistrer les identifiants Proviseur</span>
-          </button>
-        </div>
       </div>
 
-      {/* Card 3: Horaires des Épreuves & Calcul Tiers-Temps (+1/3 temps) */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-4">
-        <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <Clock className="h-4 w-4 text-[#8e44ad]" />
-              <span>Horaires Officiels & Aménagements Tiers-Temps (+1/3 temps)</span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Calcul automatique de la majoration de temps pour les candidats bénéficiant de PAP/PPS.
-            </p>
-          </div>
-          <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">
-            Automatisé +1/3
-          </span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-                <th className="p-3">Discipline / Épreuve</th>
-                <th className="p-3 text-center">Durée Standard</th>
-                <th className="p-3">Horaires Standard</th>
-                <th className="p-3">Horaires Tiers-Temps (+1/3 temps)</th>
-                <th className="p-3 text-center">Statut Vitrine</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {defaultExamSubjects.map((sub) => (
-                <tr key={sub.id} className="hover:bg-slate-50/70">
-                  <td className="p-3 font-semibold text-slate-900">{sub.name}</td>
-                  <td className="p-3 text-center">
-                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-medium">
-                      {sub.durationStd} min
-                    </span>
-                  </td>
-                  <td className="p-3 text-slate-700 font-mono text-[11px]">
-                    {sub.standardHours}
-                  </td>
-                  <td className="p-3 text-purple-700 font-mono text-[11px] font-bold">
-                    <span className="px-2 py-0.5 rounded bg-purple-50 border border-purple-200">
-                      {sub.tiersTempsHours}
-                    </span>
-                  </td>
-                  <td className="p-3 text-center">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                      ✓ Configuré
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Card 4: Bannière d'Alerte & Publications Vitrine */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6 space-y-4">
-        <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-          <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-            <Eye className="h-4 w-4 text-emerald-600" />
-            <span>Bannière Officielle & Publication sur la Vitrine</span>
-          </h3>
-          <span className="text-[11px] text-slate-400">Diffusion publique</span>
-        </div>
-
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 font-bold text-xs text-slate-800 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={alertEnabled}
-                onChange={(e) => setAlertEnabled(e.target.checked)}
-                className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4"
-              />
-              <span>Activer la bannière d'information de direction sur la vitrine</span>
-            </label>
-
-            <select
-              value={alertType}
-              onChange={(e) => setAlertType(e.target.value as any)}
-              className="px-2 py-1 text-xs border border-slate-300 rounded-lg bg-white"
-            >
-              <option value="info">ℹ️ Information générale (Bleu)</option>
-              <option value="warning">⚠️ Vigilance (Orange)</option>
-              <option value="urgent">🚨 Urgent (Rouge)</option>
-              <option value="success">✅ Validé / Réussite (Vert)</option>
-            </select>
-          </div>
-
-          {alertEnabled && (
-            <div className="space-y-2 pt-2">
-              <input
-                type="text"
-                value={alertTitle}
-                onChange={(e) => setAlertTitle(e.target.value)}
-                placeholder="Titre de la consigne (ex: Consigne d'appel et d'émargement)"
-                className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg"
-              />
-              <textarea
-                value={alertMessage}
-                onChange={(e) => setAlertMessage(e.target.value)}
-                rows={2}
-                placeholder="Message à afficher à l'ensemble des acteurs..."
-                className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Quick Exam Publishing Toggles */}
-        <div className="pt-2">
-          <h4 className="text-xs font-bold text-slate-800 mb-2">
-            Sessions d'Examens configurées et statut de publication :
-          </h4>
-          <div className="space-y-2">
-            {exams.map((exam) => (
-              <div
-                key={exam.id}
-                className="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-xs text-slate-900">{exam.title}</span>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600 font-medium">
-                      {exam.targetLevel}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">{exam.period}</p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => onTogglePublishExam(exam.id, exam.isPublished === false)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                    exam.isPublished !== false
-                      ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                      : "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                  }`}
-                >
-                  <Eye className="h-3 w-3" />
-                  <span>{exam.isPublished !== false ? "Publié sur la Vitrine" : "Masqué (Brouillon)"}</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Card 3: Réinitialisation pour Nouvelle Année Scolaire (Remise à zéro) */}
-      <div className="bg-white rounded-xl border border-rose-200/80 shadow-xs p-6 space-y-5">
-        <div className="border-b border-rose-100 pb-3 flex items-center justify-between">
+      {/* 8. Réinitialisation pour la Nouvelle Année Scolaire (UNIQUE BOUTON CONSERVÉ) */}
+      <div className="bg-white rounded-2xl border-2 border-blue-200/90 shadow-sm p-6 space-y-5">
+        <div className="border-b border-blue-100 pb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-rose-50 text-rose-600">
+            <span className="p-1.5 rounded-lg bg-blue-50 text-[#002060]">
               <RotateCcw className="h-4 w-4" />
             </span>
             <div>
               <h3 className="font-bold text-slate-900 text-sm">
-                Réinitialisation & Préparation pour la Nouvelle Année Scolaire
+                Réinitialisation pour une Nouvelle Année Scolaire
               </h3>
               <p className="text-[11px] text-slate-500">
-                Passez à la session suivante ou remettez les données et configurations à zéro
+                Basculez facilement vers la prochaine rentrée scolaire en conservant ou vidant les catalogues
               </p>
             </div>
           </div>
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700 uppercase">
-            Rentrée / Nouvelle Session
+          <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-[#002060] text-white">
+            Session Suivante
           </span>
         </div>
 
-        <div className="p-4 rounded-xl bg-rose-50/60 border border-rose-200 text-xs text-rose-900 space-y-2">
-          <p className="font-semibold flex items-center gap-1.5">
-            <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-            <span>Comment utiliser la réinitialisation pour l'année prochaine ?</span>
+        <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-100 text-xs text-slate-700 space-y-2">
+          <p className="font-semibold text-[#002060] flex items-center gap-1.5">
+            <Sparkles className="h-4 w-4 text-amber-500 shrink-0" />
+            <span>Comment fonctionne la réinitialisation pour la nouvelle année ?</span>
           </p>
           <p className="text-slate-600 leading-relaxed text-[11px]">
-            Pour préparer une nouvelle session d'examens (ex: passage de <strong>{sessionYear}</strong> à <strong>{nextYearInput}</strong>), cette opération vide les anciens élèves, leurs affectations de table et les créneaux passés afin de démarrer sur une base propre. Vous pouvez choisir de conserver vos salles et vos professeurs pour éviter de devoir les réimporter.
+            Pour préparer une nouvelle année d'examens (ex: passage à <strong>{nextYearInput}</strong>), cette opération réinitialise les candidats de l'année précédente, leurs places et les créneaux passés. Vous pouvez conserver vos salles et vos professeurs pour ne pas avoir à les réimporter.
           </p>
         </div>
 
@@ -871,83 +1164,282 @@ export default function ConfigSection({
               value={nextYearInput}
               onChange={(e) => setNextYearInput(e.target.value)}
               placeholder="Ex: 2026-2027"
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db] focus:outline-hidden font-bold text-slate-800"
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#002060] focus:outline-hidden font-bold text-[#002060]"
             />
           </div>
 
-          <div className="pt-4">
+          <div className="pt-2 sm:pt-4">
             <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 select-none">
               <input
                 type="checkbox"
                 checked={preserveCatalogs}
                 onChange={(e) => setPreserveCatalogs(e.target.checked)}
-                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4"
+                className="rounded border-slate-300 text-[#002060] focus:ring-[#002060] h-4 w-4"
               />
-              <span className="font-medium">
+              <span className="font-semibold">
                 Conserver le catalogue des salles et la liste des professeurs
               </span>
             </label>
             <p className="text-[10px] text-slate-400 mt-0.5 pl-6">
-              Recommandé : évite de ressaisir les locaux et le personnel enseignant
+              Évite de ressaisir les locaux et le personnel enseignant
             </p>
           </div>
         </div>
 
-        <div className="pt-2 flex flex-wrap items-center gap-3 border-t border-slate-100">
+        <div className="pt-2 border-t border-slate-100">
           <button
             type="button"
-            onClick={() => setConfirmModal("nextYear")}
-            className="px-4 py-2.5 rounded-xl bg-[#002060] hover:bg-[#001746] text-white text-xs font-bold transition shadow-xs flex items-center gap-2"
+            onClick={() => setIsResetConfirmOpen(true)}
+            className="px-5 py-2.5 rounded-xl bg-[#002060] hover:bg-[#001746] text-white text-xs font-bold transition shadow-md flex items-center gap-2"
           >
             <Sparkles className="h-4 w-4 text-amber-300" />
-            <span>✨ Réinitialiser pour l'Année {nextYearInput}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setConfirmModal("factory")}
-            className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 text-xs font-semibold transition border border-slate-300 hover:border-rose-300 flex items-center gap-1.5"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            <span>Remise à zéro totale (Paramètres d'usine)</span>
+            <span>✨ Réinitialiser pour une nouvelle année scolaire ({nextYearInput})</span>
           </button>
         </div>
       </div>
 
-      {/* Confirmation Modal */}
-      {confirmModal && (
+      {/* Modal: Slot Edit/Add */}
+      {isSlotModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-left border border-slate-200 animate-in fade-in zoom-in-95">
-            <div className="flex items-center gap-3 text-rose-600">
-              <div className="p-3 bg-rose-100 rounded-xl">
-                <AlertCircle className="h-6 w-6" />
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h4 className="font-bold text-slate-900 text-sm">
+                {editingSlotId ? "Modifier l'Horaire Officiel" : "Ajouter un Horaire Officiel"}
+              </h4>
+              <button
+                type="button"
+                onClick={() => setIsSlotModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Discipline / Épreuve
+                </label>
+                <input
+                  type="text"
+                  value={slotFormName}
+                  onChange={(e) => setSlotFormName(e.target.value)}
+                  placeholder="Ex: Français (Écrit), Mathématiques..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Durée Standard (min)
+                  </label>
+                  <input
+                    type="number"
+                    value={slotFormDuration}
+                    onChange={(e) => {
+                      const dur = Number(e.target.value) || 0;
+                      setSlotFormDuration(dur);
+                      setSlotFormTTHours(calculateTTHours(slotFormStdHours, dur));
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Horaires Standard
+                  </label>
+                  <input
+                    type="text"
+                    value={slotFormStdHours}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSlotFormStdHours(val);
+                      setSlotFormTTHours(calculateTTHours(val, slotFormDuration));
+                    }}
+                    placeholder="08h00 - 10h00"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Horaires Tiers-Temps (+1/3 temps)
+                </label>
+                <input
+                  type="text"
+                  value={slotFormTTHours}
+                  onChange={(e) => setSlotFormTTHours(e.target.value)}
+                  placeholder="08h00 - 10h40 (+40 min)"
+                  className="w-full px-3 py-2 border border-purple-300 bg-purple-50 rounded-lg font-mono font-bold text-purple-900"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Calculé automatiquement avec la majoration de +1/3 de temps.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsSlotModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveSlot}
+                className="px-4 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg shadow-xs"
+              >
+                Enregistrer l'horaire
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Announcement Edit/Add */}
+      {isAnnModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h4 className="font-bold text-slate-900 text-sm">
+                {editingAnnId ? "Modifier la Consigne" : "Rédiger une Nouvelle Consigne"}
+              </h4>
+              <button
+                type="button"
+                onClick={() => setIsAnnModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Titre de la consigne
+                </label>
+                <input
+                  type="text"
+                  value={annTitle}
+                  onChange={(e) => setAnnTitle(e.target.value)}
+                  placeholder="Ex: Heure de convocation et sacs à l'entrée..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Niveau d'importance
+                  </label>
+                  <select
+                    value={annPriority}
+                    onChange={(e) => setAnnPriority(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+                  >
+                    <option value="information">Information générale</option>
+                    <option value="important">Important</option>
+                    <option value="urgent">Urgent / Impératif</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Public cible
+                  </label>
+                  <select
+                    value={annTarget}
+                    onChange={(e) => setAnnTarget(e.target.value as any)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+                  >
+                    <option value="all">Tous les usagers</option>
+                    <option value="dnb">Élèves de 3ème (DNB)</option>
+                    <option value="bac">Élèves de Bac (1ère / Tale)</option>
+                    <option value="teachers">Professeurs surveillants</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Texte de la consigne
+                </label>
+                <textarea
+                  value={annContent}
+                  onChange={(e) => setAnnContent(e.target.value)}
+                  rows={4}
+                  placeholder="Détaillez les consignes officielles..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg leading-relaxed"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer pt-1 select-none">
+                <input
+                  type="checkbox"
+                  checked={annIsPublished}
+                  onChange={(e) => setAnnIsPublished(e.target.checked)}
+                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                />
+                <span className="font-semibold text-slate-800">
+                  Publier immédiatement sur le site vitrine
+                </span>
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsAnnModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveAnnouncement}
+                className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs"
+              >
+                Enregistrer la consigne
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Confirmation Reset Nouvelle Année */}
+      {isResetConfirmOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-3 text-blue-700">
+              <div className="p-3 bg-blue-100 rounded-xl">
+                <Sparkles className="h-6 w-6" />
               </div>
               <div>
                 <h4 className="font-bold text-base text-slate-900">
-                  {confirmModal === "nextYear"
-                    ? `Confirmer la bascule vers ${nextYearInput} ?`
-                    : "Confirmer la remise à zéro totale ?"}
+                  Confirmer la bascule vers {nextYearInput} ?
                 </h4>
                 <p className="text-xs text-slate-500">
-                  Cette action réinitialise les données des examens
+                  Préparation de la nouvelle session d'examens
                 </p>
               </div>
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-200">
-              {confirmModal === "nextYear"
-                ? `Vous êtes sur le point de préparer la session ${nextYearInput}. Les listes de candidats, les affectations aux salles et les surveillances de l'année précédente seront vidées.${
-                    preserveCatalogs
-                      ? " Vos salles et vos professeurs seront préservés."
-                      : " L'ensemble des données sera supprimé."
-                  }`
-                : "Attention : Toutes les données enregistrées dans votre navigateur seront réinitialisées à leurs valeurs d'origine avec le logo officiel du LFJP."}
+              Vous êtes sur le point de basculer vers l'année scolaire <strong>{nextYearInput}</strong>. Les anciens candidats et leurs affectations de tables seront réinitialisés pour faire place à la nouvelle cohorte.
+              {preserveCatalogs
+                ? " Vos salles et vos professeurs seront préservés."
+                : " L'ensemble des données sera vidé."}
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setConfirmModal(null)}
+                onClick={() => setIsResetConfirmOpen(false)}
                 className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
               >
                 Annuler
@@ -956,27 +1448,20 @@ export default function ConfigSection({
               <button
                 type="button"
                 onClick={() => {
-                  if (confirmModal === "nextYear") {
-                    if (onResetForNewSchoolYear) {
-                      onResetForNewSchoolYear(nextYearInput, preserveCatalogs);
-                    }
-                    onUpdateSiteInfo({ schoolYear: nextYearInput });
-                    setSessionYear(nextYearInput);
-                    onShowNotification(
-                      `🎉 Année scolaire basculée sur ${nextYearInput} ! Données réinitialisées et vitrine synchronisée.`
-                    );
-                  } else {
-                    if (onResetToDefaults) {
-                      onResetToDefaults();
-                    }
-                    onShowNotification("🔄 Toutes les configurations ont été remises à zéro d'origine.");
+                  if (onResetForNewSchoolYear) {
+                    onResetForNewSchoolYear(nextYearInput, preserveCatalogs);
                   }
-                  setConfirmModal(null);
+                  onUpdateSiteInfo({ schoolYear: nextYearInput });
+                  setSessionYear(nextYearInput);
+                  onShowNotification(
+                    `🎉 Année scolaire basculée sur ${nextYearInput} ! Données réinitialisées et vitrine synchronisée.`
+                  );
+                  setIsResetConfirmOpen(false);
                 }}
-                className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition shadow-xs flex items-center gap-1.5"
+                className="px-4 py-2 text-xs font-bold text-white bg-[#002060] hover:bg-[#001746] rounded-lg transition shadow-xs flex items-center gap-1.5"
               >
                 <Check className="h-4 w-4" />
-                <span>Oui, réinitialiser maintenant</span>
+                <span>Confirmer et réinitialiser</span>
               </button>
             </div>
           </div>

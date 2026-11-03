@@ -34,6 +34,19 @@ export interface SiteInfo {
   };
   proviseurAuth?: ProviseurAuth;
   pendingDeployment?: PendingDeploymentInfo | null;
+  standardSlots?: Array<{
+    id: string;
+    name: string;
+    durationStd: number;
+    standardHours: string;
+    tiersTempsHours: string;
+  }>;
+  evaluationTypes?: string[];
+  sciencesSubjects?: Array<{
+    id: string;
+    name: string;
+    enabled: boolean;
+  }>;
 }
 
 export interface CmsCallout {
@@ -169,6 +182,56 @@ export const DEFAULT_CMS_DATA: CmsData = {
       name: "M. le Proviseur",
     },
     pendingDeployment: null,
+    evaluationTypes: [
+      "DNB Blanc (Collège 3ème)",
+      "DNB Officiel (Brevet)",
+      "Bac Blanc 1ère (Français EAF)",
+      "Bac Blanc Terminale",
+      "Devoir Commun",
+      "Grand Oral Blanc",
+    ],
+    sciencesSubjects: [
+      { id: "svt", name: "SVT (Sciences de la Vie et de la Terre)", enabled: true },
+      { id: "pc", name: "Physique-Chimie", enabled: true },
+      { id: "techno", name: "Technologie", enabled: true },
+    ],
+    standardSlots: [
+      {
+        id: "fr-1",
+        name: "Français (Grammaire, Dictée & Compréhension)",
+        durationStd: 90,
+        standardHours: "08h00 - 09h30",
+        tiersTempsHours: "08h00 - 10h00 (+30 min)",
+      },
+      {
+        id: "fr-2",
+        name: "Français (Rédaction / Expression écrite)",
+        durationStd: 90,
+        standardHours: "09h45 - 11h15",
+        tiersTempsHours: "09h45 - 11h45 (+30 min)",
+      },
+      {
+        id: "maths",
+        name: "Mathématiques",
+        durationStd: 120,
+        standardHours: "13h30 - 15h30",
+        tiersTempsHours: "13h30 - 16h10 (+40 min)",
+      },
+      {
+        id: "hg-emc",
+        name: "Histoire-Géographie & EMC",
+        durationStd: 120,
+        standardHours: "08h00 - 10h00",
+        tiersTempsHours: "08h00 - 10h40 (+40 min)",
+      },
+      {
+        id: "sciences",
+        name: "Sciences (SVT & Physique-Chimie)",
+        durationStd: 60,
+        standardHours: "10h15 - 11h15",
+        tiersTempsHours: "10h15 - 11h35 (+20 min)",
+      },
+    ],
   },
   callouts: HOME_CALLOUT_ENTRIES.map((entry, index) => ({
     id: `callout-${index + 1}`,

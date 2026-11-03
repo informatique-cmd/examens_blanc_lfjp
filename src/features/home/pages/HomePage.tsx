@@ -405,23 +405,7 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* 4. GUIDE CONVOCATIONS & SESSIONS */}
-      <div className="w-full max-w-4xl rounded-2xl bg-gradient-to-r from-[#002060] to-[#001746] text-white p-5 sm:p-6 text-left shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
-              Espace Candidats & Familles
-            </span>
-          </div>
-          <h3 className="text-base sm:text-lg font-black tracking-tight">
-            Trouver ma salle & Télécharger ma convocation officielle par session
-          </h3>
-          <p className="text-xs text-slate-200">
-            Consultez votre session d'examen ci-dessous (DNB, Baccalauréat...). Dans chaque session, utilisez l'espace recherche pour voir vos matières, horaires (+1/3 temps) et imprimer votre convocation individuelle officielle.
-          </p>
-        </div>
-      </div>
+
 
       {/* 5. SESSIONS D'EXAMENS & CRÉNEAUX DES ÉPREUVES */}
       <section className="w-full max-w-4xl space-y-4 text-left">
@@ -1130,8 +1114,9 @@ export default function HomePage() {
                     Fait à Saly Portudal, le {new Date().toLocaleDateString("fr-FR")}
                   </p>
                   <div>
-                    <p className="font-bold text-[#002060]">Le Chef d'Établissement / Proviseur</p>
-                    <p className="text-[10px] text-slate-400 italic">Signature et cachet officiel du LFJP</p>
+                    <p className="font-bold text-[#002060]">Le / La Proviseur(e)</p>
+                    <p className="text-[10px] text-slate-500 italic">Direction du Lycée Français Jacques Prévert</p>
+                    <p className="text-[9px] text-slate-400">Signature et cachet officiel du LFJP</p>
                   </div>
                 </div>
               </div>

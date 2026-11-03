@@ -597,14 +597,6 @@ export default function AdminSidebar({
             className="hidden"
           />
         </label>
-
-        <button
-          onClick={onResetDefaults}
-          className="w-full text-center text-[11px] text-slate-400 hover:text-rose-400 pt-1 flex items-center justify-center gap-1 transition"
-        >
-          <RotateCcw className="h-3 w-3" />
-          <span>Réinitialiser aux valeurs initiales</span>
-        </button>
       </div>
     </aside>
   );

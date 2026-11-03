@@ -47,7 +47,33 @@ export default function OrganizationSection({
   const [dispatchMode, setDispatchMode] = useState<"brassage" | "alphabetique">("brassage");
   const [separateTT, setSeparateTT] = useState<boolean>(true);
   const [anonymatPrefix, setAnonymatPrefix] = useState<string>("DNB-");
-  const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>(() => rooms.map((r) => r.id));
+  // Only mobilize the rooms chosen in the exam slots or previously assigned to candidates
+  const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>(() => {
+    const slotRooms = new Set<string>();
+    (examSlots || []).forEach((s) => {
+      if (s.roomNames && Array.isArray(s.roomNames)) {
+        s.roomNames.forEach((rn) => slotRooms.add(rn.trim().toLowerCase()));
+      }
+    });
+
+    const candidateRooms = new Set<string>();
+    (candidates || []).forEach((c) => {
+      if (c.roomName) candidateRooms.add(c.roomName.trim().toLowerCase());
+    });
+
+    const chosenFromSlots = rooms.filter(
+      (r) => slotRooms.has(r.name.trim().toLowerCase()) || candidateRooms.has(r.name.trim().toLowerCase())
+    );
+
+    if (chosenFromSlots.length > 0) {
+      return chosenFromSlots.map((r) => r.id);
+    }
+
+    return rooms.slice(0, Math.min(4, rooms.length)).map((r) => r.id);
+  });
+
+  const [showAllSchoolRooms, setShowAllSchoolRooms] = useState<boolean>(false);
+
   const [ttRoomIds, setTtRoomIds] = useState<string[]>(() => {
     const defaultTT = rooms.filter(
       (r) => r.name.toLowerCase().includes("tt") || r.notes?.toLowerCase().includes("tt")
@@ -83,9 +109,13 @@ export default function OrganizationSection({
     return rooms.reduce((acc, r) => acc + (r.capacity || 0), 0);
   }, [rooms]);
 
-  // Breakdown by room for the selected rooms
+  // Breakdown by room: ONLY show mobilized rooms chosen at the start unless user toggles all
   const roomBreakdown = useMemo(() => {
-    return rooms.map((r) => {
+    const roomsToDisplay = showAllSchoolRooms
+      ? rooms
+      : rooms.filter((r) => selectedRoomIds.includes(r.id));
+
+    return roomsToDisplay.map((r) => {
       const isMobilized = selectedRoomIds.includes(r.id);
       const isTT = ttRoomIds.includes(r.id);
       const assigned = candidates.filter((c) => c.roomName === r.name);
@@ -99,7 +129,7 @@ export default function OrganizationSection({
         fillRate: r.capacity > 0 ? Math.round((assigned.length / r.capacity) * 100) : 0,
       };
     });
-  }, [rooms, candidates, selectedRoomIds, ttRoomIds]);
+  }, [rooms, candidates, selectedRoomIds, ttRoomIds, showAllSchoolRooms]);
 
   // Toggle room selection for candidate dispatch
   const handleToggleRoomSelection = (roomId: string) => {
@@ -567,10 +597,10 @@ export default function OrganizationSection({
                 </span>
                 <button
                   type="button"
-                  onClick={() => setSelectedRoomIds(rooms.map((r) => r.id))}
-                  className="text-xs text-indigo-600 hover:underline font-semibold"
+                  onClick={() => setShowAllSchoolRooms(!showAllSchoolRooms)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
                 >
-                  Toutes
+                  {showAllSchoolRooms ? "Afficher uniquement les salles mobilisées" : "+ Afficher d'autres salles"}
                 </button>
               </div>
             </div>

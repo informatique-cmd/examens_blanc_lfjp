@@ -235,19 +235,29 @@ export function ConvocElevesSection({
                 style={{ pageBreakAfter: idx < candidatesToPrint.length - 1 ? "always" : "auto" }}
               >
                 <div className="flex items-center justify-between border-b-2 border-slate-800 pb-4">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                      RÉPUBLIQUE FRANÇAISE • RÉSEAU AEFE
-                    </p>
-                    <h1 className="text-base font-black text-slate-900">
-                      {siteInfo.title || "Lycée Français Jacques Prévert de Saly"}
-                    </h1>
-                    <p className="text-xs text-slate-600">
-                      Session Officielle {siteInfo.schoolYear || "2025-2026"}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <img
+                      src="/assets/aistudio/logo-lfjp_62451311.png"
+                      alt="Logo LFJP"
+                      className="h-12 w-auto object-contain shrink-0"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = "/logo-lfjp.png";
+                      }}
+                    />
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-red-600">
+                        RÉPUBLIQUE FRANÇAISE • RÉSEAU AEFE
+                      </p>
+                      <h1 className="text-base font-black text-[#002060]">
+                        {siteInfo.title || "Lycée Français Jacques Prévert de Saly"}
+                      </h1>
+                      <p className="text-xs text-slate-600">
+                        Session Officielle {siteInfo.schoolYear || "2025-2026"} • Code RNE 9930032S
+                      </p>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <span className="px-3 py-1 rounded bg-slate-900 text-white font-bold text-xs uppercase">
+                    <span className="px-3 py-1 rounded bg-[#002060] text-white font-bold text-xs uppercase shadow-xs">
                       CONVOCATION OFFICIELLE
                     </span>
                   </div>
@@ -256,15 +266,15 @@ export function ConvocElevesSection({
                 {/* Student Info Card */}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-2 gap-4 text-xs">
                   <div>
-                    <p className="text-[11px] text-slate-500">Candidat(e) :</p>
+                    <p className="text-[11px] text-slate-500 font-semibold">Candidat(e) :</p>
                     <p className="text-sm font-black text-slate-900">
                       {candidate.lastName.toUpperCase()} {candidate.firstName}
                     </p>
-                    <p className="text-xs text-slate-600 mt-1">Classe : {candidate.className}</p>
+                    <p className="text-xs text-slate-600 mt-1">Classe : <strong>{candidate.className}</strong></p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[11px] text-slate-500">Salle d'Examen :</p>
-                    <p className="text-sm font-black text-indigo-700">
+                    <p className="text-[11px] text-slate-500 font-semibold">Salle d'Examen :</p>
+                    <p className="text-sm font-black text-[#002060]">
                       {candidate.roomName || "Salle Principale"}
                     </p>
                     <p className="text-xs font-mono font-bold text-slate-800 mt-1">
@@ -276,9 +286,9 @@ export function ConvocElevesSection({
                 {/* Accommodation Banner */}
                 {candidate.accommodation && candidate.accommodation !== "Aucun" && (
                   <div className="p-3 rounded-lg bg-purple-50 border border-purple-200 text-xs text-purple-900 flex items-center justify-between">
-                    <span className="font-bold">Aménagement Réglementaire Accordé :</span>
+                    <span className="font-bold">♿ Aménagement Réglementaire Accordé :</span>
                     <span className="font-mono font-bold bg-white px-2 py-0.5 rounded border border-purple-300">
-                      {candidate.accommodation}
+                      {candidate.accommodation} (+1/3 temps)
                     </span>
                   </div>
                 )}
@@ -288,9 +298,9 @@ export function ConvocElevesSection({
                   <p className="font-bold text-slate-900">Calendrier des Épreuves :</p>
                   <table className="w-full text-left border-collapse border border-slate-300 text-xs">
                     <thead>
-                      <tr className="bg-slate-100 text-slate-700">
+                      <tr className="bg-slate-100 text-slate-700 font-bold">
                         <th className="p-2 border border-slate-300">Épreuve / Discipline</th>
-                        <th className="p-2 border border-slate-300">Horaire Appel</th>
+                        <th className="p-2 border border-slate-300">Heure d'Appel</th>
                         <th className="p-2 border border-slate-300">Horaires Épreuve</th>
                         <th className="p-2 border border-slate-300">Salle Assignée</th>
                       </tr>
@@ -298,11 +308,11 @@ export function ConvocElevesSection({
                     <tbody>
                       <tr>
                         <td className="p-2 border border-slate-300 font-bold">{candidate.examName || "Examen Blanc"}</td>
-                        <td className="p-2 border border-slate-300 font-mono text-indigo-700 font-bold">
+                        <td className="p-2 border border-slate-300 font-mono text-emerald-700 font-bold">
                           {candidate.convocationTime || "07h45"}
                         </td>
-                        <td className="p-2 border border-slate-300 font-mono">08h00 - 12h00</td>
-                        <td className="p-2 border border-slate-300 font-bold">{candidate.roomName || "Salle S12"}</td>
+                        <td className="p-2 border border-slate-300 font-mono font-semibold">08h00 - 12h00</td>
+                        <td className="p-2 border border-slate-300 font-bold text-[#002060]">{candidate.roomName || "Salle S12"}</td>
                       </tr>
                     </tbody>
                   </table>
@@ -312,9 +322,9 @@ export function ConvocElevesSection({
                 <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1">
                   <p className="font-bold text-slate-900">Consignes Impératives aux Candidats :</p>
                   <ul className="list-disc pl-4 space-y-0.5">
-                    <li>Se présenter 15 minutes avant le début de chaque épreuve avec sa convocation et sa pièce d'identité.</li>
-                    <li>Les téléphones portables et montres connectées doivent être éteints et déposés dans les sacs.</li>
-                    <li>L'usage de la calculatrice est soumis aux instructions du sujet (mode examen clignotant obligatoire).</li>
+                    <li>Se présenter 15 minutes avant le début de chaque épreuve avec sa convocation et sa pièce d'identité officielle.</li>
+                    <li>Les téléphones portables et montres connectées doivent être impérativement éteints et déposés dans les sacs.</li>
+                    <li>L'usage de la calculatrice est soumis aux consignes du sujet (mode examen clignotant obligatoire).</li>
                   </ul>
                 </div>
 
@@ -325,8 +335,9 @@ export function ConvocElevesSection({
                     <div className="w-40 h-10 border-b border-dashed border-slate-400 mt-2" />
                   </div>
                   <div className="text-center">
-                    <p className="text-[11px] text-slate-500 font-semibold">Le Chef d'Établissement</p>
-                    <p className="font-serif italic text-slate-800 mt-4">Pour la Direction du LFJP</p>
+                    <p className="text-[11px] text-slate-900 font-bold">Le / La Proviseur(e)</p>
+                    <p className="font-serif italic text-slate-700 mt-2">Direction du Lycée Français Jacques Prévert</p>
+                    <p className="text-[9px] text-slate-400 mt-1">Cachet et signature officielle</p>
                   </div>
                 </div>
               </div>
@@ -515,17 +526,27 @@ export function ConvocProfsSection({
               style={{ pageBreakAfter: idx < teachersToPrint.length - 1 ? "always" : "auto" }}
             >
               <div className="flex items-center justify-between border-b-2 border-slate-800 pb-4">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    RÉPUBLIQUE FRANÇAISE • AEFE
-                  </p>
-                  <h1 className="text-base font-black text-slate-900">
-                    {siteInfo.title || "Lycée Français Jacques Prévert de Saly"}
-                  </h1>
-                  <p className="text-xs text-slate-600">Direction des Examens et Concours</p>
+                <div className="flex items-center gap-3">
+                  <img
+                    src="/assets/aistudio/logo-lfjp_62451311.png"
+                    alt="Logo LFJP"
+                    className="h-12 w-auto object-contain shrink-0"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = "/logo-lfjp.png";
+                    }}
+                  />
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-red-600">
+                      RÉPUBLIQUE FRANÇAISE • RÉSEAU AEFE
+                    </p>
+                    <h1 className="text-base font-black text-[#002060]">
+                      {siteInfo.title || "Lycée Français Jacques Prévert de Saly"}
+                    </h1>
+                    <p className="text-xs text-slate-600">Direction des Examens et Concours • Session {siteInfo.schoolYear || "2025-2026"}</p>
+                  </div>
                 </div>
                 <div className="text-right">
-                  <span className="px-3 py-1 rounded bg-slate-900 text-white font-bold text-xs uppercase">
+                  <span className="px-3 py-1 rounded bg-[#002060] text-white font-bold text-xs uppercase shadow-xs">
                     ORDRE DE MISSION • SURVEILLANCE
                   </span>
                 </div>
@@ -534,11 +555,11 @@ export function ConvocProfsSection({
               {/* Teacher Info */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between text-xs">
                 <div>
-                  <p className="text-[11px] text-slate-500">Enseignant(e) Convoqué(e) :</p>
+                  <p className="text-[11px] text-slate-500 font-semibold">Enseignant(e) Convoqué(e) :</p>
                   <p className="text-sm font-black text-slate-900">
                     {teacher.civility} {teacher.firstName} {teacher.lastName.toUpperCase()}
                   </p>
-                  <p className="text-xs text-slate-600 mt-1">Discipline : {teacher.subject}</p>
+                  <p className="text-xs text-slate-600 mt-1">Discipline : <strong>{teacher.subject}</strong></p>
                 </div>
                 <div className="text-right">
                   <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px]">
@@ -557,7 +578,7 @@ export function ConvocProfsSection({
                 ) : (
                   <table className="w-full text-left border-collapse border border-slate-300 text-xs">
                     <thead>
-                      <tr className="bg-slate-100 text-slate-700">
+                      <tr className="bg-slate-100 text-slate-700 font-bold">
                         <th className="p-2 border border-slate-300">Session d'Examen</th>
                         <th className="p-2 border border-slate-300">Date</th>
                         <th className="p-2 border border-slate-300">Horaire</th>
@@ -570,7 +591,7 @@ export function ConvocProfsSection({
                         <tr key={s.id}>
                           <td className="p-2 border border-slate-300 font-bold">{s.examTitle}</td>
                           <td className="p-2 border border-slate-300">{s.date}</td>
-                          <td className="p-2 border border-slate-300 font-mono font-bold text-indigo-700">
+                          <td className="p-2 border border-slate-300 font-mono font-bold text-[#002060]">
                             {s.timeSlot}
                           </td>
                           <td className="p-2 border border-slate-300 font-bold">{s.roomName}</td>
@@ -588,7 +609,7 @@ export function ConvocProfsSection({
                 <ul className="list-disc pl-4 space-y-0.5">
                   <li>Se présenter au secrétariat des examens 20 minutes avant le début de l'épreuve pour retirer la pochette.</li>
                   <li>Vérifier scrupuleusement l'identité de chaque candidat lors de l'émargement.</li>
-                  <li>Ne pas utiliser de téléphone portable durant la surveillance dans la salle.</li>
+                  <li>Ne pas utiliser de téléphone portable durant la surveillance dans la salle d'examen.</li>
                 </ul>
               </div>
 
@@ -599,14 +620,41 @@ export function ConvocProfsSection({
                   <div className="w-40 h-10 border-b border-dashed border-slate-400 mt-2" />
                 </div>
                 <div className="text-center">
-                  <p className="text-[11px] text-slate-500 font-semibold">Le Chef d'Établissement</p>
-                  <p className="font-serif italic text-slate-800 mt-4">Pour la Direction du LFJP</p>
+                  <p className="text-[11px] text-slate-900 font-bold">Le / La Proviseur(e)</p>
+                  <p className="font-serif italic text-slate-700 mt-2">Direction du Lycée Français Jacques Prévert</p>
+                  <p className="text-[9px] text-slate-400 mt-1">Cachet et signature officielle</p>
                 </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Global Print-Only CSS */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          .printable-content,
+          .printable-content * {
+            visibility: visible !important;
+          }
+          .printable-content {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            padding: 10mm !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
+          aside, header, nav, button, .print\\:hidden {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
