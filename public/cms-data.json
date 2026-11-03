@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-03T10:12:23.615Z",
+  "updatedAt": "2026-11-03T11:40:45.413Z",
   "siteInfo": {
     "title": "Lycée Français Jacques Prévert",
     "subtitle": "Espace examens blancs LFJP",
@@ -13,7 +13,7 @@
       }
     ],
     "bannerAlert": {
-      "enabled": true,
+      "enabled": false,
       "title": "Consigne d'organisation des épreuves",
       "message": "Veuillez vous présenter 15 minutes avant le début de chaque épreuve muni de votre convocation et d'une pièce d'identité.",
       "type": "warning"
@@ -259,6 +259,15 @@
     }
   ],
   "announcements": [
+    {
+      "title": "test",
+      "content": "tres important",
+      "priority": "important",
+      "target": "all",
+      "isPublished": true,
+      "date": "2026-11-03",
+      "id": "ann-1793708892722"
+    },
     {
       "id": "ann-1",
       "title": "Rappel des horaires de convocation",
