@@ -803,6 +803,16 @@
       "date": "2026-12-02",
       "timeSlot": "08:00 - 09:30",
       "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-1793706023253",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-1793634474257",
+      "teacherName": "M. FAYE François",
+      "roomName": "S3",
+      "date": "2026-12-02",
+      "timeSlot": "08:00 - 09:30",
+      "mission": "Surveillant titulaire"
     }
   ],
   "candidates": [
