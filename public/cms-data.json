@@ -1,242 +1,1433 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-03T10:00:00.000Z",
+  "updatedAt": "2026-11-03T10:12:23.615Z",
   "siteInfo": {
-    "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
-    "subtitle": "Lycée Français Jacques Prévert de Saly • Réseau AEFE",
+    "title": "Lycée Français Jacques Prévert",
+    "subtitle": "Espace examens blancs LFJP",
     "description": "Cet espace réunit l'ensemble des informations pratiques nécessaires pour préparer, coordonner et faire vivre les épreuves. Vous y trouverez les documents, convocations, affectations de salles et les consignes indispensables pour guider sereinement chaque étape du déroulement des examens blancs.",
     "schoolYear": "2026-2027",
     "logos": [
       {
-        "src": "/assets/aistudio/logo-lfjp_62451311.png",
-        "alt": "Lycée Français Jacques Prévert - Saly, Sénégal"
-      },
-      {
-        "src": "https://aefe.fr/sites/default/files/asset/document/logo-aefe-bleu-et-orange_0.svg",
-        "alt": "Agence pour l'enseignement français à l'étranger"
+        "src": "https://i.imgur.com/0YmGlXO.png",
+        "alt": "Logo de l'AEFE"
       }
     ],
     "bannerAlert": {
-      "enabled": false,
+      "enabled": true,
       "title": "Consigne d'organisation des épreuves",
       "message": "Veuillez vous présenter 15 minutes avant le début de chaque épreuve muni de votre convocation et d'une pièce d'identité.",
-      "type": "info"
+      "type": "warning"
     },
     "proviseurAuth": {
       "email": "proviseur@lfjpsaly.org",
       "password": "ProviseurLFJP2026!",
-      "name": "M. le Proviseur"
+      "name": "Mme. le Proviseur"
     },
-    "pendingDeployment": null
+    "pendingDeployment": null,
+    "evaluationTypes": [
+      "DNB Blanc (Collège 3ème)",
+      "DNB Officiel (Brevet)",
+      "Bac Blanc 1ère (Français EAF)",
+      "Bac Blanc Terminale",
+      "Devoir Commun",
+      "Grand Oral Blanc"
+    ],
+    "sciencesSubjects": [
+      {
+        "id": "svt",
+        "name": "SVT (Sciences de la Vie et de la Terre)",
+        "enabled": true
+      },
+      {
+        "id": "pc",
+        "name": "Physique-Chimie",
+        "enabled": true
+      },
+      {
+        "id": "techno",
+        "name": "Technologie",
+        "enabled": true
+      }
+    ],
+    "standardSlots": [
+      {
+        "id": "fr-1",
+        "name": "Français (Grammaire, Dictée & Compréhension)",
+        "durationStd": 90,
+        "standardHours": "08h00 - 09h30",
+        "tiersTempsHours": "08h00 - 10h00 (+30 min)"
+      },
+      {
+        "id": "fr-2",
+        "name": "Français (Rédaction / Expression écrite)",
+        "durationStd": 90,
+        "standardHours": "09h45 - 11h15",
+        "tiersTempsHours": "09h45 - 11h45 (+30 min)"
+      },
+      {
+        "id": "maths",
+        "name": "Mathématiques",
+        "durationStd": 120,
+        "standardHours": "13h30 - 15h30",
+        "tiersTempsHours": "13h30 - 16h10 (+40 min)"
+      },
+      {
+        "id": "hg-emc",
+        "name": "Histoire-Géographie & EMC",
+        "durationStd": 120,
+        "standardHours": "08h00 - 10h00",
+        "tiersTempsHours": "08h00 - 10h40 (+40 min)"
+      },
+      {
+        "id": "sciences",
+        "name": "Sciences (SVT & Physique-Chimie)",
+        "durationStd": 60,
+        "standardHours": "10h15 - 11h15",
+        "tiersTempsHours": "10h15 - 11h35 (+20 min)"
+      }
+    ]
   },
   "callouts": [
     {
       "id": "callout-1",
       "to": "/examens-blancs",
-      "iconLabel": "Accéder à l'organisation du Baccalauréat blanc 1ère et Terminale",
-      "subtitle": "Organisation complète",
+      "iconLabel": "Accéder à Baccalauréat blanc 1ère et Terminale",
+      "subtitle": "",
       "title": "Baccalauréat blanc 1ère et Terminale",
       "dateLabel": "10, 11 et 12 décembre 2025",
       "date": "2025-12-10",
-      "footerLabel": "Accéder à l'organisation",
+      "footerLabel": "Accéder à l'organisation complète",
       "category": "general",
       "isPublished": true,
       "order": 1
     },
     {
       "id": "callout-2",
-      "to": "/examens-blancs/bac-mathematiques-terminale-2026-04-07",
-      "iconLabel": "Accéder à l'organisation de l'épreuve de spécialité Mathématiques",
-      "subtitle": "Épreuve de spécialité",
-      "title": "Mathématiques Terminale",
-      "dateLabel": "Mardi 7 avril 2026",
-      "date": "2026-04-07",
-      "footerLabel": "Consulter l'épreuve de spécialité",
-      "category": "math",
+      "to": "/examens-blancs/dnb-blanc-zao-2026-02-03",
+      "iconLabel": "Organisation du DNB blanc",
+      "subtitle": "",
+      "title": "DNB blanc",
+      "dateLabel": "3 et 4 février 2026",
+      "date": "2026-02-03",
+      "footerLabel": "Consulter plannings et surveillances",
+      "category": "general",
       "isPublished": true,
       "order": 2
     },
     {
       "id": "callout-3",
-      "to": "/examens-blancs/oraux-dnb-2026-05-20",
-      "iconLabel": "Accéder à l'organisation des oraux du DNB blanc",
-      "subtitle": "Épreuves orales",
-      "title": "Oraux DNB blanc",
-      "dateLabel": "Mercredi 20 mai 2026",
-      "date": "2026-05-20",
-      "footerLabel": "Consulter le planning des oraux",
-      "category": "oral",
+      "to": "/examens-blancs/mathematiques-2026-02-13",
+      "iconLabel": "Consulter l'organisation du bac blanc de maths 1ère",
+      "subtitle": "",
+      "title": "Bac blanc de maths 1ère",
+      "dateLabel": "13 février 2026",
+      "date": "2026-02-13",
+      "footerLabel": "Accéder à l'organisation complète",
+      "category": "math",
       "isPublished": true,
       "order": 3
     },
     {
       "id": "callout-4",
-      "to": "/surveillances-bac-dnb",
-      "iconLabel": "Accéder au planning de surveillance Bac et DNB",
-      "subtitle": "Planning & convocations",
-      "title": "Surveillances Bac & DNB",
-      "dateLabel": "Sessions 2025-2026",
+      "to": "/examens-blancs/eaf-2026-04-07",
+      "iconLabel": "Accéder à l'organisation du baccalauréat blanc 1ère et Terminale",
+      "subtitle": "",
+      "title": "Baccalauréat blanc 1ère et Terminale",
+      "dateLabel": "7 au 10 avril 2026",
       "date": "2026-04-07",
-      "footerLabel": "Consulter les surveillances",
-      "category": "surveillance",
+      "footerLabel": "Accéder à l'organisation complète",
+      "category": "general",
       "isPublished": true,
       "order": 4
+    },
+    {
+      "id": "callout-5",
+      "to": "/examens-blancs/oraux-eaf-2026-04",
+      "iconLabel": "Consulter l'organisation des oraux blancs de français",
+      "subtitle": "",
+      "title": "Oraux blancs EAF 1ère",
+      "dateLabel": "13, 14 et 15 avril 2026",
+      "date": "2026-04-13",
+      "footerLabel": "Accéder au planning détaillé",
+      "category": "oral",
+      "isPublished": true,
+      "order": 5
+    },
+    {
+      "id": "callout-6",
+      "to": "/examens-blancs/grand-oral-2026-04-17",
+      "iconLabel": "Consulter l'organisation du Grand Oral Blanc",
+      "subtitle": "",
+      "title": "Grand Oral Blanc",
+      "dateLabel": "Vendredi 17 avril 2026",
+      "date": "2026-04-17",
+      "footerLabel": "Accéder au planning détaillé",
+      "category": "oral",
+      "isPublished": true,
+      "order": 6
+    },
+    {
+      "id": "callout-7",
+      "to": "/examens-blancs/oraux-eaf-2026-05",
+      "iconLabel": "Consulter l'organisation des oraux blancs de français",
+      "subtitle": "",
+      "title": "Oraux blancs EAF 1ère",
+      "dateLabel": "11, 12 et 13 mai 2026",
+      "date": "2026-05-11",
+      "footerLabel": "Accéder au planning détaillé",
+      "category": "oral",
+      "isPublished": true,
+      "order": 7
+    },
+    {
+      "id": "callout-8",
+      "to": "https://bastiencapel.github.io/OralDNB2026/",
+      "iconLabel": "Consulter l'organisation des oraux du DNB",
+      "subtitle": "",
+      "title": "Oraux du DNB",
+      "dateLabel": "20 mai 2026",
+      "date": "2026-05-20",
+      "footerLabel": "Accéder au planning détaillé",
+      "category": "oral",
+      "isPublished": true,
+      "order": 8
+    },
+    {
+      "id": "callout-9",
+      "to": "/examens-blancs/mathematiques-2026-05-23",
+      "iconLabel": "Consulter l'organisation du bac blanc de maths 1ère",
+      "subtitle": "",
+      "title": "Bac blanc de maths 1ère",
+      "dateLabel": "23 mai 2026",
+      "date": "2026-05-23",
+      "footerLabel": "Accéder à l'organisation complète",
+      "category": "math",
+      "isPublished": true,
+      "order": 9
+    },
+    {
+      "id": "callout-10",
+      "to": "/examens-blancs/oraux-eaf-2026-06",
+      "iconLabel": "Consulter l'organisation des oraux de français",
+      "subtitle": "",
+      "title": "Oral de français",
+      "dateLabel": "1er au 5 juin 2026",
+      "date": "2026-06-01",
+      "footerLabel": "Accéder à la liste des élèves",
+      "category": "oral",
+      "isPublished": true,
+      "order": 10
+    },
+    {
+      "id": "callout-11",
+      "to": "/surveillances-bac-dnb",
+      "iconLabel": "Consulter le planning des surveillances BAC et DNB",
+      "subtitle": "",
+      "title": "Surveillances BAC et DNB",
+      "dateLabel": "Session Juin 2026",
+      "date": "2026-06-08",
+      "footerLabel": "Accéder au planning détaillé",
+      "category": "surveillance",
+      "isPublished": true,
+      "order": 11
+    },
+    {
+      "id": "callout-1790253997323",
+      "to": "/examens-blancs",
+      "iconLabel": "Accéder à TEST",
+      "subtitle": "Session 2027",
+      "title": "TEST",
+      "dateLabel": "7 au 10 Avril 2027",
+      "date": "2026-04-07",
+      "footerLabel": "Accéder à l'organisation complète",
+      "category": "general",
+      "isPublished": true,
+      "order": 12
+    },
+    {
+      "id": "callout-1790334198532",
+      "to": "/examens-blancs",
+      "iconLabel": "Accéder à EXAM",
+      "subtitle": "",
+      "title": "EXAM",
+      "dateLabel": "7 au 10",
+      "date": "2026-04-07",
+      "footerLabel": "Accéder à l'organisation complète",
+      "category": "general",
+      "isPublished": true,
+      "order": 13
     }
   ],
   "announcements": [
     {
       "id": "ann-1",
-      "title": "Calculatrices autorisées en mode examen",
-      "content": "Seules les calculatrices dotées du mode examen activé ou sans mémoire sont autorisées pour les épreuves de mathématiques et de sciences.",
+      "title": "Rappel des horaires de convocation",
+      "content": "Les candidats doivent se présenter 15 minutes avant l'heure indiquée sur la convocation avec leur pièce d'identité et leur matériel obligatoire.",
       "priority": "important",
-      "target": "bac",
-      "isPublished": true,
-      "date": "2026-04-01"
+      "target": "all",
+      "isPublished": false,
+      "date": "02/11/2026"
     },
     {
       "id": "ann-2",
-      "title": "Pièces d'identité et convocations obligatoires",
-      "content": "Chaque candidat doit impérativement présenter sa convocation imprimée ainsi qu'une pièce d'identité en cours de validité dès l'entrée en salle.",
+      "title": "Calculatrices autorisées en mode examen",
+      "content": "Pour les épreuves de mathématiques et de sciences, les calculatrices doivent obligatoirement être activées en mode examen dès l'entrée en salle.",
       "priority": "information",
-      "target": "all",
-      "isPublished": true,
-      "date": "2026-04-02"
+      "target": "bac",
+      "isPublished": false,
+      "date": "02/11/2026"
+    },
+    {
+      "id": "ann-3",
+      "title": "Émargement des feuilles de surveillance",
+      "content": "Mesdames et Messieurs les enseignants surveillants sont priés de remettre les pochettes d'émargement au secrétariat des examens dès la fin de l'épreuve.",
+      "priority": "urgent",
+      "target": "teachers",
+      "isPublished": false,
+      "date": "02/11/2026"
     }
   ],
   "exams": [
     {
-      "id": "exam-1",
-      "title": "Baccalauréat blanc - Session 1",
-      "examType": "Baccalauréat blanc",
-      "targetLevel": "1ère et Terminale",
-      "period": "10 au 12 décembre 2025",
-      "startsAt": "2025-12-10T08:00:00",
-      "endsAt": "2025-12-12T17:00:00",
-      "description": "Épreuves écrites complètes pour les classes de Première et Terminale.",
-      "status": "Terminé"
-    },
-    {
-      "id": "exam-2",
-      "title": "Épreuve de spécialité Mathématiques Terminale",
-      "examType": "Baccalauréat blanc",
+      "title": "EXAMEN BLANC DECEMBRE",
+      "examType": "Examen Blanc",
       "targetLevel": "Terminale",
-      "period": "Mardi 7 avril 2026",
-      "startsAt": "2026-04-07T08:00:00",
-      "endsAt": "2026-04-07T12:00:00",
-      "description": "Épreuve de spécialité Mathématiques de 4 heures en salle dédiée.",
-      "status": "Prévu"
-    },
+      "period": "DECEMBRE 2026",
+      "startsAt": "2026-11-02",
+      "endsAt": "2026-11-02",
+      "description": "",
+      "status": "Prévu",
+      "isPublished": true,
+      "id": "exam-1793634305223"
+    }
+  ],
+  "examSlots": [
     {
-      "id": "exam-3",
-      "title": "Oraux DNB blanc",
-      "examType": "DNB blanc",
-      "targetLevel": "3ème",
-      "period": "Mercredi 20 mai 2026",
-      "startsAt": "2026-05-20T08:00:00",
-      "endsAt": "2026-05-20T16:00:00",
-      "description": "Passage individuel devant jury pour l'épreuve orale du Diplôme National du Brevet.",
-      "status": "Prévu"
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "subject": "Français",
+      "date": "2026-12-02",
+      "startTime": "08:00",
+      "endTime": "09:30",
+      "durationMinutes": 90,
+      "tiersTempsEndTime": "10:00",
+      "tiersTempsDurationMinutes": 120,
+      "targetLevel": "Terminale",
+      "roomNames": [
+        "S1",
+        "S2"
+      ],
+      "notes": "",
+      "id": "slot-1793634474257"
     }
   ],
   "rooms": [
     {
-      "id": "room-1",
-      "name": "Salle S12",
-      "capacity": 24,
-      "building": "Bâtiment Secondaire RDC",
-      "notes": "Salle principale pour les épreuves de Terminale"
+      "id": "room-1793634199195-1-vczj",
+      "name": "BUREAU CPE",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
     },
     {
-      "id": "room-2",
-      "name": "Salle S14",
+      "id": "room-1793634199195-2-ntli",
+      "name": "BUREAU PROVISEUR",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-3-92dk",
+      "name": "CDI",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-4-pv2g",
+      "name": "FOYER",
+      "capacity": 10,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-5-6llp",
+      "name": "LABORATOIRE",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-6-5lbp",
+      "name": "S7 ARTS",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-7-xoxw",
+      "name": "SALLE POLYVALENTE",
+      "capacity": 80,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-8-m54a",
+      "name": "SALLE TECHNOLOGIE",
+      "capacity": 25,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-9-jde1",
+      "name": "SCIENCES",
       "capacity": 20,
-      "building": "Bâtiment Secondaire 1er étage",
-      "notes": "Salle adaptée pour épreuves de Première"
+      "building": "Bâtiment Principal",
+      "notes": ""
     },
     {
-      "id": "room-3",
-      "name": "Salle Multimédia",
-      "capacity": 15,
-      "building": "Bâtiment Administratif",
-      "notes": "Aménagement tiers-temps et ordinateurs"
+      "id": "room-1793634199195-10-gfkn",
+      "name": "SCIENCES 1",
+      "capacity": 20,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-11-994h",
+      "name": "SCIENCES 2",
+      "capacity": 20,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-12-o21x",
+      "name": "SCIENCES 3",
+      "capacity": 20,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-13-jnv9",
+      "name": "SECONDAIRE",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-14-4acc",
+      "name": "24 PLACES",
+      "capacity": 24,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-15-d6ly",
+      "name": "S12",
+      "capacity": 26,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-16-g8ut",
+      "name": "S13",
+      "capacity": 24,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-17-393n",
+      "name": "S14",
+      "capacity": 24,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-18-0kwe",
+      "name": "S15",
+      "capacity": 24,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-19-ne9q",
+      "name": "30 PLACES",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-20-pxec",
+      "name": "S1",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-21-y73v",
+      "name": "S10",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-22-s31k",
+      "name": "S11",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-23-0dsu",
+      "name": "S2",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-24-p20e",
+      "name": "S3",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-25-p6nu",
+      "name": "S4",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-26-y8tk",
+      "name": "S5",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-27-6hi9",
+      "name": "S6",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-28-mmbb",
+      "name": "S8",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-29-k66c",
+      "name": "S9",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1793634199195-30-z6nf",
+      "name": "TERRAIN DE SPORT SECONDAIRE",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
     }
   ],
   "teachers": [
     {
-      "id": "teacher-1",
+      "id": "teach-1793634223378-1-1u5e",
       "civility": "Monsieur",
-      "firstName": "Bastien",
-      "lastName": "Capel",
-      "subject": "Mathématiques",
-      "email": "bastien.capel@lfjpsaly.org"
+      "lastName": "ANE",
+      "firstName": "Alassane",
+      "subject": "HISTOIRE GEOGRAPHIE, SCIENCES ECONOMIQUES ET SOCIALES",
+      "email": "alassane.ane@lfjpsaly.org"
     },
     {
-      "id": "teacher-2",
+      "id": "teach-1793634223378-2-n9lc",
+      "civility": "Monsieur",
+      "lastName": "BARITOU",
+      "firstName": "Olivier",
+      "subject": "FRANCAIS",
+      "email": "olivier.baritou@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-3-hv5h",
       "civility": "Madame",
-      "firstName": "Sophie",
-      "lastName": "Diop",
-      "subject": "Histoire-Géographie",
-      "email": "sophie.diop@lfjpsaly.org"
+      "lastName": "BOSSU",
+      "firstName": "Claire",
+      "subject": "HISTOIRE GEOGRAPHIE",
+      "email": "claire.bossu@lfjpsaly.org"
     },
     {
-      "id": "teacher-3",
+      "id": "teach-1793634223378-4-wjmy",
+      "civility": "Madame",
+      "lastName": "CHABERT",
+      "firstName": "Karine",
+      "subject": "MATHEMATIQUES",
+      "email": "karine.chabert@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-5-231w",
       "civility": "Monsieur",
-      "firstName": "Amadou",
-      "lastName": "Ndiaye",
-      "subject": "Sciences Physiques",
-      "email": "amadou.ndiaye@lfjpsaly.org"
+      "lastName": "CNED",
+      "firstName": "cned",
+      "subject": "Enseignement Général",
+      "email": "c.cned@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-6-xlny",
+      "civility": "Monsieur",
+      "lastName": "COSTE",
+      "firstName": "Clara",
+      "subject": "Enseignement Général",
+      "email": "c.coste@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-7-04vf",
+      "civility": "Madame",
+      "lastName": "D'AQUINO",
+      "firstName": "Roselyne",
+      "subject": "PRIO - ADN",
+      "email": "orientation@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-8-js0d",
+      "civility": "Madame",
+      "lastName": "DABLIN",
+      "firstName": "Lorraine",
+      "subject": "ARTS PLASTIQUES",
+      "email": "lorraine.dablin@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-9-1nwi",
+      "civility": "Monsieur",
+      "lastName": "DAVID",
+      "firstName": "Vincent",
+      "subject": "SCIENCES ET VIE DE LA TERRE",
+      "email": "vincent.david@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-10-eabk",
+      "civility": "Madame",
+      "lastName": "DIADIO",
+      "firstName": "Ira",
+      "subject": "DOCUMENTATION",
+      "email": "ira.diadio@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-11-7neh",
+      "civility": "Monsieur",
+      "lastName": "DIANDY",
+      "firstName": "Antoine",
+      "subject": "EDUCATION MUSICALE",
+      "email": "antoine.diandy@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-12-fmb6",
+      "civility": "Madame",
+      "lastName": "DRAME",
+      "firstName": "Claire",
+      "subject": "EDUCATION PHYSIQUE ET SPORTIVE",
+      "email": "claire.drame@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-13-s6yw",
+      "civility": "Madame",
+      "lastName": "DUFAY",
+      "firstName": "Maguette",
+      "subject": "MATHEMATIQUES",
+      "email": "maguette.dufay@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-14-12z8",
+      "civility": "Monsieur",
+      "lastName": "FALL",
+      "firstName": "Baba",
+      "subject": "SCIENCES PHYSIQUES ET CHIMIE",
+      "email": "baba.fall@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-15-px9n",
+      "civility": "Monsieur",
+      "lastName": "FAYE",
+      "firstName": "François",
+      "subject": "ANGLAIS",
+      "email": "francois.faye@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-16-1ufm",
+      "civility": "Madame",
+      "lastName": "FAYE",
+      "firstName": "Maryelle",
+      "subject": "FRANCAIS",
+      "email": "maryelle.faye@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-17-wl0n",
+      "civility": "Monsieur",
+      "lastName": "FRAYON",
+      "firstName": "Antoine",
+      "subject": "TECHNOLOGIE, SCIENCE NUMERIQUE",
+      "email": "antoine.frayon@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-18-240i",
+      "civility": "Madame",
+      "lastName": "GIBUS",
+      "firstName": "Amandine",
+      "subject": "ESPAGNOL",
+      "email": "amandine.gibus@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-19-yyb0",
+      "civility": "Monsieur",
+      "lastName": "GOMIS",
+      "firstName": "Alain",
+      "subject": "PHILOSOPHIE",
+      "email": "alain.gomis@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-20-2mjz",
+      "civility": "Madame",
+      "lastName": "JAÏT",
+      "firstName": "Layla",
+      "subject": "ANGLAIS",
+      "email": "layla.jait@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-21-68cg",
+      "civility": "Madame",
+      "lastName": "MBOUP",
+      "firstName": "Nathalie",
+      "subject": "SCIENCES ET VIE DE LA TERRE",
+      "email": "nathalie.mboup@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-22-9m2o",
+      "civility": "Madame",
+      "lastName": "MICHON GUILLAUME",
+      "firstName": "Mathilde",
+      "subject": "HISTOIRE GEOGRAPHIE",
+      "email": "mathilde.michonguillaume@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-23-1v6u",
+      "civility": "Madame",
+      "lastName": "MOURAIN DIOP",
+      "firstName": "Fanelly",
+      "subject": "FRANCAIS",
+      "email": "fanelly.mouraindiop@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-24-w3ng",
+      "civility": "Monsieur",
+      "lastName": "NDAW",
+      "firstName": "Adama",
+      "subject": "SCIENCES PHYSIQUES ET CHIMIE",
+      "email": "adama.ndaw@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-25-fxxm",
+      "civility": "Monsieur",
+      "lastName": "NDIAYE",
+      "firstName": "Alassane",
+      "subject": "EDUCATION PHYSIQUE ET SPORTIVE",
+      "email": "alassane.ndiaye@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-26-dynk",
+      "civility": "Madame",
+      "lastName": "PEREZ",
+      "firstName": "Fanny",
+      "subject": "DOCUMENTATION",
+      "email": "fanny.perez@lfjpsal.org"
+    },
+    {
+      "id": "teach-1793634223378-27-ewaz",
+      "civility": "Monsieur",
+      "lastName": "PIAGGIO",
+      "firstName": "Fernando",
+      "subject": "ESPAGNOL",
+      "email": "fernando.piaggio@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-28-ommo",
+      "civility": "Madame",
+      "lastName": "PORTER",
+      "firstName": "Elizabeth",
+      "subject": "ANGLAIS",
+      "email": "elizabeth.porter@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-29-6csx",
+      "civility": "Madame",
+      "lastName": "RIVIERE",
+      "firstName": "Sandrine",
+      "subject": "MATHEMATIQUES",
+      "email": "sandrine.riviere@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-30-tbie",
+      "civility": "Monsieur",
+      "lastName": "SERVATE",
+      "firstName": "Samuel",
+      "subject": "MATHEMATIQUES",
+      "email": "samuel.servate@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1793634223378-31-oov5",
+      "civility": "Monsieur",
+      "lastName": "THOMAS",
+      "firstName": "Yvon",
+      "subject": "HISTOIRE GEOGRAPHIE",
+      "email": "yvon.thomas@lfjpsaly.org"
     }
   ],
   "surveillances": [
     {
-      "id": "surv-1",
-      "examTitle": "Mathématiques Terminale",
-      "teacherName": "M. Bastien Capel",
-      "roomName": "Salle S12",
-      "date": "2026-04-07",
-      "timeSlot": "08h00 - 12h00",
-      "mission": "Surveillance principale"
+      "id": "surv-auto-slot-1793634474257-room-1793634199195-20-pxec-1793635027487-0.620591147859864",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-1793634474257",
+      "teacherName": "M. ANE Alassane",
+      "roomName": "S1",
+      "date": "2026-12-02",
+      "timeSlot": "08:00 - 09:30",
+      "mission": "Surveillant titulaire"
     },
     {
-      "id": "surv-2",
-      "examTitle": "Oraux DNB blanc",
-      "teacherName": "Mme Sophie Diop",
-      "roomName": "Salle S14",
-      "date": "2026-05-20",
-      "timeSlot": "08h00 - 12h30",
-      "mission": "Membre du jury oral"
+      "id": "surv-auto-slot-1793634474257-room-1793634199195-23-0dsu-1793635027487-0.22490305520490095",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-1793634474257",
+      "teacherName": "M. BARITOU Olivier",
+      "roomName": "S2",
+      "date": "2026-12-02",
+      "timeSlot": "08:00 - 09:30",
+      "mission": "Surveillant titulaire"
     }
   ],
   "candidates": [
     {
-      "id": "cand-1",
-      "firstName": "Fatou",
-      "lastName": "Sow",
-      "className": "Terminale G1",
-      "examName": "Bac blanc Mathématiques",
-      "roomName": "Salle S12",
+      "id": "cand-1793634177703-1-dcm9",
+      "lastName": "AGUESSE",
+      "firstName": "Julie",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
       "convocationTime": "07h45",
-      "accommodation": "Aucun"
+      "accommodation": "",
+      "tableNumber": "1",
+      "anonymatNumber": "DNB-0101"
     },
     {
-      "id": "cand-2",
-      "firstName": "Alexandre",
-      "lastName": "Fall",
-      "className": "Terminale G2",
-      "examName": "Bac blanc Mathématiques",
-      "roomName": "Salle S12",
+      "id": "cand-1793634177703-27-ggyu",
+      "lastName": "ALLIER",
+      "firstName": "Faustine",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
       "convocationTime": "07h45",
-      "accommodation": "Aucun"
+      "accommodation": "",
+      "tableNumber": "2",
+      "anonymatNumber": "DNB-0102"
     },
     {
-      "id": "cand-3",
-      "firstName": "Aïssatou",
-      "lastName": "Diallo",
-      "className": "3ème A",
-      "examName": "Oraux DNB blanc",
-      "roomName": "Salle S14",
-      "convocationTime": "08h15",
-      "accommodation": "Tiers-temps"
+      "id": "cand-1793634177703-2-q6z8",
+      "lastName": "BENSON",
+      "firstName": "Marilyse  Lucia  Fanta",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "3",
+      "anonymatNumber": "DNB-0103"
+    },
+    {
+      "id": "cand-1793634177703-28-zbnx",
+      "lastName": "BIER",
+      "firstName": "Awa  Eve",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "4",
+      "anonymatNumber": "DNB-0104"
+    },
+    {
+      "id": "cand-1793634177703-3-optq",
+      "lastName": "CALDEIRA",
+      "firstName": "Giovanna",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "5",
+      "anonymatNumber": "DNB-0105"
+    },
+    {
+      "id": "cand-1793634177703-29-qt0g",
+      "lastName": "BOUSSO",
+      "firstName": "Coumba",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "6",
+      "anonymatNumber": "DNB-0106"
+    },
+    {
+      "id": "cand-1793634177703-4-ci6c",
+      "lastName": "CISSE-SOHM",
+      "firstName": "Elah-Khayta",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "7",
+      "anonymatNumber": "DNB-0107"
+    },
+    {
+      "id": "cand-1793634177703-30-9v8b",
+      "lastName": "BOYER",
+      "firstName": "Camille Laurence Nella",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "8",
+      "anonymatNumber": "DNB-0108"
+    },
+    {
+      "id": "cand-1793634177703-5-sy5b",
+      "lastName": "DARWICHE",
+      "firstName": "Iris Marie Raymonde",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "9",
+      "anonymatNumber": "DNB-0109"
+    },
+    {
+      "id": "cand-1793634177703-31-gq2o",
+      "lastName": "BRU",
+      "firstName": "Marie",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "10",
+      "anonymatNumber": "DNB-0110"
+    },
+    {
+      "id": "cand-1793634177703-6-iqcw",
+      "lastName": "DAVID",
+      "firstName": "Hoel",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "11",
+      "anonymatNumber": "DNB-0111"
+    },
+    {
+      "id": "cand-1793634177703-32-spiu",
+      "lastName": "CROIZAT",
+      "firstName": "Liliane",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "12",
+      "anonymatNumber": "DNB-0112"
+    },
+    {
+      "id": "cand-1793634177703-7-r2sp",
+      "lastName": "FAYE",
+      "firstName": "Imane",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "13",
+      "anonymatNumber": "DNB-0113"
+    },
+    {
+      "id": "cand-1793634177703-33-h22k",
+      "lastName": "D'ALMEIDA",
+      "firstName": "Kyran Kemi Adetutu",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "14",
+      "anonymatNumber": "DNB-0114"
+    },
+    {
+      "id": "cand-1793634177703-8-9a93",
+      "lastName": "GAFFARI",
+      "firstName": "Mattéo",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "15",
+      "anonymatNumber": "DNB-0115"
+    },
+    {
+      "id": "cand-1793634177703-34-5xlu",
+      "lastName": "DE GAIGNERON JOLLIMON DE MAROLLES",
+      "firstName": "Clovis",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "16",
+      "anonymatNumber": "DNB-0116"
+    },
+    {
+      "id": "cand-1793634177703-9-8w68",
+      "lastName": "GNING",
+      "firstName": "Maya Aïssatou",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "17",
+      "anonymatNumber": "DNB-0117"
+    },
+    {
+      "id": "cand-1793634177703-35-eayz",
+      "lastName": "DIAGNE",
+      "firstName": "Seydina Alioune",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "18",
+      "anonymatNumber": "DNB-0118"
+    },
+    {
+      "id": "cand-1793634177703-10-9zgp",
+      "lastName": "HAFFNER",
+      "firstName": "Juliette",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "19",
+      "anonymatNumber": "DNB-0119"
+    },
+    {
+      "id": "cand-1793634177703-36-w2x5",
+      "lastName": "DIAKHABY",
+      "firstName": "Safia",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "PAP",
+      "tableNumber": "20",
+      "anonymatNumber": "DNB-0120"
+    },
+    {
+      "id": "cand-1793634177703-11-vn32",
+      "lastName": "KABA",
+      "firstName": "Bocar",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "21",
+      "anonymatNumber": "DNB-0121"
+    },
+    {
+      "id": "cand-1793634177703-37-i2b7",
+      "lastName": "DIAKITE",
+      "firstName": "Assietou Dite Assy",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "22",
+      "anonymatNumber": "DNB-0122"
+    },
+    {
+      "id": "cand-1793634177703-12-s99t",
+      "lastName": "KOUROUMA",
+      "firstName": "Aboubacar Biro",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "23",
+      "anonymatNumber": "DNB-0123"
+    },
+    {
+      "id": "cand-1793634177703-38-m6xz",
+      "lastName": "DIALLO",
+      "firstName": "Marvin Noah Diouldé",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "24",
+      "anonymatNumber": "DNB-0124"
+    },
+    {
+      "id": "cand-1793634177703-13-guwe",
+      "lastName": "LAMBERT",
+      "firstName": "Clara Noémie",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "25",
+      "anonymatNumber": "DNB-0125"
+    },
+    {
+      "id": "cand-1793634177703-39-fqzn",
+      "lastName": "DIALLO",
+      "firstName": "Nènè Penda",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "26",
+      "anonymatNumber": "DNB-0126"
+    },
+    {
+      "id": "cand-1793634177703-14-riv3",
+      "lastName": "LEMAIRE",
+      "firstName": "Simon",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "27",
+      "anonymatNumber": "DNB-0127"
+    },
+    {
+      "id": "cand-1793634177703-40-qbq1",
+      "lastName": "ENNADIFI",
+      "firstName": "Mohamed",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "28",
+      "anonymatNumber": "DNB-0128"
+    },
+    {
+      "id": "cand-1793634177703-15-84fe",
+      "lastName": "MBAYE",
+      "firstName": "Assy",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "29",
+      "anonymatNumber": "DNB-0129"
+    },
+    {
+      "id": "cand-1793634177703-41-it0r",
+      "lastName": "FALL",
+      "firstName": "Cheikh Saliou Mbacké",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S1",
+      "convocationTime": "07h45",
+      "accommodation": "PPRE (Remobilisation Travail)",
+      "tableNumber": "30",
+      "anonymatNumber": "DNB-0130"
+    },
+    {
+      "id": "cand-1793634177703-16-orsh",
+      "lastName": "METZ",
+      "firstName": "Celia",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "1",
+      "anonymatNumber": "DNB-0131"
+    },
+    {
+      "id": "cand-1793634177703-42-mcpt",
+      "lastName": "FALL",
+      "firstName": "Souleymane",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "2",
+      "anonymatNumber": "DNB-0132"
+    },
+    {
+      "id": "cand-1793634177703-17-1q59",
+      "lastName": "MOUAQIT",
+      "firstName": "Achraf",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "3",
+      "anonymatNumber": "DNB-0133"
+    },
+    {
+      "id": "cand-1793634177703-43-vd70",
+      "lastName": "GAYE",
+      "firstName": "Ababacar",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "4",
+      "anonymatNumber": "DNB-0134"
+    },
+    {
+      "id": "cand-1793634177703-18-liuf",
+      "lastName": "NDIAYE",
+      "firstName": "Felwine Alicia",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "5",
+      "anonymatNumber": "DNB-0135"
+    },
+    {
+      "id": "cand-1793634177703-44-iozm",
+      "lastName": "HACHIM",
+      "firstName": "Rayan",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "6",
+      "anonymatNumber": "DNB-0136"
+    },
+    {
+      "id": "cand-1793634177703-19-260w",
+      "lastName": "NDIAYE",
+      "firstName": "Maty",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "7",
+      "anonymatNumber": "DNB-0137"
+    },
+    {
+      "id": "cand-1793634177703-45-jwyc",
+      "lastName": "KABA",
+      "firstName": "Mohamed Lamine",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "8",
+      "anonymatNumber": "DNB-0138"
+    },
+    {
+      "id": "cand-1793634177703-20-2ts9",
+      "lastName": "NGOM",
+      "firstName": "Aicha Khoyane",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "9",
+      "anonymatNumber": "DNB-0139"
+    },
+    {
+      "id": "cand-1793634177703-46-pg6a",
+      "lastName": "KERDUDO",
+      "firstName": "Zeina",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "PAP",
+      "tableNumber": "10",
+      "anonymatNumber": "DNB-0140"
+    },
+    {
+      "id": "cand-1793634177703-21-b2tl",
+      "lastName": "NIANG",
+      "firstName": "Fatoumata Helene Semou",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "11",
+      "anonymatNumber": "DNB-0141"
+    },
+    {
+      "id": "cand-1793634177703-47-i6ur",
+      "lastName": "LAH",
+      "firstName": "Aïssa",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "12",
+      "anonymatNumber": "DNB-0142"
+    },
+    {
+      "id": "cand-1793634177703-22-dmbw",
+      "lastName": "NOUHANDO ROD",
+      "firstName": "Orient",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "13",
+      "anonymatNumber": "DNB-0143"
+    },
+    {
+      "id": "cand-1793634177703-48-mt0n",
+      "lastName": "LAM",
+      "firstName": "Magate Aïcha",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "14",
+      "anonymatNumber": "DNB-0144"
+    },
+    {
+      "id": "cand-1793634177703-23-6hka",
+      "lastName": "RUNG",
+      "firstName": "Agathe",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "15",
+      "anonymatNumber": "DNB-0145"
+    },
+    {
+      "id": "cand-1793634177703-49-hcgy",
+      "lastName": "MBOUP",
+      "firstName": "Amy",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "16",
+      "anonymatNumber": "DNB-0146"
+    },
+    {
+      "id": "cand-1793634177703-24-ftqu",
+      "lastName": "SARR",
+      "firstName": "Sokhna Faty",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "PAP",
+      "tableNumber": "17",
+      "anonymatNumber": "DNB-0147"
+    },
+    {
+      "id": "cand-1793634177703-50-3dvm",
+      "lastName": "SAMBA",
+      "firstName": "Babacar",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "18",
+      "anonymatNumber": "DNB-0148"
+    },
+    {
+      "id": "cand-1793634177703-25-9txv",
+      "lastName": "SAVI",
+      "firstName": "Loris Tahirou",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "PAP",
+      "tableNumber": "19",
+      "anonymatNumber": "DNB-0149"
+    },
+    {
+      "id": "cand-1793634177703-51-9tor",
+      "lastName": "SARR",
+      "firstName": "Mame Diarra Bousso",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "20",
+      "anonymatNumber": "DNB-0150"
+    },
+    {
+      "id": "cand-1793634177703-26-7sga",
+      "lastName": "SY SAVANÉ",
+      "firstName": "Bella",
+      "className": "TERMINALE1",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "21",
+      "anonymatNumber": "DNB-0151"
+    },
+    {
+      "id": "cand-1793634177703-52-ubx0",
+      "lastName": "SECK",
+      "firstName": "Ousseynatou",
+      "className": "TERMINALE2",
+      "examName": "DNB Blanc / Bac Blanc",
+      "roomName": "S2",
+      "convocationTime": "07h45",
+      "accommodation": "",
+      "tableNumber": "22",
+      "anonymatNumber": "DNB-0152"
     }
   ]
 }
