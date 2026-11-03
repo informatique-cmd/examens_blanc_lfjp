@@ -264,7 +264,7 @@
       "content": "tres important",
       "priority": "urgent",
       "target": "all",
-      "isPublished": true,
+      "isPublished": false,
       "date": "2026-11-03",
       "id": "ann-1793708892722"
     },
