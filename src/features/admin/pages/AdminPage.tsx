@@ -1445,9 +1445,6 @@ export default function AdminPage() {
               surveillances={cmsData.surveillances}
               announcements={cmsData.announcements}
               onNavigateSection={(sec) => setCurrentSection(sec)}
-              onDeployNow={handlePushToGitHubDirect}
-              isDeploying={isSyncing}
-              deployStatus={syncStep}
             />
           )}
 

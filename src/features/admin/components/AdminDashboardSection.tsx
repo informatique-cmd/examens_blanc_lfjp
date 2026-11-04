@@ -6,17 +6,19 @@ import {
   Calendar,
   Clock,
   Shield,
-  UploadCloud,
   CheckCircle2,
   ArrowRight,
-  Sparkles,
   FileText,
   Printer,
   Layers,
   ChevronRight,
   Bell,
   Eye,
-  Loader2,
+  ExternalLink,
+  Sparkles,
+  ClipboardList,
+  Compass,
+  FileSpreadsheet,
 } from "lucide-react";
 import type {
   CmsCandidate,
@@ -40,9 +42,6 @@ interface AdminDashboardSectionProps {
   surveillances: CmsSurveillance[];
   announcements?: CmsAnnouncement[];
   onNavigateSection: (section: AdminSection) => void;
-  onDeployNow: () => void;
-  isDeploying?: boolean;
-  deployStatus?: string;
 }
 
 export default function AdminDashboardSection({
@@ -55,9 +54,6 @@ export default function AdminDashboardSection({
   surveillances,
   announcements = [],
   onNavigateSection,
-  onDeployNow,
-  isDeploying = false,
-  deployStatus = "",
 }: AdminDashboardSectionProps) {
   const totalCapacity = rooms.reduce((acc, r) => acc + (Number(r.capacity) || 0), 0);
   const ttCandidatesCount = candidates.filter(
@@ -67,408 +63,440 @@ export default function AdminDashboardSection({
       (c.accommodation.toLowerCase().includes("tiers") ||
         c.accommodation.toLowerCase().includes("1/3") ||
         c.accommodation.toLowerCase().includes("pap") ||
-        c.accommodation.toLowerCase().includes("pps"))
+        c.accommodation.toLowerCase().includes("pps") ||
+        c.accommodation.toLowerCase().includes("aménag"))
   ).length;
 
   const publishedAnnouncements = announcements.filter((a) => a.isPublished);
 
   const workflowSteps: Array<{
     id: AdminSection;
+    number: string;
     title: string;
     description: string;
     icon: string;
+    badge: string;
     count?: string | number;
-    badge?: string;
+    color: string;
   }> = [
     {
       id: "config",
-      title: "1. Paramètres & Logos",
-      description: "Identité de l'école, horaires officiels (+1/3), disciplines et logos officiels",
+      number: "01",
+      title: "Paramètres & Logos",
+      description: "Identité établissement, année scolaire, horaires officiels et logos officiels AEFE.",
       icon: "⚙️",
       badge: "Configuré",
+      color: "border-blue-200 bg-blue-50/40 text-blue-800",
     },
     {
       id: "data-eleves",
-      title: "2. Données Pronote (Élèves)",
-      description: "Gestion des cohortes de candidats, divisions et régimes d'aménagement",
+      number: "02",
+      title: "Données Pronote (Élèves)",
+      description: "Cohortes de candidats, divisions de classe, numéros et aménagements.",
       icon: "👤",
-      count: `${candidates.length} élèves`,
+      badge: `${candidates.length} élèves`,
+      count: candidates.length,
+      color: "border-indigo-200 bg-indigo-50/40 text-indigo-800",
     },
     {
       id: "data-salles",
-      title: "3. Salles d'Examens",
-      description: "Capacités d'accueil, mobilisation des locaux et salles dédiées tiers-temps",
+      number: "03",
+      title: "Salles d'Examens",
+      description: "Capacités d'accueil, bâtiments et configuration des salles dédiées tiers-temps.",
       icon: "🏫",
-      count: `${rooms.length} salles`,
+      badge: `${rooms.length} salles`,
+      count: rooms.length,
+      color: "border-emerald-200 bg-emerald-50/40 text-emerald-800",
     },
     {
       id: "data-profs",
-      title: "4. Professeurs & Surveillants",
-      description: "Répertoire du personnel enseignant et suivi de la charge de surveillance",
+      number: "04",
+      title: "Professeurs & Surveillants",
+      description: "Répertoire des enseignants, disciplines et suivi des disponibilités.",
       icon: "🎓",
-      count: `${teachers.length} profs`,
+      badge: `${teachers.length} enseignants`,
+      count: teachers.length,
+      color: "border-sky-200 bg-sky-50/40 text-sky-800",
     },
     {
       id: "sessions-examens",
-      title: "5. Sessions d'Examens",
-      description: "Programmation des sessions DNB Blanc, Baccalauréat et oraux",
+      number: "05",
+      title: "Sessions d'Examens",
+      description: "Planification des sessions DNB blanc, Baccalauréat et épreuves orales.",
       icon: "📋",
-      count: `${exams.length} sessions`,
+      badge: `${exams.length} sessions`,
+      count: exams.length,
+      color: "border-violet-200 bg-violet-50/40 text-violet-800",
     },
     {
       id: "creneaux-epreuves",
-      title: "6. Créneaux des Épreuves",
-      description: "Horaires des disciplines, durée standard et heure de fin +1/3 temps",
+      number: "06",
+      title: "Créneaux des Épreuves",
+      description: "Disciplines, dates, horaires standard et majoration +1/3 temps calculée.",
       icon: "🕒",
-      count: `${examSlots.length} créneaux`,
+      badge: `${examSlots.length} créneaux`,
+      count: examSlots.length,
+      color: "border-amber-200 bg-amber-50/40 text-amber-800",
     },
     {
       id: "organization",
-      title: "7. Répartition & Brassage",
-      description: "Brassage inter-classes anti-fraude, affectation aux tables et numéros d'anonymat",
+      number: "07",
+      title: "Répartition & Brassage",
+      description: "Brassage inter-classes anti-fraude, affectation aux tables et numéros d'anonymat.",
       icon: "🧩",
-      badge: "Mobilisation ciblée",
+      badge: "Actif",
+      color: "border-teal-200 bg-teal-50/40 text-teal-800",
     },
     {
       id: "planning-rooms",
-      title: "8. Plannings Salles & Surveillances",
-      description: "Occupation des salles et affectation équitable des professeurs aux épreuves",
+      number: "08",
+      title: "Plannings & Surveillances",
+      description: "Affectation nominative des enseignants par salle et équilibrage des charges.",
       icon: "📅",
-      count: `${surveillances.length} postes`,
+      badge: `${surveillances.length} postes`,
+      count: surveillances.length,
+      color: "border-rose-200 bg-rose-50/40 text-rose-800",
     },
     {
       id: "view-edt",
-      title: "9. Vers EDT & Déplacement de cours",
-      description: "Visualisation des cours réguliers impactés et neutralisation des salles",
+      number: "09",
+      title: "Vers EDT & Cours Impactés",
+      description: "Visualisation des cours réguliers à déplacer et neutralisation des salles.",
       icon: "➡️",
       badge: "Export EDT",
+      color: "border-orange-200 bg-orange-50/40 text-orange-800",
     },
     {
       id: "convoc-eleves",
-      title: "10. Convocations & Ordres de Mission",
-      description: "Impression officielle A4 (nominative élève avec signature Proviseur(e))",
+      number: "10",
+      title: "Convocations & Ordres de Mission",
+      description: "Impression officielle A4 (nominative élève avec signature Proviseur(e)).",
       icon: "📨",
-      badge: "Format officiel",
+      badge: "Certifié A4",
+      color: "border-cyan-200 bg-cyan-50/40 text-cyan-800",
     },
     {
       id: "vitrine-publish",
-      title: "11. Vitrine & Publications",
-      description: "Bannière d'alerte, consignes officielles de direction et affichage public",
+      number: "11",
+      title: "Vitrine & Communication",
+      description: "Consignes officielles de direction, affichage des épreuves et alertes.",
       icon: "📢",
-      count: `${publishedAnnouncements.length} consigne(s)`,
+      badge: `${publishedAnnouncements.length} publiée(s)`,
+      color: "border-fuchsia-200 bg-fuchsia-50/40 text-fuchsia-800",
     },
     {
       id: "deployment",
-      title: "12. Déploiement Vercel & Git",
-      description: "Synchronisation automatique sans frais vers GitHub et redéploiement mondial",
+      number: "12",
+      title: "Déploiement Vercel & Git",
+      description: "Centre de synchronisation GitHub et redéploiement mondial sans frais.",
       icon: "🚀",
-      badge: "En direct",
+      badge: "Vercel en ligne",
+      color: "border-blue-300 bg-blue-100/50 text-blue-900 font-bold",
     },
   ];
 
   return (
-    <div className="space-y-8 max-w-7xl">
-      {/* Top Welcome Banner */}
-      <div className="rounded-3xl border-2 border-blue-200 bg-gradient-to-r from-[#002060] via-[#002d80] to-[#0b3c96] p-7 text-white shadow-lg">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white font-bold text-[11px] uppercase tracking-wider backdrop-blur-xs">
+    <div className="space-y-8 max-w-7xl animate-in fade-in duration-300">
+      {/* 1. TOP EXECUTIVE WELCOME BANNER (LUMINOUS & REFINED FRENCH INSTITUTIONAL STYLE) */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs relative overflow-hidden">
+        {/* Institutional Tricolor Micro-Hairline Accent */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#002060] via-[#002060] to-[#c92a2a]" />
+
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pt-1">
+          <div className="space-y-2.5 max-w-3xl">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#002060] font-bold text-xs uppercase tracking-wider">
+                <span className="w-2 h-2 rounded-full bg-[#002060]" />
                 Espace Direction & Organisation
               </span>
-              <span className="text-blue-200 text-xs font-semibold">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 font-bold text-xs">
                 Session Officielle {siteInfo.schoolYear || "2026-2027"}
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
               Tableau de Bord — Examens Blancs LFJP
             </h1>
-            <p className="text-blue-100 text-xs sm:text-sm max-w-2xl leading-relaxed">
+
+            <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
               Supervisez l'intégralité du déroulement des épreuves : de l'import Pronote au brassage des tables, jusqu'à l'impression des convocations certifiées et la publication sur la vitrine officielle.
             </p>
           </div>
 
-          <div className="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          {/* Quick Institutional Action Links */}
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-start lg:self-center">
             <button
-              onClick={onDeployNow}
-              disabled={isDeploying}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-xs font-black text-[#002060] shadow-md transition hover:bg-blue-50 active:scale-[0.98] disabled:opacity-50"
+              type="button"
+              onClick={() => onNavigateSection("convoc-eleves")}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-[0.98]"
             >
-              {isDeploying ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-700" />
-                  <span>Déploiement en cours...</span>
-                </>
-              ) : (
-                <>
-                  <UploadCloud className="h-4 w-4 text-blue-700" />
-                  <span>Mettre à jour GitHub & Vercel</span>
-                </>
-              )}
+              <Printer className="h-4 w-4 text-amber-300" />
+              <span>Imprimer Convocations</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => onNavigateSection("organization")}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#002060] border border-blue-200 text-xs font-bold transition cursor-pointer active:scale-[0.98]"
+            >
+              <Compass className="h-4 w-4 text-blue-700" />
+              <span>Répartition & Brassage</span>
+            </button>
+
+            <a
+              href="/"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition cursor-pointer"
+              title="Ouvrir le site vitrine dans un nouvel onglet"
+            >
+              <Eye className="h-3.5 w-3.5 text-slate-500" />
+              <span>Voir la Vitrine</span>
+              <ExternalLink className="h-3 w-3 opacity-50" />
+            </a>
           </div>
         </div>
-
-        {isDeploying && deployStatus && (
-          <div className="mt-4 pt-3 border-t border-white/20 text-xs text-blue-200 flex items-center gap-2 animate-pulse">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <span>{deployStatus}</span>
-          </div>
-        )}
       </div>
 
-      {/* Key Metrics Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-        {/* Metric 1 */}
+      {/* 2. KEY METRICS ROW (4 BRIGHT, HIGH-CONTRAST PROFESSIONAL CARDS) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Candidates */}
         <div
           onClick={() => onNavigateSection("data-eleves")}
-          className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-xs hover:border-blue-500 hover:shadow-md transition"
+          className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-xs hover:border-blue-300 transition cursor-pointer group"
         >
-          <div className="flex items-center justify-between text-slate-500 group-hover:text-blue-600 transition">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Candidats</span>
-            <Users className="h-4 w-4" />
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              Candidats Inscrits
+            </span>
+            <div className="h-9 w-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 group-hover:scale-110 transition">
+              <Users className="h-5 w-5" />
+            </div>
           </div>
-          <p className="mt-2 text-2xl font-black text-slate-900 group-hover:text-blue-700 transition">
+          <p className="mt-3 text-3xl font-black text-slate-900 font-mono">
             {candidates.length}
           </p>
-          <p className="mt-0.5 text-[10px] text-purple-700 font-semibold truncate">
-            {ttCandidatesCount} en tiers-temps (+1/3)
-          </p>
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
+            <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-800 font-bold text-[10px] border border-purple-200">
+              ♿ {ttCandidatesCount} Tiers-Temps
+            </span>
+            <span className="text-slate-400">•</span>
+            <span className="text-slate-500 text-[11px]">Cohorte active</span>
+          </div>
         </div>
 
-        {/* Metric 2 */}
+        {/* Rooms */}
         <div
           onClick={() => onNavigateSection("data-salles")}
-          className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-xs hover:border-emerald-500 hover:shadow-md transition"
+          className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-xs hover:border-emerald-300 transition cursor-pointer group"
         >
-          <div className="flex items-center justify-between text-slate-500 group-hover:text-emerald-600 transition">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Salles</span>
-            <School className="h-4 w-4" />
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              Salles d'Examens
+            </span>
+            <div className="h-9 w-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 group-hover:scale-110 transition">
+              <School className="h-5 w-5" />
+            </div>
           </div>
-          <p className="mt-2 text-2xl font-black text-slate-900 group-hover:text-emerald-700 transition">
+          <p className="mt-3 text-3xl font-black text-slate-900 font-mono">
             {rooms.length}
           </p>
-          <p className="mt-0.5 text-[10px] text-slate-500 truncate">
-            {totalCapacity} places assises
-          </p>
-        </div>
-
-        {/* Metric 3 */}
-        <div
-          onClick={() => onNavigateSection("data-profs")}
-          className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-xs hover:border-indigo-500 hover:shadow-md transition"
-        >
-          <div className="flex items-center justify-between text-slate-500 group-hover:text-indigo-600 transition">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Professeurs</span>
-            <GraduationCap className="h-4 w-4" />
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
+            <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold text-[10px] border border-emerald-200">
+              {totalCapacity} places
+            </span>
+            <span className="text-slate-400">•</span>
+            <span className="text-slate-500 text-[11px]">Capacité totale</span>
           </div>
-          <p className="mt-2 text-2xl font-black text-slate-900 group-hover:text-indigo-700 transition">
-            {teachers.length}
-          </p>
-          <p className="mt-0.5 text-[10px] text-slate-500 truncate">
-            Corps enseignant LFJP
-          </p>
         </div>
 
-        {/* Metric 4 */}
+        {/* Exams & Slots */}
         <div
           onClick={() => onNavigateSection("sessions-examens")}
-          className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-xs hover:border-amber-500 hover:shadow-md transition"
+          className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-xs hover:border-amber-300 transition cursor-pointer group"
         >
-          <div className="flex items-center justify-between text-slate-500 group-hover:text-amber-600 transition">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Sessions</span>
-            <Calendar className="h-4 w-4" />
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              Sessions d'Examens
+            </span>
+            <div className="h-9 w-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-700 group-hover:scale-110 transition">
+              <Calendar className="h-5 w-5" />
+            </div>
           </div>
-          <p className="mt-2 text-2xl font-black text-slate-900 group-hover:text-amber-700 transition">
+          <p className="mt-3 text-3xl font-black text-slate-900 font-mono">
             {exams.length}
           </p>
-          <p className="mt-0.5 text-[10px] text-slate-500 truncate">
-            DNB, Bac & Oraux
-          </p>
-        </div>
-
-        {/* Metric 5 */}
-        <div
-          onClick={() => onNavigateSection("creneaux-epreuves")}
-          className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-xs hover:border-purple-500 hover:shadow-md transition"
-        >
-          <div className="flex items-center justify-between text-slate-500 group-hover:text-purple-600 transition">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Créneaux</span>
-            <Clock className="h-4 w-4" />
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
+            <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 font-bold text-[10px] border border-amber-200">
+              {examSlots.length} épreuves
+            </span>
+            <span className="text-slate-400">•</span>
+            <span className="text-slate-500 text-[11px]">Créneaux définis</span>
           </div>
-          <p className="mt-2 text-2xl font-black text-slate-900 group-hover:text-purple-700 transition">
-            {examSlots.length}
-          </p>
-          <p className="mt-0.5 text-[10px] text-slate-500 truncate">
-            Épreuves programmées
-          </p>
         </div>
 
-        {/* Metric 6 */}
+        {/* Surveillances */}
         <div
           onClick={() => onNavigateSection("planning-rooms")}
-          className="group cursor-pointer rounded-2xl border border-slate-200 bg-white p-4 shadow-xs hover:border-rose-500 hover:shadow-md transition"
+          className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-xs hover:border-rose-300 transition cursor-pointer group"
         >
-          <div className="flex items-center justify-between text-slate-500 group-hover:text-rose-600 transition">
-            <span className="text-[10px] font-bold uppercase tracking-wider">Surveillances</span>
-            <Shield className="h-4 w-4" />
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              Surveillances Assignées
+            </span>
+            <div className="h-9 w-9 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-700 group-hover:scale-110 transition">
+              <Shield className="h-5 w-5" />
+            </div>
           </div>
-          <p className="mt-2 text-2xl font-black text-slate-900 group-hover:text-rose-700 transition">
+          <p className="mt-3 text-3xl font-black text-slate-900 font-mono">
             {surveillances.length}
           </p>
-          <p className="mt-0.5 text-[10px] text-slate-500 truncate">
-            Missions affectées
-          </p>
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
+            <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-900 font-bold text-[10px] border border-rose-200">
+              {teachers.length} enseignants
+            </span>
+            <span className="text-slate-400">•</span>
+            <span className="text-slate-500 text-[11px]">Corps professoral</span>
+          </div>
         </div>
       </div>
 
-      {/* Main Two-Column Hub */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Workflow chronologique complet */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Layers className="h-5 w-5 text-blue-700" />
-              <span>Parcours d'Organisation Chronologique (1 à 12)</span>
+      {/* 3. WORKFLOW CHRONOLOGIQUE COMPLET (12 ÉTAPES PROPRES & CLAIRES) */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+          <div>
+            <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <Compass className="h-5 w-5 text-[#002060]" />
+              <span>Workflow Opérationnel des Examens (12 Étapes)</span>
             </h2>
-            <span className="text-xs text-slate-500 font-medium">
-              Accès direct aux modules
-            </span>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Accédez directement à chaque étape pour configurer, répartir et publier les épreuves.
+            </p>
+          </div>
+          <span className="text-xs font-semibold text-slate-500">
+            Navigation guidée pas-à-pas
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {workflowSteps.map((step) => (
+            <div
+              key={step.id}
+              onClick={() => onNavigateSection(step.id)}
+              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs hover:shadow-xs hover:border-blue-400 transition cursor-pointer flex flex-col justify-between group"
+            >
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl group-hover:scale-110 transition shrink-0">
+                      {step.icon}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-slate-400">
+                      Étape {step.number}
+                    </span>
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${step.color}`}>
+                    {step.badge}
+                  </span>
+                </div>
+
+                <h3 className="font-bold text-sm text-slate-900 group-hover:text-blue-700 transition">
+                  {step.title}
+                </h3>
+
+                <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                  {step.description}
+                </p>
+              </div>
+
+              <div className="pt-3.5 mt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-slate-500 group-hover:text-blue-700 transition">
+                <span>Accéder à l'étape</span>
+                <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. SUMMARY PANELS: SESSIONS D'EXAMENS & CONSIGNES OFFICIELLES */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+        {/* Active Exam Sessions */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="font-black text-sm text-slate-900 flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-blue-700" />
+              <span>Sessions d'Examens Programmées ({exams.length})</span>
+            </h3>
+            <button
+              type="button"
+              onClick={() => onNavigateSection("sessions-examens")}
+              className="text-xs font-bold text-blue-700 hover:underline"
+            >
+              Gérer ➔
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {workflowSteps.map((step) => (
-              <div
-                key={step.id}
-                onClick={() => onNavigateSection(step.id)}
-                className="group cursor-pointer p-4 rounded-2xl border border-slate-200 bg-white hover:border-blue-500 hover:shadow-sm transition flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{step.icon}</span>
-                      <h3 className="font-bold text-xs text-slate-900 group-hover:text-blue-700 transition">
-                        {step.title}
-                      </h3>
-                    </div>
-
-                    {step.badge && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 shrink-0">
-                        {step.badge}
-                      </span>
-                    )}
-                    {step.count && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 shrink-0">
-                        {step.count}
-                      </span>
-                    )}
+          <div className="space-y-2.5">
+            {exams.length === 0 ? (
+              <p className="text-xs text-slate-400 italic py-3 text-center">
+                Aucune session d'examen enregistrée.
+              </p>
+            ) : (
+              exams.slice(0, 4).map((ex) => (
+                <div
+                  key={ex.id}
+                  className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition flex items-center justify-between text-xs"
+                >
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-slate-900 block">{ex.title}</span>
+                    <span className="text-[11px] text-slate-500">
+                      {ex.period} • Niveau : <strong className="text-slate-700">{ex.targetLevel}</strong>
+                    </span>
                   </div>
-
-                  <p className="text-[11px] text-slate-500 mt-2 leading-relaxed line-clamp-2">
-                    {step.description}
-                  </p>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
+                    {ex.status || "Prévu"}
+                  </span>
                 </div>
-
-                <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-blue-600 group-hover:text-blue-800">
-                  <span>Accéder à l'étape</span>
-                  <ChevronRight className="h-3.5 w-3.5 transform group-hover:translate-x-0.5 transition" />
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
-        {/* Right 1 Col: Quick Status, Sessions & Instructions */}
-        <div className="space-y-6">
-          {/* Active Sessions Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
-            <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="font-bold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                <Calendar className="h-4 w-4 text-blue-600" />
-                <span>Sessions d'Examens Actives</span>
-              </h3>
-              <button
-                onClick={() => onNavigateSection("sessions-examens")}
-                className="text-[11px] text-blue-600 font-bold hover:underline"
-              >
-                Gérer →
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              {exams.slice(0, 4).map((ex) => (
-                <div
-                  key={ex.id}
-                  onClick={() => onNavigateSection("sessions-examens")}
-                  className="p-3 rounded-xl border border-slate-100 bg-slate-50/70 hover:bg-slate-50 cursor-pointer transition text-xs space-y-1"
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-slate-900 truncate">{ex.title}</p>
-                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
-                      {ex.targetLevel}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500">{ex.period}</p>
-                </div>
-              ))}
-            </div>
+        {/* Published Announcements & Official Communications */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="font-black text-sm text-slate-900 flex items-center gap-2">
+              <Bell className="h-4 w-4 text-amber-600" />
+              <span>Consignes Officielles & Direction ({publishedAnnouncements.length})</span>
+            </h3>
+            <button
+              type="button"
+              onClick={() => onNavigateSection("config")}
+              className="text-xs font-bold text-blue-700 hover:underline"
+            >
+              Modifier ➔
+            </button>
           </div>
 
-          {/* Published Announcements Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
-            <div className="flex items-center justify-between border-b pb-2">
-              <h3 className="font-bold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                <Bell className="h-4 w-4 text-emerald-600" />
-                <span>Consignes Officielles Vitrine</span>
-              </h3>
-              <button
-                onClick={() => onNavigateSection("config")}
-                className="text-[11px] text-emerald-600 font-bold hover:underline"
-              >
-                Éditer →
-              </button>
-            </div>
-
+          <div className="space-y-2.5">
             {publishedAnnouncements.length === 0 ? (
-              <p className="text-xs text-slate-400 italic py-2">
-                Aucune consigne publiée pour l'instant.
+              <p className="text-xs text-slate-400 italic py-3 text-center">
+                Aucune consigne officielle publiée actuellement.
               </p>
             ) : (
-              <div className="space-y-2">
-                {publishedAnnouncements.slice(0, 3).map((ann) => (
-                  <div
-                    key={ann.id}
-                    className="p-3 rounded-xl border border-emerald-100 bg-emerald-50/40 text-xs space-y-1"
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="font-bold text-slate-900 truncate">{ann.title}</p>
-                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded">
-                        ✓ Publié
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 line-clamp-2">{ann.content}</p>
+              publishedAnnouncements.slice(0, 3).map((ann) => (
+                <div
+                  key={ann.id}
+                  className="p-3.5 rounded-xl border border-amber-100 bg-amber-50/30 space-y-1 text-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900">{ann.title}</span>
+                    <span className="text-[10px] font-semibold text-slate-400">{ann.date}</span>
                   </div>
-                ))}
-              </div>
+                  <p className="text-[11px] text-slate-600 line-clamp-2">{ann.content}</p>
+                </div>
+              ))
             )}
-          </div>
-
-          {/* Convocations Quick Print Shortcut */}
-          <div className="bg-gradient-to-br from-indigo-50 via-white to-sky-50 rounded-2xl border border-indigo-200 p-5 shadow-xs space-y-3">
-            <div className="flex items-center gap-2 text-indigo-900">
-              <Printer className="h-5 w-5 text-indigo-700" />
-              <h3 className="font-bold text-sm">Impression des Convocations</h3>
-            </div>
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Imprimez ou téléchargez les convocations individuelles officielles signées <strong>« Le / La Proviseur(e) »</strong> avec nommage automatique des fichiers PDF par candidat.
-            </p>
-            <button
-              onClick={() => onNavigateSection("convoc-eleves")}
-              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#002060] hover:bg-[#001746] text-white font-bold text-xs transition shadow-xs"
-            >
-              <span>Accéder aux Convocations & Étiquettes</span>
-              <ArrowRight className="h-3.5 w-3.5" />
-            </button>
           </div>
         </div>
       </div>

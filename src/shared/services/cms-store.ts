@@ -729,11 +729,12 @@ export function useCmsData() {
         const remoteTime = remote.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
         const localTime = local.updatedAt ? new Date(local.updatedAt).getTime() : 0;
         const hasCustomLocalStorage = Boolean(localStorage.getItem(CMS_STORAGE_KEY));
-
-        // If this browser has no custom local changes or the server has a newer commit, adopt it!
-        if (!hasCustomLocalStorage || (remoteTime > 0 && remoteTime > localTime)) {
-          saveCmsData(remote);
-          setData(remote);
+        // If remote has valid data and is fresh or matching, synchronize immediately!
+        if (remote && remote.siteInfo && Array.isArray(remote.exams)) {
+          if (!hasCustomLocalStorage || remoteTime >= localTime) {
+            saveCmsData(remote);
+            setData(remote);
+          }
         }
       } catch (err) {
         console.warn("Could not sync remote cms-data.json", err);

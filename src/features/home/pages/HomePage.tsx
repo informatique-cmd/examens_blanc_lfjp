@@ -28,6 +28,54 @@ import {
   type CmsCandidate,
 } from "../../../shared/services/cms-store";
 
+// Helper to normalize search strings (removes accents, lowercase, trim)
+const normalizeSearchStr = (s?: string) =>
+  (s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+// Correlates whether a candidate belongs to an exam session
+const isCandidateInExam = (cand: CmsCandidate, exam: CmsExam): boolean => {
+  if (!exam) return true;
+  const cClass = normalizeSearchStr(cand.className);
+  const cExam = normalizeSearchStr(cand.examName);
+  const eTitle = normalizeSearchStr(exam.title);
+  const eLevel = normalizeSearchStr(exam.targetLevel);
+  const eType = normalizeSearchStr(exam.examType);
+
+  // Exact or partial exam title/name match
+  if (cExam && eTitle && (eTitle.includes(cExam) || cExam.includes(eTitle))) return true;
+
+  // DNB / Collège 3ème
+  const isExamDnb = eTitle.includes("dnb") || eLevel.includes("3") || eType.includes("dnb") || eTitle.includes("brevet");
+  const isCandDnb = cClass.includes("3") || cClass.includes("3eme") || cExam.includes("dnb");
+  if (isExamDnb && isCandDnb) return true;
+
+  // Bac 1ère (Première / EAF)
+  const isExamPremiere = eLevel.includes("1") || eLevel.includes("premiere") || eTitle.includes("1ere") || eTitle.includes("eaf") || eTitle.includes("francais");
+  const isCandPremiere = cClass.includes("1") || cClass.includes("1ere") || cExam.includes("premiere") || cExam.includes("1ere");
+  if (isExamPremiere && isCandPremiere) return true;
+
+  // Bac Terminale
+  const isExamTerm = eLevel.includes("term") || eLevel.includes("tle") || eTitle.includes("term");
+  const isCandTerm = cClass.includes("term") || cClass.includes("tle") || cExam.includes("term");
+  if (isExamTerm && isCandTerm) return true;
+
+  // Baccalauréat general (applicable to both 1ère and Terminale)
+  const isExamBac = eTitle.includes("bac") || eType.includes("bac") || eLevel.includes("bac");
+  if (isExamBac && (isCandPremiere || isCandTerm)) return true;
+
+  // Words matching between targetLevel and className
+  const levelTokens = eLevel.split(/[\s,+/&]+/).filter((tok) => tok.length >= 2);
+  for (const token of levelTokens) {
+    if (cClass.includes(token)) return true;
+  }
+
+  return false;
+};
+
 export default function HomePage() {
   const { data: cmsData } = useCmsData();
 
@@ -45,8 +93,18 @@ export default function HomePage() {
   const [selectedExamForConvocation, setSelectedExamForConvocation] =
     useState<CmsExam | null>(null);
 
-  // Expanded exam ID
-  const [expandedExamId, setExpandedExamId] = useState<string | null>(null);
+  // Expanded exam IDs (dict for independent toggling)
+  const [expandedExamIds, setExpandedExamIds] = useState<Record<string, boolean>>({});
+
+  const toggleExamExpanded = (examId: string, defaultExpanded: boolean = true) => {
+    setExpandedExamIds((prev) => {
+      const isCurrentlyExpanded = prev[examId] !== undefined ? prev[examId] : defaultExpanded;
+      return {
+        ...prev,
+        [examId]: !isCurrentlyExpanded,
+      };
+    });
+  };
 
   // Published exams only
   const publishedExams = useMemo(() => {
@@ -273,24 +331,23 @@ export default function HomePage() {
    * This strictly addresses: "seulement les salles ou on a affecter des eleves et les surveillants pour les epreuves"
    */
   const getActiveRoomsForSlot = (slot: CmsExamSlot, exam: CmsExam) => {
-    const candidateRooms = slot.roomNames && slot.roomNames.length > 0
-      ? cmsData.rooms.filter((r) => slot.roomNames!.includes(r.name))
-      : cmsData.rooms;
+    const candidateRooms =
+      slot.roomNames && slot.roomNames.length > 0
+        ? cmsData.rooms.filter((r) => slot.roomNames!.includes(r.name))
+        : cmsData.rooms;
 
     const activeList = candidateRooms.map((room) => {
-      // 1. Candidates assigned to this room for this exam
+      // 1. Candidates assigned to this room for this exam based on actual repartitions
       const assignedCandidates = cmsData.candidates.filter((c) => {
         if (c.roomName !== room.name) return false;
-        if (c.examName && exam.title) {
-          const cEx = c.examName.toLowerCase();
-          const eTit = exam.title.toLowerCase();
-          if (cEx.includes(eTit) || eTit.includes(cEx)) return true;
-        }
-        if (exam.targetLevel && c.className && c.className.includes(exam.targetLevel)) {
-          return true;
-        }
-        return false;
+        return isCandidateInExam(c, exam);
       });
+
+      // Total count directly from the repartitions made
+      const count =
+        assignedCandidates.length > 0
+          ? assignedCandidates.length
+          : cmsData.candidates.filter((c) => c.roomName === room.name).length;
 
       // 2. Supervisor assigned for this room on this slot/time
       const assignedSurv = cmsData.surveillances.find((s) => {
@@ -313,7 +370,7 @@ export default function HomePage() {
 
       return {
         room,
-        candidateCount: assignedCandidates.length,
+        candidateCount: count,
         surveillant: assignedSurv?.teacherName || null,
         isTTRoom,
       };
@@ -447,7 +504,7 @@ export default function HomePage() {
           <div className="space-y-6">
             {filteredExams.map((exam) => {
               const countdown = getExamCountdown(exam);
-              const isExpanded = expandedExamId === exam.id || filteredExams.length === 1;
+              const isExpanded = expandedExamIds[exam.id] !== undefined ? expandedExamIds[exam.id] : true;
 
               // Find slots attached to this exam
               const examSlots = (cmsData.examSlots || [])
@@ -521,8 +578,8 @@ export default function HomePage() {
 
                     <button
                       type="button"
-                      onClick={() => setExpandedExamId(isExpanded ? null : exam.id)}
-                      className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition flex items-center gap-1.5 self-start md:self-center shrink-0"
+                      onClick={() => toggleExamExpanded(exam.id, true)}
+                      className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition flex items-center gap-1.5 self-start md:self-center shrink-0 cursor-pointer"
                     >
                       <span>{isExpanded ? "Replier" : `Voir les épreuves (${examSlots.length})`}</span>
                       {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -661,10 +718,10 @@ export default function HomePage() {
                               </div>
                               <h4 className="text-sm sm:text-base font-black text-[#002060] flex items-center gap-1.5 mt-0.5">
                                 <Search className="h-4 w-4 text-[#002060]" />
-                                <span>Trouver ma salle & Télécharger ma convocation pour cette session</span>
+                                <span>Trouver ma Salle</span>
                               </h4>
                               <p className="text-xs text-slate-500 mt-0.5">
-                                Saisissez votre nom ou N° d'anonymat pour consulter vos matières, horaires (+1/3 temps) et imprimer votre convocation nominative.
+                                Saisissez votre nom ou N° d'anonymat pour consulter instantanément votre salle d'examen, numéro de table et télécharger votre convocation.
                               </p>
                             </div>
 
@@ -679,7 +736,7 @@ export default function HomePage() {
                                     [exam.id]: e.target.value,
                                   }))
                                 }
-                                placeholder="Votre nom ou N°..."
+                                placeholder="Votre nom ou N° d'anonymat..."
                                 className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-[#002060] focus:ring-2 focus:ring-blue-100 focus:outline-hidden font-medium"
                               />
                             </div>
@@ -687,16 +744,18 @@ export default function HomePage() {
 
                           {/* Candidate search results for this exam session */}
                           {(() => {
-                            const query = (examSearchQueries[exam.id] || "").trim().toLowerCase();
+                            const query = normalizeSearchStr(examSearchQueries[exam.id]);
                             if (query.length < 2) return null;
 
-                            const matchedCandidates = cmsData.candidates.filter((cand) => {
-                              const lastName = (cand.lastName || "").toLowerCase();
-                              const firstName = (cand.firstName || "").toLowerCase();
+                            // 1. Search candidates belonging to this exam
+                            let candidatesFound = cmsData.candidates.filter((cand) => {
+                              const lastName = normalizeSearchStr(cand.lastName);
+                              const firstName = normalizeSearchStr(cand.firstName);
                               const fullName = `${lastName} ${firstName}`;
                               const reverseName = `${firstName} ${lastName}`;
-                              const anonymat = (cand.anonymatNumber || "").toLowerCase();
-                              const id = (cand.id || "").toLowerCase();
+                              const anonymat = normalizeSearchStr(cand.anonymatNumber);
+                              const id = normalizeSearchStr(cand.id);
+                              const className = normalizeSearchStr(cand.className);
 
                               const nameMatches =
                                 lastName.includes(query) ||
@@ -704,28 +763,39 @@ export default function HomePage() {
                                 fullName.includes(query) ||
                                 reverseName.includes(query) ||
                                 anonymat.includes(query) ||
-                                id.includes(query);
+                                id.includes(query) ||
+                                className.includes(query);
 
                               if (!nameMatches) return false;
-
-                              // Must match this exam or level
-                              if (cand.examName && exam.title) {
-                                const cEx = cand.examName.toLowerCase();
-                                const eTit = exam.title.toLowerCase();
-                                if (cEx.includes(eTit) || eTit.includes(cEx)) return true;
-                              }
-                              if (exam.targetLevel && cand.className && cand.className.includes(exam.targetLevel)) return true;
-                              if (exam.title?.toLowerCase().includes("dnb") && cand.className?.includes("3ème")) return true;
-                              if (exam.title?.toLowerCase().includes("bac") && (cand.className?.includes("1ère") || cand.className?.includes("Terminale"))) return true;
-
-                              return false;
+                              return isCandidateInExam(cand, exam);
                             });
 
-                            if (matchedCandidates.length === 0) {
+                            // 2. If no candidate found through strict session filter, search all candidates matching query
+                            if (candidatesFound.length === 0) {
+                              candidatesFound = cmsData.candidates.filter((cand) => {
+                                const lastName = normalizeSearchStr(cand.lastName);
+                                const firstName = normalizeSearchStr(cand.firstName);
+                                const fullName = `${lastName} ${firstName}`;
+                                const reverseName = `${firstName} ${lastName}`;
+                                const anonymat = normalizeSearchStr(cand.anonymatNumber);
+                                const id = normalizeSearchStr(cand.id);
+
+                                return (
+                                  lastName.includes(query) ||
+                                  firstName.includes(query) ||
+                                  fullName.includes(query) ||
+                                  reverseName.includes(query) ||
+                                  anonymat.includes(query) ||
+                                  id.includes(query)
+                                );
+                              });
+                            }
+
+                            if (candidatesFound.length === 0) {
                               return (
                                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
                                   <p className="text-xs text-slate-500">
-                                    Aucun élève trouvé pour "<strong>{examSearchQueries[exam.id]}</strong>" dans cette session d'examen. Vérifiez l'orthographe ou le numéro d'anonymat.
+                                    Aucun élève trouvé pour "<strong>{examSearchQueries[exam.id]}</strong>". Vérifiez l'orthographe ou le numéro d'anonymat.
                                   </p>
                                 </div>
                               );
@@ -733,7 +803,7 @@ export default function HomePage() {
 
                             return (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                                {matchedCandidates.map((cand) => (
+                                {candidatesFound.map((cand) => (
                                   <div
                                     key={cand.id}
                                     className="p-4 rounded-xl bg-slate-50 border border-slate-300 space-y-3"
