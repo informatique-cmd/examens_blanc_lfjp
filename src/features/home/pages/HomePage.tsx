@@ -16,7 +16,6 @@ import {
   Printer,
   X,
   FileText,
-  Download,
 } from "lucide-react";
 
 import HomeHero from "../components/HomeHero";
@@ -81,8 +80,6 @@ export default function HomePage() {
 
   // Search and filter state
   const [selectedLevel, setSelectedLevel] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [studentSearchQuery, setStudentSearchQuery] = useState<string>("");
 
   // Exam-specific search queries (one per exam session)
   const [examSearchQueries, setExamSearchQueries] = useState<Record<string, string>>({});
@@ -111,52 +108,20 @@ export default function HomePage() {
     return cmsData.exams.filter((exam) => exam.isPublished !== false);
   }, [cmsData.exams]);
 
-  // Filtered exams according to level and search
+  // Filtered exams according to selected level
   const filteredExams = useMemo(() => {
     return publishedExams.filter((exam) => {
-      const matchLevel =
+      return (
         selectedLevel === "all" ||
-        exam.targetLevel.toLowerCase().includes(selectedLevel.toLowerCase());
-
-      const q = searchQuery.toLowerCase().trim();
-      const matchQuery =
-        !q ||
-        exam.title.toLowerCase().includes(q) ||
-        exam.description.toLowerCase().includes(q) ||
-        exam.period.toLowerCase().includes(q);
-
-      return matchLevel && matchQuery;
+        exam.targetLevel.toLowerCase().includes(selectedLevel.toLowerCase())
+      );
     });
-  }, [publishedExams, selectedLevel, searchQuery]);
+  }, [publishedExams, selectedLevel]);
 
   // Published announcements
   const publishedAnnouncements = useMemo(() => {
     return cmsData.announcements.filter((ann) => ann.isPublished);
   }, [cmsData.announcements]);
-
-  // Candidate quick room locator - STRICT individual candidate search
-  const searchedStudents = useMemo(() => {
-    const q = studentSearchQuery.trim().toLowerCase();
-    if (!q || q.length < 2) return [];
-
-    return cmsData.candidates.filter((c) => {
-      const lastName = (c.lastName || "").toLowerCase();
-      const firstName = (c.firstName || "").toLowerCase();
-      const fullName = `${lastName} ${firstName}`;
-      const reverseName = `${firstName} ${lastName}`;
-      const anonymat = (c.anonymatNumber || "").toLowerCase();
-      const id = (c.id || "").toLowerCase();
-
-      return (
-        lastName.includes(q) ||
-        firstName.includes(q) ||
-        fullName.includes(q) ||
-        reverseName.includes(q) ||
-        anonymat.includes(q) ||
-        id.includes(q)
-      );
-    });
-  }, [cmsData.candidates, studentSearchQuery]);
 
   // Exam Countdown helper
   const getExamCountdown = (exam: CmsExam) => {
@@ -405,7 +370,6 @@ export default function HomePage() {
     <HomeLayout schoolYear={cmsData.siteInfo.schoolYear}>
       {/* 1. Hero Header Centered */}
       <HomeHero
-        logos={cmsData.siteInfo.logos}
         subtitle={cmsData.siteInfo.subtitle}
         title={cmsData.siteInfo.title}
         description={cmsData.siteInfo.description}
@@ -427,40 +391,104 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 3. Official Announcements / Communiqués */}
-      {publishedAnnouncements.length > 0 && (
-        <section className="w-full max-w-4xl space-y-3 text-left">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              <span>Consignes Officielles de Direction</span>
-            </h2>
-            <span className="text-[11px] text-slate-500 font-medium">
-              {publishedAnnouncements.length} annonce(s)
-            </span>
+      {/* 3. CONSIGNES & RÈGLEMENTS OFFICIELS (HIGHLY VISIBLE, ATTRACTIVE & INSTITUTIONAL) */}
+      <section className="w-full max-w-4xl space-y-4 text-left">
+        <div className="rounded-3xl border border-blue-200/90 bg-gradient-to-br from-blue-50/80 via-white to-amber-50/30 p-6 sm:p-7 shadow-xs relative overflow-hidden">
+          {/* Micro Hairline Tricolor Accent */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#002060] via-[#002060] to-[#c92a2a]" />
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-blue-100 pb-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-100/80 border border-blue-200 text-[#002060] font-bold text-[11px] uppercase tracking-wider">
+                  <span className="w-2 h-2 rounded-full bg-[#002060] animate-pulse" />
+                  Règlement Officiel & Discipline LFJP
+                </span>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-red-100/70 border border-red-200 text-red-800 font-bold text-[11px]">
+                  Directives Direction
+                </span>
+              </div>
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight pt-1">
+                Consignes Officielles & Règlements des Examens
+              </h2>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Directives institutionnelles impératives pour les candidats, familles et équipes pédagogiques afin de garantir la régularité et l'équité des épreuves.
+              </p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {publishedAnnouncements.map((ann) => (
-              <div
-                key={ann.id}
-                className="p-4 rounded-xl border border-sky-100 bg-white shadow-2xs space-y-2 hover:border-sky-300 transition"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-xs text-slate-900">{ann.title}</span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700 shrink-0">
-                    {ann.target === "all" ? "Tous" : ann.target === "teachers" ? "Professeurs" : "Élèves"}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">{ann.content}</p>
-                <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-100">
-                  Publié le {ann.date}
-                </p>
+          {/* 4 Essential Rule Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-4">
+            <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2 hover:border-blue-400 transition">
+              <div className="flex items-center gap-2 text-indigo-700">
+                <Clock className="h-4 w-4" />
+                <span className="font-bold text-xs">Ponctualité & Appel</span>
               </div>
-            ))}
+              <p className="text-[11px] text-slate-600 leading-snug">
+                Appel obligatoire des candidats <strong className="text-slate-900">15 min</strong> avant l'épreuve. Aucun accès en salle après distribution des sujets.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2 hover:border-amber-400 transition">
+              <div className="flex items-center gap-2 text-amber-700">
+                <BookOpen className="h-4 w-4" />
+                <span className="font-bold text-xs">Mode Examen</span>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-snug">
+                Calculatrices avec <strong className="text-slate-900">mode examen activé</strong> (voyant clignotant). Tout téléphone doit être éteint dans le sac.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2 hover:border-purple-400 transition">
+              <div className="flex items-center gap-2 text-purple-700">
+                <ShieldCheck className="h-4 w-4" />
+                <span className="font-bold text-xs">Tiers-Temps (+1/3)</span>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-snug">
+                Majoration horaire automatique et salles dédiées pour les élèves bénéficiant d'aménagements <strong className="text-purple-900">PAP / PPS</strong> validés.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2 hover:border-emerald-400 transition">
+              <div className="flex items-center gap-2 text-emerald-700">
+                <FileText className="h-4 w-4" />
+                <span className="font-bold text-xs">Pièce & Convocation</span>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-snug">
+                <strong className="text-slate-900">Convocation imprimée</strong> et pièce d'identité avec photo obligatoires pour émarger avant de débuter l'épreuve.
+              </p>
+            </div>
           </div>
-        </section>
-      )}
+
+          {/* Published Announcements Feed */}
+          {publishedAnnouncements.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-blue-100/80 space-y-2.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                Communiqués récents de la Direction ({publishedAnnouncements.length}) :
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {publishedAnnouncements.map((ann) => (
+                  <div
+                    key={ann.id}
+                    className="p-3.5 rounded-xl border border-blue-100 bg-white/95 shadow-2xs space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-xs text-slate-900">{ann.title}</span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700">
+                        {ann.target === "all" ? "Tous" : ann.target === "teachers" ? "Professeurs" : "Élèves"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">{ann.content}</p>
+                    <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-100">
+                      Publié le {ann.date}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
 
 
 
@@ -527,13 +555,16 @@ export default function HomePage() {
               return (
                 <div
                   key={exam.id}
-                  className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden"
+                  className="rounded-3xl border border-slate-200/90 bg-white shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 overflow-hidden relative group"
                 >
+                  {/* Floating Card Top Tricolor Accent */}
+                  <div className="h-1.5 w-full bg-gradient-to-r from-[#002060] via-[#3498db] to-[#c92a2a]" />
+
                   {/* Exam Card Header */}
-                  <div className="p-5 sm:p-6 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="space-y-1 flex-1">
+                  <div className="p-5 sm:p-6 bg-gradient-to-r from-slate-50/70 via-white to-blue-50/20 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-5">
+                    <div className="space-y-1.5 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                        <span className="px-3 py-0.5 rounded-full text-[11px] font-black bg-blue-50 text-[#002060] border border-blue-200">
                           {exam.targetLevel || "Tous niveaux"}
                         </span>
 
@@ -560,30 +591,51 @@ export default function HomePage() {
                         </span>
                       </div>
 
-                      <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                      <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight group-hover:text-blue-900 transition">
                         {exam.title}
                       </h3>
 
                       <p className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
                         <CalendarDays className="h-3.5 w-3.5 text-blue-700" />
-                        <span>Période : {exam.period}</span>
+                        <span>Période officielle : {exam.period}</span>
                       </p>
 
                       {exam.description && (
-                        <p className="text-xs text-slate-600 leading-relaxed pt-0.5">
+                        <p className="text-xs text-slate-600 leading-relaxed pt-0.5 max-w-2xl">
                           {exam.description}
                         </p>
                       )}
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => toggleExamExpanded(exam.id, true)}
-                      className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition flex items-center gap-1.5 self-start md:self-center shrink-0 cursor-pointer"
-                    >
-                      <span>{isExpanded ? "Replier" : `Voir les épreuves (${examSlots.length})`}</span>
-                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                    </button>
+                    {/* Dual Action Buttons: "Consulter le planning" and "Trouver ma Salle" */}
+                    <div className="flex flex-wrap items-center gap-2 self-start md:self-center shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!isExpanded) toggleExamExpanded(exam.id, true);
+                          const el = document.getElementById(`search-cand-${exam.id}`);
+                          el?.focus();
+                          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        }}
+                        className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                      >
+                        <Search className="h-3.5 w-3.5 text-slate-900" />
+                        <span>Trouver ma Salle</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleExamExpanded(exam.id, true)}
+                        className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-[0.98] ${
+                          isExpanded
+                            ? "bg-slate-900 text-white shadow-xs"
+                            : "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200"
+                        }`}
+                      >
+                        <span>{isExpanded ? "Replier l'organisation" : `Consulter le planning (${examSlots.length} épreuves)`}</span>
+                        {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Exam Épreuves & Créneaux (when expanded) */}
@@ -736,7 +788,7 @@ export default function HomePage() {
                                     [exam.id]: e.target.value,
                                   }))
                                 }
-                                placeholder="Votre nom ou N° d'anonymat..."
+                                id={`search-cand-${exam.id}`} placeholder="Votre nom ou N° d'anonymat... (ex: Aguesse, Allier, Benson...)"
                                 className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-[#002060] focus:ring-2 focus:ring-blue-100 focus:outline-hidden font-medium"
                               />
                             </div>
@@ -745,7 +797,7 @@ export default function HomePage() {
                           {/* Candidate search results for this exam session */}
                           {(() => {
                             const query = normalizeSearchStr(examSearchQueries[exam.id]);
-                            if (query.length < 2) return null;
+                            if (query.length < 1) return null;
 
                             // 1. Search candidates belonging to this exam
                             let candidatesFound = cmsData.candidates.filter((cand) => {

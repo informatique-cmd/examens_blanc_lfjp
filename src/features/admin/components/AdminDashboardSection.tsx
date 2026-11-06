@@ -41,6 +41,7 @@ interface AdminDashboardSectionProps {
   examSlots: CmsExamSlot[];
   surveillances: CmsSurveillance[];
   announcements?: CmsAnnouncement[];
+  role?: "proviseur" | "superadmin";
   onNavigateSection: (section: AdminSection) => void;
 }
 
@@ -53,6 +54,7 @@ export default function AdminDashboardSection({
   examSlots,
   surveillances,
   announcements = [],
+  role = "superadmin",
   onNavigateSection,
 }: AdminDashboardSectionProps) {
   const totalCapacity = rooms.reduce((acc, r) => acc + (Number(r.capacity) || 0), 0);
@@ -195,8 +197,13 @@ export default function AdminDashboardSection({
     },
   ];
 
+  // For Proviseur role: exclude "config" (Paramètres & Logos) as requested by user
+  const displayedWorkflowSteps = role === "proviseur"
+    ? workflowSteps.filter((s) => s.id !== "config")
+    : workflowSteps;
+
   return (
-    <div className="space-y-8 max-w-7xl animate-in fade-in duration-300">
+    <div className="space-y-8 max-w-6xl mx-auto w-full animate-in fade-in duration-300">
       {/* 1. TOP EXECUTIVE WELCOME BANNER (LUMINOUS & REFINED FRENCH INSTITUTIONAL STYLE) */}
       <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs relative overflow-hidden">
         {/* Institutional Tricolor Micro-Hairline Accent */}
@@ -207,7 +214,7 @@ export default function AdminDashboardSection({
             <div className="flex flex-wrap items-center gap-2.5">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#002060] font-bold text-xs uppercase tracking-wider">
                 <span className="w-2 h-2 rounded-full bg-[#002060]" />
-                Espace Direction & Organisation
+                {role === "proviseur" ? "Espace Proviseur & Organisation" : "Espace Direction & Organisation"}
               </span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 font-bold text-xs">
                 Session Officielle {siteInfo.schoolYear || "2026-2027"}
@@ -379,7 +386,7 @@ export default function AdminDashboardSection({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {workflowSteps.map((step) => (
+          {displayedWorkflowSteps.map((step) => (
             <div
               key={step.id}
               onClick={() => onNavigateSection(step.id)}

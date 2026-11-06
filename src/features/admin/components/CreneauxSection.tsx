@@ -6,22 +6,36 @@ import {
   Trash2,
   Edit2,
   School,
+  Users,
+  Scissors,
+  CheckCircle2,
+  UserCheck,
+  ChevronDown,
+  ChevronUp,
+  Shield,
+  FileSpreadsheet,
 } from "lucide-react";
 import type {
   CmsExamSlot,
   CmsExam,
   CmsRoom,
   CmsSurveillance,
+  CmsTeacher,
 } from "../../../shared/services/cms-store";
+import { OFFICIAL_LFJP_PLANNING_SESSIONS } from "../../../shared/data/official-lfjp-planning";
 
 interface CreneauxSectionProps {
   examSlots: CmsExamSlot[];
   exams: CmsExam[];
   rooms: CmsRoom[];
+  teachers?: CmsTeacher[];
   surveillances: CmsSurveillance[];
   onAddExamSlot: (slot: Omit<CmsExamSlot, "id">) => void;
   onUpdateExamSlot: (id: string, updates: Partial<CmsExamSlot>) => void;
   onDeleteExamSlot: (id: string) => void;
+  onAddSurveillance?: (s: Omit<CmsSurveillance, "id">) => void;
+  onDeleteSurveillance?: (id: string) => void;
+  onSetSurveillances?: (survs: CmsSurveillance[]) => void;
   onShowNotification: (msg: string) => void;
 }
 
@@ -29,10 +43,14 @@ export default function CreneauxSection({
   examSlots,
   exams,
   rooms,
+  teachers = [],
   surveillances,
   onAddExamSlot,
   onUpdateExamSlot,
   onDeleteExamSlot,
+  onAddSurveillance,
+  onDeleteSurveillance,
+  onSetSurveillances,
   onShowNotification,
 }: CreneauxSectionProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -52,6 +70,300 @@ export default function CreneauxSection({
   // Filter state
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>("all");
   const [selectedExamFilter, setSelectedExamFilter] = useState<string>("all");
+
+  // State to track which slot has its surveillance drawer expanded
+  const [expandedSurvSlotIds, setExpandedSurvSlotIds] = useState<Record<string, boolean>>({});
+  const toggleExpandSurv = (slotId: string) => {
+    setExpandedSurvSlotIds((prev) => ({ ...prev, [slotId]: !prev[slotId] }));
+  };
+
+  // State for adding custom sub-slot for a room: key is `${slotId}_${roomName}`
+  const [customSubSlotForms, setCustomSubSlotForms] = useState<Record<string, { startTime: string; endTime: string; teacherName: string; isAdding: boolean }>>({});
+
+  // Helper to get all surveillances tied to a slot
+  const getSlotSurveillances = (slot: CmsExamSlot) => {
+    return surveillances.filter(
+      (s) => (slot.id && s.slotId === slot.id) || (s.date === slot.date && s.timeSlot.includes(slot.startTime))
+    );
+  };
+
+  // Helper to get surveillances for a specific room within a slot
+  const getRoomSurveillances = (slot: CmsExamSlot, roomName: string) => {
+    return surveillances.filter(
+      (s) =>
+        s.roomName === roomName &&
+        ((slot.id && s.slotId === slot.id) || (s.date === slot.date && s.timeSlot.includes(slot.startTime)))
+    );
+  };
+
+  // Assign or change teacher on a surveillance
+  const handleAssignTeacher = (survId: string, teacherFullName: string) => {
+    if (onSetSurveillances) {
+      onSetSurveillances(
+        surveillances.map((s) => (s.id === survId ? { ...s, teacherName: teacherFullName } : s))
+      );
+    } else if (onAddSurveillance && onDeleteSurveillance) {
+      const existing = surveillances.find((s) => s.id === survId);
+      if (existing) {
+        onDeleteSurveillance(survId);
+        onAddSurveillance({ ...existing, teacherName: teacherFullName });
+      }
+    }
+    onShowNotification(`Enseignant ${teacherFullName} affecté.`);
+  };
+
+  // Assign full slot to a single teacher
+  const handleAssignFullSlotToRoom = (slot: CmsExamSlot, roomName: string, teacherFullName: string) => {
+    const existing = getRoomSurveillances(slot, roomName);
+    const newSurv: CmsSurveillance = {
+      id: `surv-full-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      examTitle: slot.examTitle,
+      slotId: slot.id,
+      roomName,
+      date: slot.date,
+      timeSlot: `${slot.startTime} - ${slot.endTime}`,
+      teacherName: teacherFullName,
+      mission: "Surveillant titulaire (plein créneau)",
+    };
+
+    if (onSetSurveillances) {
+      const kept = surveillances.filter((s) => !existing.some((e) => e.id === s.id));
+      onSetSurveillances([...kept, newSurv]);
+    } else if (onAddSurveillance) {
+      existing.forEach((e) => onDeleteSurveillance?.(e.id));
+      onAddSurveillance(newSurv);
+    }
+    onShowNotification(`${teacherFullName} affecté(e) en plein créneau sur ${roomName}.`);
+  };
+
+  // Split slot into 2 equal halves for a room (e.g. 2h => 2 x 1h, 4h => 2 x 2h)
+  const handleSplitInTwo = (slot: CmsExamSlot, roomName: string) => {
+    const [h1, m1] = (slot.startTime || "08:00").split(":").map(Number);
+    const [h2, m2] = (slot.endTime || "10:00").split(":").map(Number);
+    const startMin = (h1 || 0) * 60 + (m1 || 0);
+    const endMin = (h2 || 0) * 60 + (m2 || 0);
+    const midMin = Math.round((startMin + endMin) / 2);
+
+    const midH = Math.floor(midMin / 60) % 24;
+    const midM = midMin % 60;
+    const midStr = `${String(midH).padStart(2, "0")}:${String(midM).padStart(2, "0")}`;
+
+    const existingForRoom = getRoomSurveillances(slot, roomName);
+    const t1 = existingForRoom[0]?.teacherName || (teachers[0] ? `${teachers[0].civility === "Madame" ? "Mme" : "M."} ${teachers[0].lastName}` : "À affecter");
+    const t2 = teachers[1] ? `${teachers[1].civility === "Madame" ? "Mme" : "M."} ${teachers[1].lastName}` : "À affecter";
+
+    const s1: CmsSurveillance = {
+      id: `surv-split1-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      examTitle: slot.examTitle,
+      slotId: slot.id,
+      roomName,
+      date: slot.date,
+      timeSlot: `${slot.startTime} - ${midStr}`,
+      teacherName: t1,
+      mission: `Surveillant relais (${slot.startTime} - ${midStr})`,
+    };
+
+    const s2: CmsSurveillance = {
+      id: `surv-split2-${Date.now() + 1}-${Math.random().toString(36).substring(2, 6)}`,
+      examTitle: slot.examTitle,
+      slotId: slot.id,
+      roomName,
+      date: slot.date,
+      timeSlot: `${midStr} - ${slot.endTime}`,
+      teacherName: t2,
+      mission: `Surveillant relais (${midStr} - ${slot.endTime})`,
+    };
+
+    if (onSetSurveillances) {
+      const kept = surveillances.filter((s) => !existingForRoom.some((e) => e.id === s.id));
+      onSetSurveillances([...kept, s1, s2]);
+    } else if (onAddSurveillance) {
+      existingForRoom.forEach((e) => onDeleteSurveillance?.(e.id));
+      onAddSurveillance(s1);
+      onAddSurveillance(s2);
+    }
+    onShowNotification(`Créneau scindé en 2 sous-créneaux (${slot.startTime} - ${midStr} et ${midStr} - ${slot.endTime}) pour ${roomName}.`);
+  };
+
+  // Split slot into 1-hour segments for a room
+  const handleSplitInHours = (slot: CmsExamSlot, roomName: string) => {
+    const [h1] = (slot.startTime || "08:00").split(":").map(Number);
+    const [h2] = (slot.endTime || "12:00").split(":").map(Number);
+    const diffH = Math.max(1, (h2 || 12) - (h1 || 8));
+
+    const existingForRoom = getRoomSurveillances(slot, roomName);
+    const newSurvs: CmsSurveillance[] = [];
+
+    for (let i = 0; i < diffH; i++) {
+      const curH = (h1 || 8) + i;
+      const nextH = curH + 1;
+      const tStart = `${String(curH).padStart(2, "0")}:00`;
+      const tEnd = i === diffH - 1 ? slot.endTime : `${String(nextH).padStart(2, "0")}:00`;
+      const teacherObj = teachers[i % Math.max(1, teachers.length)];
+      const tName = teacherObj
+        ? `${teacherObj.civility === "Madame" ? "Mme" : "M."} ${teacherObj.lastName}`
+        : "À affecter";
+
+      newSurvs.push({
+        id: `surv-hour-${i}-${Date.now() + i}-${Math.random().toString(36).substring(2, 6)}`,
+        examTitle: slot.examTitle,
+        slotId: slot.id,
+        roomName,
+        date: slot.date,
+        timeSlot: `${tStart} - ${tEnd}`,
+        teacherName: tName,
+        mission: `Surveillant relais (${tStart} - ${tEnd})`,
+      });
+    }
+
+    if (onSetSurveillances) {
+      const kept = surveillances.filter((s) => !existingForRoom.some((e) => e.id === s.id));
+      onSetSurveillances([...kept, ...newSurvs]);
+    } else if (onAddSurveillance) {
+      existingForRoom.forEach((e) => onDeleteSurveillance?.(e.id));
+      newSurvs.forEach((ns) => onAddSurveillance(ns));
+    }
+    onShowNotification(`Créneau scindé en ${diffH} tranches de 1h pour ${roomName}.`);
+  };
+
+  // Merge sub-slots back into a single full slot
+  const handleMergeRoomSlot = (slot: CmsExamSlot, roomName: string) => {
+    const existingForRoom = getRoomSurveillances(slot, roomName);
+    const tName = existingForRoom[0]?.teacherName || (teachers[0] ? `${teachers[0].civility === "Madame" ? "Mme" : "M."} ${teachers[0].lastName}` : "À affecter");
+
+    const singleSurv: CmsSurveillance = {
+      id: `surv-full-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      examTitle: slot.examTitle,
+      slotId: slot.id,
+      roomName,
+      date: slot.date,
+      timeSlot: `${slot.startTime} - ${slot.endTime}`,
+      teacherName: tName,
+      mission: "Surveillant titulaire (plein créneau)",
+    };
+
+    if (onSetSurveillances) {
+      const kept = surveillances.filter((s) => !existingForRoom.some((e) => e.id === s.id));
+      onSetSurveillances([...kept, singleSurv]);
+    } else if (onAddSurveillance) {
+      existingForRoom.forEach((e) => onDeleteSurveillance?.(e.id));
+      onAddSurveillance(singleSurv);
+    }
+    onShowNotification(`Sous-créneaux fusionnés en créneau plein pour ${roomName}.`);
+  };
+
+  // Add custom sub-slot (e.g. 10h00 - 11h00, or 12h00 - 13h20 for tiers-temps)
+  const handleAddCustomSubSlot = (slot: CmsExamSlot, roomName: string, startTime: string, endTime: string, teacherName: string) => {
+    const newSurv: CmsSurveillance = {
+      id: `surv-custom-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      examTitle: slot.examTitle,
+      slotId: slot.id,
+      roomName,
+      date: slot.date,
+      timeSlot: `${startTime} - ${endTime}`,
+      teacherName: teacherName || "À affecter",
+      mission: `Surveillant relais (${startTime} - ${endTime})`,
+    };
+
+    if (onSetSurveillances) {
+      onSetSurveillances([...surveillances, newSurv]);
+    } else if (onAddSurveillance) {
+      onAddSurveillance(newSurv);
+    }
+    onShowNotification(`Sous-créneau ${startTime} - ${endTime} ajouté pour ${roomName}.`);
+  };
+
+  // Add Renfort teacher (couloir & secrétariat d'examen)
+  const handleAddRenfort = (slot: CmsExamSlot, teacherName: string) => {
+    if (!teacherName) return;
+    const renfortSurv: CmsSurveillance = {
+      id: `surv-renfort-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      examTitle: slot.examTitle,
+      slotId: slot.id,
+      roomName: "Renfort",
+      date: slot.date,
+      timeSlot: `${slot.startTime} - ${slot.endTime}`,
+      teacherName,
+      mission: "Surveillant de renfort & couloir",
+    };
+
+    if (onSetSurveillances) {
+      onSetSurveillances([...surveillances, renfortSurv]);
+    } else if (onAddSurveillance) {
+      onAddSurveillance(renfortSurv);
+    }
+    onShowNotification(`Surveillant de renfort (${teacherName}) ajouté.`);
+  };
+
+  // Load official PDF schedule from attached document
+  const handleLoadOfficialLFJPPlanning = () => {
+    if (!confirm("Voulez-vous charger l'organisation officielle complète issue du planning LFJP (8 au 10 décembre) avec tous les sous-créneaux et surveillants ?")) {
+      return;
+    }
+
+    const newSlots: CmsExamSlot[] = [];
+    const newSurvs: CmsSurveillance[] = [];
+
+    OFFICIAL_LFJP_PLANNING_SESSIONS.forEach((session) => {
+      const slotId = `slot-off-${session.id}`;
+      const roomNames = session.rooms.map((r) => r.roomName);
+
+      newSlots.push({
+        id: slotId,
+        examTitle: session.examTitle,
+        subject: session.subjectTitle,
+        date: session.date,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        durationMinutes: calculateDiffMinutes(session.startTime, session.endTime),
+        tiersTempsEndTime: session.tiersTempsEndTime,
+        tiersTempsDurationMinutes: calculateDiffMinutes(session.startTime, session.tiersTempsEndTime),
+        targetLevel: "Terminale & 1ère",
+        roomNames,
+        notes: `Planning officiel LFJP ${session.jour} (${session.creneau})`,
+      });
+
+      session.rooms.forEach((r) => {
+        r.subSlots.forEach((sub, subIdx) => {
+          newSurvs.push({
+            id: `surv-off-${session.id}-${r.roomName.replace(/[^a-zA-Z0-9]/g, "_")}-${subIdx}`,
+            examTitle: session.examTitle,
+            slotId,
+            roomName: r.roomName,
+            date: session.date,
+            timeSlot: sub.timeSlot,
+            teacherName: sub.teacherName,
+            mission: r.subSlots.length > 1 ? `Surveillant relais (${sub.timeSlot})` : "Surveillant titulaire",
+          });
+        });
+      });
+
+      if (session.renfort) {
+        newSurvs.push({
+          id: `surv-off-renfort-${session.id}`,
+          examTitle: session.examTitle,
+          slotId,
+          roomName: "Renfort",
+          date: session.date,
+          timeSlot: `${session.startTime} - ${session.endTime}`,
+          teacherName: session.renfort,
+          mission: "Surveillant de renfort & couloir",
+        });
+      }
+    });
+
+    newSlots.forEach((ns) => {
+      const exists = examSlots.some((s) => s.id === ns.id || (s.date === ns.date && s.subject === ns.subject));
+      if (!exists) {
+        onAddExamSlot(ns);
+      }
+    });
+
+    if (onSetSurveillances) {
+      onSetSurveillances([...surveillances, ...newSurvs]);
+    }
+    onShowNotification("Grille officielle LFJP (8 au 10 décembre) chargée avec succès !");
+  };
 
   // Calculate End Time given Start Time & Duration
   const calculateEndTime = (start: string, durationMin: number): string => {
@@ -240,13 +552,24 @@ export default function CreneauxSection({
           </p>
         </div>
 
-        <button
-          onClick={handleOpenNewModal}
-          className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-sm flex items-center gap-2 self-start sm:self-auto"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Programmer une Épreuve</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={handleLoadOfficialLFJPPlanning}
+            className="px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-900 font-bold text-xs transition shadow-2xs flex items-center gap-2 cursor-pointer"
+            title="Charger les 5 sessions officielles et tous les surveillants du document PDF LFJP (8 au 10 décembre)"
+          >
+            <FileSpreadsheet className="h-4 w-4 text-indigo-700" />
+            <span>Charger Grille PDF LFJP (8-10 déc.)</span>
+          </button>
+          <button
+            onClick={handleOpenNewModal}
+            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-sm flex items-center gap-2 cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Programmer une Épreuve</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Stats Bar */}
@@ -349,10 +672,10 @@ export default function CreneauxSection({
                   const coveredCount = tiedSurvs.length;
 
                   return (
-                    <div
-                      key={slot.id}
-                      className="p-5 hover:bg-slate-50/60 transition flex flex-col lg:flex-row lg:items-center justify-between gap-4"
-                    >
+                    <div key={slot.id} className="divide-y divide-slate-100">
+                      <div
+                        className="p-5 hover:bg-slate-50/60 transition flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                      >
                       <div className="space-y-2 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-bold text-sm text-slate-900">
@@ -430,15 +753,34 @@ export default function CreneauxSection({
                       </div>
 
                       {/* Action buttons */}
-                      <div className="flex items-center gap-2 self-end lg:self-center shrink-0">
+                      <div className="flex flex-wrap items-center gap-2 self-end lg:self-center shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleExpandSurv(slot.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            expandedSurvSlotIds[slot.id]
+                              ? "bg-indigo-600 text-white shadow-xs"
+                              : "border border-indigo-200 bg-indigo-50/70 text-indigo-800 hover:bg-indigo-100"
+                          }`}
+                        >
+                          <Users className="h-3.5 w-3.5" />
+                          <span>Surveillants & Relais ({coveredCount}/{roomCoverage})</span>
+                          {expandedSurvSlotIds[slot.id] ? (
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+
                         <button
                           type="button"
                           onClick={() => handleOpenEditModal(slot)}
-                          className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition flex items-center gap-1"
+                          className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition flex items-center gap-1 cursor-pointer"
                         >
                           <Edit2 className="h-3 w-3" />
                           <span>Modifier</span>
                         </button>
+
                         <button
                           type="button"
                           onClick={() => {
@@ -447,12 +789,405 @@ export default function CreneauxSection({
                               onShowNotification("Créneau supprimé.");
                             }
                           }}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                           title="Supprimer ce créneau"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
+                    </div>
+
+                    {/* EXPANDED SURVEILLANTS & SOUS-CRÉNEAUX MANAGEMENT DRAWER */}
+                    {expandedSurvSlotIds[slot.id] && (
+                      <div className="p-5 bg-gradient-to-b from-indigo-50/40 via-white to-slate-50 border-t border-indigo-100 space-y-4 animate-in fade-in duration-200">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-indigo-100 pb-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-indigo-600" />
+                              <h4 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                                <Users className="h-4 w-4 text-indigo-600" />
+                                <span>Affectation & Scindage des Surveillants • {slot.subject}</span>
+                              </h4>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              Pour chaque salle, affectez 1 surveillant unique pour toute la durée ({slot.startTime} ➔ {slot.endTime}) OU scindez en 2 sous-créneaux (ex: 2 x 1h) ou par tranches de 1h.
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-900 font-bold text-xs">
+                              {tiedSurvs.length} surveillant(s) mobilisé(s)
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* ROOMS GRID */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                          {(slot.roomNames && slot.roomNames.length > 0 ? slot.roomNames : rooms.map((r) => r.name)).map((roomName) => {
+                            const roomSurvs = getRoomSurveillances(slot, roomName);
+                            const isTTRoom =
+                              roomName.toLowerCase().includes("tt") ||
+                              roomName.toLowerCase().includes("tiers") ||
+                              roomName.toLowerCase().includes("s5") ||
+                              roomName.toLowerCase().includes("s6");
+                            const formKey = `${slot.id}_${roomName}`;
+                            const customForm = customSubSlotForms[formKey] || {
+                              startTime: slot.startTime,
+                              endTime: slot.endTime,
+                              teacherName: "",
+                              isAdding: false,
+                            };
+
+                            return (
+                              <div
+                                key={roomName}
+                                className={`p-4 rounded-xl border flex flex-col justify-between space-y-3 ${
+                                  isTTRoom
+                                    ? "bg-purple-50/30 border-purple-200"
+                                    : roomSurvs.length > 0
+                                    ? "bg-white border-slate-200 shadow-2xs"
+                                    : "bg-rose-50/20 border-rose-200"
+                                }`}
+                              >
+                                <div className="space-y-2">
+                                  {/* Room Header */}
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-1.5">
+                                      <School className="h-4 w-4 text-indigo-600 shrink-0" />
+                                      <span className="font-black text-sm text-slate-900">{roomName}</span>
+                                      {isTTRoom && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-200 text-purple-900">
+                                          ♿ Tiers-Temps
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {roomSurvs.length > 1 ? (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                                        ✂️ Scindé ({roomSurvs.length} relais)
+                                      </span>
+                                    ) : roomSurvs.length === 1 ? (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                        ✓ Plein créneau
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                        Non affecté
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Sub-slots / Surveillances list */}
+                                  <div className="space-y-2 pt-1">
+                                    {roomSurvs.length === 0 ? (
+                                      <div className="p-2.5 rounded-lg bg-slate-50 border border-dashed border-slate-200 space-y-2">
+                                        <p className="text-[11px] text-slate-500 italic">
+                                          Aucun enseignant affecté pour le moment.
+                                        </p>
+                                        <div className="flex items-center gap-1.5">
+                                          <select
+                                            onChange={(e) => {
+                                              if (e.target.value) {
+                                                handleAssignFullSlotToRoom(slot, roomName, e.target.value);
+                                              }
+                                            }}
+                                            defaultValue=""
+                                            className="w-full text-xs py-1 px-2 rounded-lg border border-slate-300 bg-white font-medium"
+                                          >
+                                            <option value="" disabled>
+                                              Affecter 1 prof (plein créneau)...
+                                            </option>
+                                            {teachers.map((t) => {
+                                              const fullName = `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`;
+                                              return (
+                                                <option key={t.id} value={fullName}>
+                                                  {fullName} ({t.subject})
+                                                </option>
+                                              );
+                                            })}
+                                          </select>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      roomSurvs.map((surv, sIdx) => (
+                                        <div
+                                          key={surv.id || sIdx}
+                                          className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 space-y-1.5 text-xs"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <span className="font-mono font-bold text-slate-800 text-[11px]">
+                                              ⏰ {surv.timeSlot}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                onDeleteSurveillance?.(surv.id);
+                                                onShowNotification("Surveillance retirée.");
+                                              }}
+                                              className="text-slate-300 hover:text-rose-600 font-bold transition text-xs"
+                                              title="Détacher cet enseignant"
+                                            >
+                                              ✕
+                                            </button>
+                                          </div>
+
+                                          {/* Teacher Dropdown */}
+                                          <div className="flex items-center gap-1.5">
+                                            <UserCheck className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                                            <select
+                                              value={surv.teacherName}
+                                              onChange={(e) => handleAssignTeacher(surv.id, e.target.value)}
+                                              className="w-full text-xs py-1 px-2 rounded-md border border-slate-300 bg-white font-semibold text-slate-900 focus:ring-1 focus:ring-indigo-500"
+                                            >
+                                              <option value={surv.teacherName}>{surv.teacherName}</option>
+                                              {teachers.map((t) => {
+                                                const fullName = `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`;
+                                                if (fullName === surv.teacherName) return null;
+                                                return (
+                                                  <option key={t.id} value={fullName}>
+                                                    {fullName} ({t.subject})
+                                                  </option>
+                                                );
+                                              })}
+                                            </select>
+                                          </div>
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
+
+                                  {/* Custom Sub-slot Add Form */}
+                                  {customForm.isAdding && (
+                                    <div className="p-3 rounded-xl bg-indigo-50/70 border border-indigo-200 space-y-2 text-xs">
+                                      <p className="font-bold text-indigo-950 text-[11px]">
+                                        Nouveau sous-créneau relais :
+                                      </p>
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                          <label className="text-[10px] font-bold text-slate-600 block">Début</label>
+                                          <input
+                                            type="time"
+                                            value={customForm.startTime}
+                                            onChange={(e) =>
+                                              setCustomSubSlotForms((prev) => ({
+                                                ...prev,
+                                                [formKey]: { ...customForm, startTime: e.target.value },
+                                              }))
+                                            }
+                                            className="w-full p-1 rounded border border-slate-300 bg-white font-mono text-xs"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="text-[10px] font-bold text-slate-600 block">Fin</label>
+                                          <input
+                                            type="time"
+                                            value={customForm.endTime}
+                                            onChange={(e) =>
+                                              setCustomSubSlotForms((prev) => ({
+                                                ...prev,
+                                                [formKey]: { ...customForm, endTime: e.target.value },
+                                              }))
+                                            }
+                                            className="w-full p-1 rounded border border-slate-300 bg-white font-mono text-xs"
+                                          />
+                                        </div>
+                                      </div>
+
+                                      <div>
+                                        <label className="text-[10px] font-bold text-slate-600 block">Enseignant</label>
+                                        <select
+                                          value={customForm.teacherName}
+                                          onChange={(e) =>
+                                            setCustomSubSlotForms((prev) => ({
+                                              ...prev,
+                                              [formKey]: { ...customForm, teacherName: e.target.value },
+                                            }))
+                                          }
+                                          className="w-full p-1 rounded border border-slate-300 bg-white text-xs"
+                                        >
+                                          <option value="">Sélectionner un enseignant...</option>
+                                          {teachers.map((t) => {
+                                            const fullName = `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`;
+                                            return (
+                                              <option key={t.id} value={fullName}>
+                                                {fullName} ({t.subject})
+                                              </option>
+                                            );
+                                          })}
+                                        </select>
+                                      </div>
+
+                                      <div className="flex items-center justify-end gap-2 pt-1">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setCustomSubSlotForms((prev) => ({
+                                              ...prev,
+                                              [formKey]: { ...customForm, isAdding: false },
+                                            }))
+                                          }
+                                          className="px-2 py-1 rounded bg-slate-200 text-slate-700 text-[11px] font-semibold"
+                                        >
+                                          Annuler
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={!customForm.teacherName}
+                                          onClick={() => {
+                                            handleAddCustomSubSlot(
+                                              slot,
+                                              roomName,
+                                              customForm.startTime,
+                                              customForm.endTime,
+                                              customForm.teacherName
+                                            );
+                                            setCustomSubSlotForms((prev) => ({
+                                              ...prev,
+                                              [formKey]: { ...customForm, isAdding: false },
+                                            }));
+                                          }}
+                                          className="px-2.5 py-1 rounded bg-indigo-600 text-white text-[11px] font-bold disabled:opacity-40"
+                                        >
+                                          Ajouter
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Splitting Action Buttons */}
+                                <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5 text-[10px]">
+                                  {roomSurvs.length > 1 ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleMergeRoomSlot(slot, roomName)}
+                                        className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition cursor-pointer"
+                                        title="Fusionner les sous-créneaux en 1 seul créneau complet"
+                                      >
+                                        🔄 Fusionner en 1 créneau
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setCustomSubSlotForms((prev) => ({
+                                            ...prev,
+                                            [formKey]: { ...customForm, isAdding: !customForm.isAdding },
+                                          }))
+                                        }
+                                        className="px-2 py-1 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold transition ml-auto cursor-pointer"
+                                      >
+                                        + Relais
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSplitInTwo(slot, roomName)}
+                                        className="px-2 py-1 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold transition flex items-center gap-1 cursor-pointer"
+                                        title="Diviser la durée en 2 créneaux égaux (ex: 2 x 1h ou 2 x 2h)"
+                                      >
+                                        <Scissors className="h-3 w-3" />
+                                        <span>Scinder en 2</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSplitInHours(slot, roomName)}
+                                        className="px-2 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold transition cursor-pointer"
+                                        title="Scinder le créneau en tranches de 1h"
+                                      >
+                                        Par tranches de 1h
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setCustomSubSlotForms((prev) => ({
+                                            ...prev,
+                                            [formKey]: { ...customForm, isAdding: !customForm.isAdding },
+                                          }))
+                                        }
+                                        className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition ml-auto cursor-pointer"
+                                        title="Ajouter un sous-créneau personnalisé"
+                                      >
+                                        + Relais
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* RENFORT POSTE (Couloir & Secrétariat) */}
+                        <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="space-y-0.5">
+                            <h5 className="font-bold text-xs text-indigo-950 flex items-center gap-1.5">
+                              <Shield className="h-4 w-4 text-indigo-600" />
+                              <span>Surveillants de Renfort & Couloir ({slot.subject})</span>
+                            </h5>
+                            <p className="text-[11px] text-slate-500">
+                              Enseignants volants chargés du contrôle des couloirs, sorties d'élèves et approvisionnement des pochettes d'examen.
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            {surveillances
+                              .filter(
+                                (s) =>
+                                  s.roomName === "Renfort" &&
+                                  ((slot.id && s.slotId === slot.id) ||
+                                    (s.date === slot.date && s.timeSlot.includes(slot.startTime)))
+                              )
+                              .map((renfort) => (
+                                <span
+                                  key={renfort.id}
+                                  className="px-3 py-1 rounded-xl bg-white border border-indigo-200 text-indigo-950 font-bold text-xs flex items-center gap-1.5 shadow-2xs"
+                                >
+                                  <span>{renfort.teacherName}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      onDeleteSurveillance?.(renfort.id);
+                                      onShowNotification("Renfort retiré.");
+                                    }}
+                                    className="text-slate-400 hover:text-rose-600 transition"
+                                  >
+                                    ✕
+                                  </button>
+                                </span>
+                              ))}
+
+                            <select
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleAddRenfort(slot, e.target.value);
+                                  e.target.value = "";
+                                }
+                              }}
+                              defaultValue=""
+                              className="px-3 py-1.5 rounded-xl border border-indigo-300 bg-white text-xs font-semibold text-slate-800"
+                            >
+                              <option value="" disabled>
+                                + Ajouter un surveillant de renfort...
+                              </option>
+                              {teachers.map((t) => {
+                                const fullName = `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`;
+                                return (
+                                  <option key={t.id} value={fullName}>
+                                    {fullName} ({t.subject})
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     </div>
                   );
                 })}

@@ -6,7 +6,10 @@ import {
   Plus,
   AlertCircle,
   Printer,
+  FileSpreadsheet,
+  Scissors,
 } from "lucide-react";
+import PlanningOfficialGrid from "./PlanningOfficialGrid";
 import type {
   CmsRoom,
   CmsTeacher,
@@ -43,6 +46,7 @@ export function PlanningRoomsSection({
 }: PlanningRoomsSectionProps) {
   const [selectedDate, setSelectedDate] = useState<string>("all");
   const [selectedRoomId, setSelectedRoomId] = useState<string>("all");
+  const [activeViewTab, setActiveViewTab] = useState<"rooms" | "official_grid">("rooms");
 
   // Distinct dates from examSlots
   const distinctDates = useMemo(() => {
@@ -92,17 +96,54 @@ export function PlanningRoomsSection({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition shadow-2xs flex items-center gap-2 self-start sm:self-auto"
-        >
-          <Printer className="h-4 w-4 text-slate-500" />
-          <span>Imprimer la grille</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto print:hidden">
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setActiveViewTab("rooms")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                activeViewTab === "rooms"
+                  ? "bg-white text-indigo-900 shadow-2xs font-bold"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <School className="h-3.5 w-3.5" />
+              <span>Vue par Salles</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveViewTab("official_grid")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                activeViewTab === "official_grid"
+                  ? "bg-white text-indigo-900 shadow-2xs font-bold"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 text-indigo-600" />
+              <span>Grille Officielle LFJP (PDF)</span>
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition shadow-2xs flex items-center gap-2 cursor-pointer"
+          >
+            <Printer className="h-4 w-4 text-slate-500" />
+            <span>Imprimer</span>
+          </button>
+        </div>
       </div>
 
-      {/* Filter Bar */}
+      {activeViewTab === "official_grid" ? (
+        <PlanningOfficialGrid
+          surveillances={surveillances}
+          teachers={teachers}
+          onShowNotification={onShowNotification}
+        />
+      ) : (
+        <>
+        {/* Filter Bar */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -182,7 +223,7 @@ export function PlanningRoomsSection({
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {displayedSlots.map((slot) => {
-                      const surv = surveillances.find(
+                      const roomSurvs = surveillances.filter(
                         (s) =>
                           (s.slotId === slot.id ||
                             (s.date === slot.date && s.timeSlot.includes(slot.startTime))) &&
@@ -193,7 +234,7 @@ export function PlanningRoomsSection({
                         <div
                           key={slot.id}
                           className={`p-3.5 rounded-xl border flex flex-col justify-between h-40 transition ${
-                            surv
+                            roomSurvs.length > 0
                               ? "bg-slate-50/80 border-slate-200 hover:border-indigo-300"
                               : "bg-rose-50/20 border-rose-200"
                           }`}
@@ -215,11 +256,34 @@ export function PlanningRoomsSection({
 
                             {/* Assigned Supervisor */}
                             <div className="mt-2.5">
-                              {surv ? (
-                                <div className="flex items-center gap-1.5">
-                                  <UserCheck className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
-                                  <span className="font-bold text-xs text-indigo-950 truncate">
-                                    {surv.teacherName}
+                              {roomSurvs.length > 1 ? (
+                                <div className="space-y-1">
+                                  <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 block">
+                                    ✂️ Créneau scindé ({roomSurvs.length} relais) :
+                                  </span>
+                                  {roomSurvs.map((surv) => (
+                                    <div
+                                      key={surv.id}
+                                      className="flex items-center justify-between text-[11px] p-1.5 rounded-md bg-white border border-slate-200 shadow-2xs"
+                                    >
+                                      <div className="flex items-center gap-1 truncate">
+                                        <UserCheck className="h-3 w-3 text-indigo-600 shrink-0" />
+                                        <span className="font-bold text-indigo-950 truncate">{surv.teacherName}</span>
+                                      </div>
+                                      <span className="font-mono text-[10px] text-slate-500 shrink-0">{surv.timeSlot}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : roomSurvs.length === 1 ? (
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <UserCheck className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+                                    <span className="font-bold text-xs text-indigo-950 truncate">
+                                      {roomSurvs[0].teacherName}
+                                    </span>
+                                  </div>
+                                  <span className="font-mono text-[10px] text-slate-500 block">
+                                    {roomSurvs[0].timeSlot} (Plein créneau)
                                   </span>
                                 </div>
                               ) : (
@@ -233,16 +297,16 @@ export function PlanningRoomsSection({
 
                           {/* Quick assign action */}
                           <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px]">
-                            {surv ? (
+                            {roomSurvs.length > 0 ? (
                               <>
-                                <span className="text-slate-400">{surv.mission}</span>
+                                <span className="text-slate-400">{roomSurvs.length > 1 ? `${roomSurvs.length} surveillants` : roomSurvs[0].mission}</span>
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    onDeleteSurveillance(surv.id);
-                                    onShowNotification("Surveillance détachée.");
+                                    roomSurvs.forEach((s) => onDeleteSurveillance(s.id));
+                                    onShowNotification("Surveillance(s) détachée(s).");
                                   }}
-                                  className="text-rose-500 hover:text-rose-700 font-bold"
+                                  className="text-rose-500 hover:text-rose-700 font-bold cursor-pointer"
                                 >
                                   Détacher
                                 </button>
@@ -284,6 +348,8 @@ export function PlanningRoomsSection({
           );
         })}
       </div>
+      </>
+      )}
     </div>
   );
 }

@@ -28,6 +28,11 @@ import dataElevesSectionRaw from "../../features/admin/components/DataElevesSect
 import dataSallesSectionRaw from "../../features/admin/components/DataSallesSection.tsx?raw";
 import dataProfsSectionRaw from "../../features/admin/components/DataProfsSection.tsx?raw";
 import creneauxSectionRaw from "../../features/admin/components/CreneauxSection.tsx?raw";
+import adminDashboardSectionRaw from "../../features/admin/components/AdminDashboardSection.tsx?raw";
+import sessionsExamensSectionRaw from "../../features/admin/components/SessionsExamensSection.tsx?raw";
+import planningOfficialGridRaw from "../../features/admin/components/PlanningOfficialGrid.tsx?raw";
+import officialLfjpPlanningRaw from "../data/official-lfjp-planning.ts?raw";
+import defaultCmsDataJsonRaw from "./default-cms-data.json?raw";
 
 export interface GitHubUser {
   login: string;
@@ -519,6 +524,11 @@ export async function pushCmsChangesToGitHub({
       { path: "src/features/admin/components/DataSallesSection.tsx", content: dataSallesSectionRaw },
       { path: "src/features/admin/components/DataProfsSection.tsx", content: dataProfsSectionRaw },
       { path: "src/features/admin/components/CreneauxSection.tsx", content: creneauxSectionRaw },
+      { path: "src/features/admin/components/AdminDashboardSection.tsx", content: adminDashboardSectionRaw },
+      { path: "src/features/admin/components/SessionsExamensSection.tsx", content: sessionsExamensSectionRaw },
+      { path: "src/features/admin/components/PlanningOfficialGrid.tsx", content: planningOfficialGridRaw },
+      { path: "src/shared/data/official-lfjp-planning.ts", content: officialLfjpPlanningRaw },
+      { path: "src/shared/services/default-cms-data.json", content: defaultCmsDataJsonRaw },
       { path: "src/features/orga-dnb/pages/OrgaDnbPage.tsx", content: orgaDnbPageRaw },
       { path: "src/features/convocations/pages/ConvocationsPage.tsx", content: convocationsPageRaw },
       { path: "src/features/home/components/HomeCallToActionCard.tsx", content: homeCallToActionCardRaw },

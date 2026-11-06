@@ -1,12 +1,6 @@
 import React from "react";
 
-interface HomeHeroLogo {
-  src: string;
-  alt?: string;
-}
-
 interface HomeHeroProps {
-  logos?: HomeHeroLogo[];
   subtitle?: string;
   title?: string;
   description?: string;
@@ -14,26 +8,11 @@ interface HomeHeroProps {
 }
 
 export default function HomeHero({
-  logos,
   subtitle,
   title,
   description,
   schoolYear = "2026-2027",
 }: HomeHeroProps) {
-  // If logos not supplied or empty, fallback to official LFJP + AEFE
-  const displayLogos =
-    logos && logos.length > 0
-      ? logos
-      : [
-          {
-            src: "/assets/aistudio/logo-lfjp_62451311.png",
-            alt: "Lycée Français Jacques Prévert - Saly, Sénégal",
-          },
-          {
-            src: "https://aefe.fr/sites/default/files/asset/document/logo-aefe-bleu-et-orange_0.svg",
-            alt: "Agence pour l'Enseignement Français à l'Étranger",
-          },
-        ];
 
   return (
     <div className="max-w-4xl space-y-5 text-center mx-auto">

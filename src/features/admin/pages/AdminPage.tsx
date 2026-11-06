@@ -1,5 +1,5 @@
-import { useState, useEffect, Fragment, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback, Fragment, type FormEvent } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Calendar,
   FileText,
@@ -114,20 +114,41 @@ export default function AdminPage() {
     clearPendingDeployment,
   } = useCmsData();
 
-  // Active role-based session: 'proviseur' | 'superadmin'
-  const [adminSession, setAdminSession] = useState<{
-    role: "proviseur" | "superadmin";
-    email: string;
-    name: string;
-  } | null>(() => {
+  // Active role-based session: 'proviseur' | 'superadmin' (stored in both localStorage and sessionStorage)
+  const getStoredAdminSession = () => {
     try {
-      const raw = sessionStorage.getItem("lfjp_admin_active_session");
+      const raw =
+        localStorage.getItem("lfjp_admin_active_session") ||
+        sessionStorage.getItem("lfjp_admin_active_session");
       if (raw) return JSON.parse(raw);
     } catch {
       // ignore
     }
     return null;
-  });
+  };
+
+  const [adminSession, setAdminSession] = useState<{
+    role: "proviseur" | "superadmin";
+    email: string;
+    name: string;
+  } | null>(getStoredAdminSession);
+
+  const saveAdminSession = (
+    newSession: { role: "proviseur" | "superadmin"; email: string; name: string } | null
+  ) => {
+    setAdminSession(newSession);
+    try {
+      if (newSession) {
+        localStorage.setItem("lfjp_admin_active_session", JSON.stringify(newSession));
+        sessionStorage.setItem("lfjp_admin_active_session", JSON.stringify(newSession));
+      } else {
+        localStorage.removeItem("lfjp_admin_active_session");
+        sessionStorage.removeItem("lfjp_admin_active_session");
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   // Login tabs: 'proviseur' | 'superadmin'
   const [authTab, setAuthTab] = useState<"proviseur" | "superadmin">("proviseur");
@@ -189,8 +210,33 @@ export default function AdminPage() {
   const [tokenUpdateError, setTokenUpdateError] = useState<string | null>(null);
   const [tokenUpdateSuccess, setTokenUpdateSuccess] = useState<string | null>(null);
 
-  // Navigation state matching target site
-  const [currentSection, setCurrentSection] = useState<AdminSection>("dashboard");
+  // Navigation state synchronized with URL search params so browser back/forward works seamlessly
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sectionFromUrl = (searchParams.get("section") as AdminSection) || "dashboard";
+  const [currentSection, setLocalCurrentSection] = useState<AdminSection>(sectionFromUrl);
+
+  const setCurrentSection = useCallback((section: AdminSection) => {
+    setLocalCurrentSection(section);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (section === "dashboard") {
+        next.delete("section");
+      } else {
+        next.set("section", section);
+      }
+      return next;
+    });
+  }, [setSearchParams]);
+
+  useEffect(() => {
+    const sec = (searchParams.get("section") as AdminSection) || "dashboard";
+    if (adminSession?.role === "proviseur" && sec === "config") {
+      setCurrentSection("dashboard");
+      return;
+    }
+    setLocalCurrentSection(sec);
+  }, [searchParams, adminSession?.role, setCurrentSection]);
+
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
     dataMenu: true,
     planningMenu: false,
@@ -261,12 +307,7 @@ export default function AdminPage() {
 
   // Logout handler with immediate session reset
   const handleLogout = () => {
-    try {
-      sessionStorage.removeItem("lfjp_admin_active_session");
-    } catch {
-      // ignore
-    }
-    setAdminSession(null);
+    saveAdminSession(null);
     logoutGitHub();
     showNotification("Vous avez été déconnecté de l'espace d'administration.");
   };
@@ -279,7 +320,7 @@ export default function AdminPage() {
     const configured = cmsData.siteInfo.proviseurAuth || {
       email: "proviseur@lfjpsaly.org",
       password: "ProviseurLFJP2026!",
-      name: "M. le Proviseur",
+      name: "Mme. / M. le Proviseur",
     };
 
     const emailMatch =
@@ -296,15 +337,10 @@ export default function AdminPage() {
     const newSession = {
       role: "proviseur" as const,
       email: configured.email,
-      name: configured.name || "M. le Proviseur",
+      name: configured.name || "Mme. / M. le Proviseur",
     };
-    try {
-      sessionStorage.setItem("lfjp_admin_active_session", JSON.stringify(newSession));
-    } catch {
-      // ignore
-    }
-    setAdminSession(newSession);
-    setCurrentSection("sessions-examens");
+    saveAdminSession(newSession);
+    setCurrentSection("dashboard");
     showNotification(`Connexion réussie ! Bienvenue ${newSession.name}.`);
   };
 
@@ -380,13 +416,8 @@ export default function AdminPage() {
         email: result.user?.login || "admin",
         name: result.user?.name || result.user?.login || "SuperAdmin Technique",
       };
-      try {
-        sessionStorage.setItem("lfjp_admin_active_session", JSON.stringify(newSession));
-      } catch {
-        // ignore
-      }
-      setAdminSession(newSession);
-      setCurrentSection("config");
+      saveAdminSession(newSession);
+      setCurrentSection("dashboard");
       showNotification(`Connexion réussie ! Bienvenue ${newSession.name}.`);
     }
   };
@@ -1382,7 +1413,7 @@ export default function AdminPage() {
         />
 
         {/* Main Content Area */}
-        <main className="flex-1 p-6 lg:p-8 overflow-y-auto max-w-7xl">
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full">
           {/* Chronological Workflow Stepper Bar */}
           <div className="mb-6 p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs overflow-x-auto print:hidden">
             <div className="flex items-center gap-1.5 min-w-max text-xs">
@@ -1402,7 +1433,14 @@ export default function AdminPage() {
                 { id: "corr-repartition", label: "9. Corrections & Notes", icon: "📦" },
                 { id: "vitrine-publish", label: "10. Vitrine", icon: "📢" },
                 { id: "deployment", label: "11. Déploiement", icon: "🚀" },
-              ].map((step, idx) => {
+              ]
+                .filter((step) => {
+                  if (adminSession?.role === "proviseur" && step.id === "config") {
+                    return false;
+                  }
+                  return true;
+                })
+                .map((step, idx) => {
                 const isActive =
                   currentSection === step.id ||
                   (step.id === "data-eleves" &&
@@ -1444,6 +1482,7 @@ export default function AdminPage() {
               examSlots={cmsData.examSlots || []}
               surveillances={cmsData.surveillances}
               announcements={cmsData.announcements}
+              role={adminSession?.role || "superadmin"}
               onNavigateSection={(sec) => setCurrentSection(sec)}
             />
           )}
@@ -1540,10 +1579,14 @@ export default function AdminPage() {
               examSlots={cmsData.examSlots || []}
               exams={cmsData.exams}
               rooms={cmsData.rooms}
+              teachers={cmsData.teachers}
               surveillances={cmsData.surveillances}
               onAddExamSlot={addExamSlot}
               onUpdateExamSlot={updateExamSlot}
               onDeleteExamSlot={deleteExamSlot}
+              onAddSurveillance={addSurveillance}
+              onDeleteSurveillance={deleteSurveillance}
+              onSetSurveillances={setSurveillances}
               onShowNotification={showNotification}
             />
           )}
