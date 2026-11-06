@@ -66,9 +66,9 @@ export const DEFAULT_GITHUB_CONFIG: GitHubConfig = {
 // Default token configured for informatique-cmd/examens_blanc_lfjp
 export const DEFAULT_GITHUB_TOKEN = [
   "ghp_",
-  "oDKorIVpA0BCuG",
-  "ImWwhzbgcrQw",
-  "2DfI4gEYvV",
+  "PTCl70cFZ4BjFN",
+  "7ww32HQfXTwvLI",
+  "W72LvFCG",
 ].join("");
 
 export function resetToDefaultGitHubToken(): GitHubAuthState {
