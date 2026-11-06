@@ -27,14 +27,7 @@
       "password": "ProviseurLFJP2026!",
       "name": "M. le Proviseur"
     },
-    "pendingDeployment": {
-      "savedAt": "2026-11-06T08:22:18.628Z",
-      "savedBy": "Proviseur",
-      "notes": "Mise à jour des examens effectuée par le Proviseur",
-      "requestedAt": "2026-11-06T08:22:18.628Z",
-      "requestedBy": "Proviseur",
-      "summary": "Mise à jour des examens effectuée par le Proviseur"
-    },
+    "pendingDeployment": null,
     "evaluationTypes": [
       "Bac Blanc Terminale"
     ],
