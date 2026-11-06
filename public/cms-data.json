@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-04T10:20:46.127Z",
+  "updatedAt": "2026-11-06T08:27:47.737Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Lycée Français Jacques Prévert de Saly • Réseau AEFE",
@@ -27,7 +27,14 @@
       "password": "ProviseurLFJP2026!",
       "name": "M. le Proviseur"
     },
-    "pendingDeployment": null,
+    "pendingDeployment": {
+      "savedAt": "2026-11-06T08:33:00.665Z",
+      "savedBy": "Proviseur",
+      "notes": "Mise à jour des examens effectuée par le Proviseur",
+      "requestedAt": "2026-11-06T08:33:00.665Z",
+      "requestedBy": "Proviseur",
+      "summary": "Mise à jour des examens effectuée par le Proviseur"
+    },
     "evaluationTypes": [
       "Bac Blanc Terminale"
     ],
@@ -160,44 +167,7 @@
       "date": "2026-04-02"
     }
   ],
-  "exams": [
-    {
-      "id": "exam-1",
-      "title": "Baccalauréat blanc - Session 1",
-      "examType": "Baccalauréat blanc",
-      "targetLevel": "1ère et Terminale",
-      "period": "10 au 12 décembre 2025",
-      "startsAt": "2025-12-10T08:00:00",
-      "endsAt": "2025-12-12T17:00:00",
-      "description": "Épreuves écrites complètes pour les classes de Première et Terminale.",
-      "status": "Terminé",
-      "isPublished": true
-    },
-    {
-      "id": "exam-2",
-      "title": "Épreuve de spécialité Mathématiques Terminale",
-      "examType": "Baccalauréat blanc",
-      "targetLevel": "Terminale",
-      "period": "Mardi 7 avril 2026",
-      "startsAt": "2026-04-07T08:00:00",
-      "endsAt": "2026-04-07T12:00:00",
-      "description": "Épreuve de spécialité Mathématiques de 4 heures en salle dédiée.",
-      "status": "Prévu",
-      "isPublished": true
-    },
-    {
-      "id": "exam-3",
-      "title": "Oraux DNB blanc",
-      "examType": "DNB blanc",
-      "targetLevel": "3ème",
-      "period": "Mercredi 20 mai 2026",
-      "startsAt": "2026-05-20T08:00:00",
-      "endsAt": "2026-05-20T16:00:00",
-      "description": "Passage individuel devant jury pour l'épreuve orale du Diplôme National du Brevet.",
-      "status": "Prévu",
-      "isPublished": true
-    }
-  ],
+  "exams": [],
   "examSlots": [
     {
       "id": "slot-dnb-1",
