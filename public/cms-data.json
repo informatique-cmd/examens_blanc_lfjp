@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-04T09:04:43.571Z",
+  "updatedAt": "2026-11-07T01:35:24.577Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Lycée Français Jacques Prévert de Saly • Réseau AEFE",
@@ -28,14 +28,7 @@
       "name": "Mme. / M. le Proviseur"
     },
     "pendingDeployment": null,
-    "evaluationTypes": [
-      "DNB Blanc (Collège 3ème)",
-      "DNB Officiel (Brevet)",
-      "Bac Blanc 1ère (Français EAF)",
-      "Bac Blanc Terminale",
-      "Devoir Commun",
-      "Grand Oral Blanc"
-    ],
+    "evaluationTypes": [],
     "sciencesSubjects": [
       {
         "id": "svt",
@@ -300,223 +293,8 @@
       "date": "03/11/2026"
     }
   ],
-  "exams": [
-    {
-      "title": "EXAMEN BLANC DECEMBRE",
-      "examType": "Examen Blanc",
-      "targetLevel": "Terminale",
-      "period": "8 au 10 DÉCEMBRE 2026",
-      "startsAt": "2026-12-08T08:00",
-      "endsAt": "2026-12-10T18:00",
-      "description": "Planning officiel de surveillance des épreuves du 8 au 10 décembre (Philosophie, Spécialités, EAF, Maths, Sciences).",
-      "status": "Prévu",
-      "isPublished": true,
-      "id": "exam-1793634305223"
-    },
-    {
-      "id": "exam-dnb-zao-2026",
-      "title": "DNB Blanc ZAO (Collège 3ème)",
-      "examType": "DNB Blanc",
-      "targetLevel": "3ème",
-      "period": "Février 2026",
-      "startsAt": "2026-02-03T08:00",
-      "endsAt": "2026-02-04T16:30",
-      "description": "Épreuves écrites complètes du Brevet blanc : Français (1ère et 2ème parties), Mathématiques, Histoire-Géographie & Sciences.",
-      "status": "Prévu",
-      "isPublished": true
-    },
-    {
-      "id": "exam-bac-blanc-2026",
-      "title": "Baccalauréat Blanc 1ère et Terminale (Session Printemps)",
-      "examType": "Baccalauréat blanc",
-      "targetLevel": "1ère & Terminale",
-      "period": "Avril 2026",
-      "startsAt": "2026-04-07T08:00",
-      "endsAt": "2026-04-10T17:00",
-      "description": "Épreuves de spécialités écrites, EAF Français écrit et philosophie pour les classes de première et terminale.",
-      "status": "Prévu",
-      "isPublished": true
-    }
-  ],
-  "examSlots": [
-    {
-      "examTitle": "EXAMEN BLANC DECEMBRE",
-      "subject": "Français",
-      "date": "2026-12-02",
-      "startTime": "08:00",
-      "endTime": "09:30",
-      "durationMinutes": 90,
-      "tiersTempsEndTime": "10:00",
-      "tiersTempsDurationMinutes": 120,
-      "targetLevel": "Terminale",
-      "roomNames": [
-        "S1",
-        "S2",
-        "S3"
-      ],
-      "notes": "",
-      "id": "slot-1793634474257"
-    },
-    {
-      "id": "slot-dnb-fr1",
-      "examId": "exam-dnb-zao-2026",
-      "examTitle": "DNB Blanc ZAO (Collège 3ème)",
-      "subject": "Français 1ère partie (Grammaire, Dictée & Compréhension)",
-      "date": "2026-02-03",
-      "startTime": "08:00",
-      "endTime": "09:30",
-      "durationMinutes": 90,
-      "tiersTempsEndTime": "10:00",
-      "tiersTempsDurationMinutes": 120,
-      "targetLevel": "3ème",
-      "roomNames": [
-        "S1",
-        "S2"
-      ],
-      "notes": "Dictionnaire interdit pour la dictée."
-    },
-    {
-      "id": "slot-dnb-fr2",
-      "examId": "exam-dnb-zao-2026",
-      "examTitle": "DNB Blanc ZAO (Collège 3ème)",
-      "subject": "Français 2ème partie (Rédaction / Expression écrite)",
-      "date": "2026-02-03",
-      "startTime": "09:45",
-      "endTime": "11:15",
-      "durationMinutes": 90,
-      "tiersTempsEndTime": "11:45",
-      "tiersTempsDurationMinutes": 120,
-      "targetLevel": "3ème",
-      "roomNames": [
-        "S1",
-        "S2"
-      ],
-      "notes": "Dictionnaire unilingue autorisé."
-    },
-    {
-      "id": "slot-dnb-maths",
-      "examId": "exam-dnb-zao-2026",
-      "examTitle": "DNB Blanc ZAO (Collège 3ème)",
-      "subject": "Mathématiques",
-      "date": "2026-02-03",
-      "startTime": "13:30",
-      "endTime": "15:30",
-      "durationMinutes": 120,
-      "tiersTempsEndTime": "16:10",
-      "tiersTempsDurationMinutes": 160,
-      "targetLevel": "3ème",
-      "roomNames": [
-        "S1",
-        "S2"
-      ],
-      "notes": "Calculatrice mode examen obligatoire."
-    },
-    {
-      "id": "slot-dec-philo",
-      "examId": "exam-1793634305223",
-      "examTitle": "EXAMEN BLANC DECEMBRE",
-      "subject": "Philosophie",
-      "date": "2026-12-08",
-      "startTime": "08:00",
-      "endTime": "12:00",
-      "durationMinutes": 240,
-      "tiersTempsEndTime": "13:20",
-      "tiersTempsDurationMinutes": 320,
-      "targetLevel": "Terminale",
-      "roomNames": [
-        "S1",
-        "S2",
-        "S3",
-        "S4",
-        "S5"
-      ],
-      "notes": "Mardi 8/12 Matin - Sujet officiel de Philosophie"
-    },
-    {
-      "id": "slot-dec-eam",
-      "examId": "exam-1793634305223",
-      "examTitle": "EXAMEN BLANC DECEMBRE",
-      "subject": "EAM Spécialité / EAM TC",
-      "date": "2026-12-08",
-      "startTime": "13:00",
-      "endTime": "15:00",
-      "durationMinutes": 120,
-      "tiersTempsEndTime": "15:40",
-      "tiersTempsDurationMinutes": 160,
-      "targetLevel": "Terminale",
-      "roomNames": [
-        "S1",
-        "S2",
-        "S3",
-        "S4",
-        "S6"
-      ],
-      "notes": "Mardi 8/12 Après-midi"
-    },
-    {
-      "id": "slot-dec-spe-matin",
-      "examId": "exam-1793634305223",
-      "examTitle": "EXAMEN BLANC DECEMBRE",
-      "subject": "HGGSP / SPC / Maths / SES",
-      "date": "2026-12-09",
-      "startTime": "08:00",
-      "endTime": "12:00",
-      "durationMinutes": 240,
-      "tiersTempsEndTime": "13:20",
-      "tiersTempsDurationMinutes": 320,
-      "targetLevel": "Terminale",
-      "roomNames": [
-        "S1",
-        "S2",
-        "S3",
-        "S4",
-        "S5"
-      ],
-      "notes": "Mercredi 9/12 Matin"
-    },
-    {
-      "id": "slot-dec-maths-svt",
-      "examId": "exam-1793634305223",
-      "examTitle": "EXAMEN BLANC DECEMBRE",
-      "subject": "Maths / SES / AMC / SVT",
-      "date": "2026-12-10",
-      "startTime": "08:00",
-      "endTime": "12:00",
-      "durationMinutes": 240,
-      "tiersTempsEndTime": "13:20",
-      "tiersTempsDurationMinutes": 320,
-      "targetLevel": "Terminale",
-      "roomNames": [
-        "S1",
-        "S2",
-        "S3",
-        "S4",
-        "S5"
-      ],
-      "notes": "Jeudi 10/12 Matin"
-    },
-    {
-      "id": "slot-dec-eaf",
-      "examId": "exam-1793634305223",
-      "examTitle": "EXAMEN BLANC DECEMBRE",
-      "subject": "EAF (Épreuve Anticipée de Français)",
-      "date": "2026-12-10",
-      "startTime": "14:00",
-      "endTime": "18:00",
-      "durationMinutes": 240,
-      "tiersTempsEndTime": "18:20",
-      "tiersTempsDurationMinutes": 260,
-      "targetLevel": "1ère",
-      "roomNames": [
-        "S1",
-        "S2",
-        "S3",
-        "S4",
-        "S6"
-      ],
-      "notes": "Jeudi 10/12 Après-midi"
-    }
-  ],
+  "exams": [],
+  "examSlots": [],
   "rooms": [
     {
       "id": "room-1793634199195-1-vczj",
@@ -1437,6 +1215,906 @@
       "roomName": "Renfort",
       "date": "2026-12-10",
       "timeSlot": "14h00 - 18h00",
+      "teacherName": "Mme Perez et Mme D'Aquino",
+      "mission": "Surveillant de renfort & couloir"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S1-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S1",
+      "date": "2026-12-08",
+      "timeSlot": "8h00 - 12h00",
+      "teacherName": "Mme Rivière",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S2-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S2",
+      "date": "2026-12-08",
+      "timeSlot": "8h00 - 12h00",
+      "teacherName": "M. Ane",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S3-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S3",
+      "date": "2026-12-08",
+      "timeSlot": "8h00 - 12h00",
+      "teacherName": "M. Fall",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S4-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S4",
+      "date": "2026-12-08",
+      "timeSlot": "8h00 - 10h00",
+      "teacherName": "Mme Jaït",
+      "mission": "Surveillant relais (8h00 - 10h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S4-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S4",
+      "date": "2026-12-08",
+      "timeSlot": "10h00 - 12h00",
+      "teacherName": "M. Gomis",
+      "mission": "Surveillant relais (10h00 - 12h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S5__tiers_temps_-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-08",
+      "timeSlot": "8h00 - 10h00",
+      "teacherName": "Mme Mboup",
+      "mission": "Surveillant relais (8h00 - 10h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S5__tiers_temps_-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-08",
+      "timeSlot": "10h00 - 11h00",
+      "teacherName": "Mme Mourain Diop",
+      "mission": "Surveillant relais (10h00 - 11h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S5__tiers_temps_-2",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-08",
+      "timeSlot": "11h00 - 12h00",
+      "teacherName": "M. David",
+      "mission": "Surveillant relais (11h00 - 12h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S5__tiers_temps_-3",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-08",
+      "timeSlot": "12h00 - 13h20",
+      "teacherName": "Mme Diadio",
+      "mission": "Surveillant relais (12h00 - 13h20)"
+    },
+    {
+      "id": "surv-off-renfort-session-mardi-matin",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "Renfort",
+      "date": "2026-12-08",
+      "timeSlot": "08:00 - 12:00",
+      "teacherName": "Mme Diadio et Mme D'Aquino",
+      "mission": "Surveillant de renfort & couloir"
+    },
+    {
+      "id": "surv-off-session-mardi-aprem-S1-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "S1",
+      "date": "2026-12-08",
+      "timeSlot": "13h00 - 15h00",
+      "teacherName": "M. David",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-mardi-aprem-S2-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "S2",
+      "date": "2026-12-08",
+      "timeSlot": "13h00 - 15h00",
+      "teacherName": "M. Ane",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-mardi-aprem-S3-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "S3",
+      "date": "2026-12-08",
+      "timeSlot": "13h00 - 14h00",
+      "teacherName": "Mme Michon-Guillaume",
+      "mission": "Surveillant relais (13h00 - 14h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-aprem-S3-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "S3",
+      "date": "2026-12-08",
+      "timeSlot": "14h00 - 15h00",
+      "teacherName": "Mme Mboup",
+      "mission": "Surveillant relais (14h00 - 15h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-aprem-S4-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "S4",
+      "date": "2026-12-08",
+      "timeSlot": "13h00 - 14h00",
+      "teacherName": "Mme Piaggio",
+      "mission": "Surveillant relais (13h00 - 14h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-aprem-S4-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "S4",
+      "date": "2026-12-08",
+      "timeSlot": "14h00 - 15h00",
+      "teacherName": "Mme D'Aquino",
+      "mission": "Surveillant relais (14h00 - 15h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-aprem-S6__tiers_temps_-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "S6 (tiers temps)",
+      "date": "2026-12-08",
+      "timeSlot": "13h00 - 15h40",
+      "teacherName": "M. Gomis",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-renfort-session-mardi-aprem",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "Renfort",
+      "date": "2026-12-08",
+      "timeSlot": "13:00 - 15:00",
+      "teacherName": "Mme Diadio",
+      "mission": "Surveillant de renfort & couloir"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S1-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S1",
+      "date": "2026-12-09",
+      "timeSlot": "8h00 - 10h00",
+      "teacherName": "Mme Bossu",
+      "mission": "Surveillant relais (8h00 - 10h00)"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S1-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S1",
+      "date": "2026-12-09",
+      "timeSlot": "10h00 - 11h00",
+      "teacherName": "M. Piaggio",
+      "mission": "Surveillant relais (10h00 - 11h00)"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S1-2",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S1",
+      "date": "2026-12-09",
+      "timeSlot": "11h00 - 12h00",
+      "teacherName": "Mme Porter",
+      "mission": "Surveillant relais (11h00 - 12h00)"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S2-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S2",
+      "date": "2026-12-09",
+      "timeSlot": "8h00 - 10h00",
+      "teacherName": "Mme Jaït",
+      "mission": "Surveillant relais (8h00 - 10h00)"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S2-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S2",
+      "date": "2026-12-09",
+      "timeSlot": "10h00 - 11h00",
+      "teacherName": "Mme Michon-Guillaume",
+      "mission": "Surveillant relais (10h00 - 11h00)"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S2-2",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S2",
+      "date": "2026-12-09",
+      "timeSlot": "11h00 - 12h00",
+      "teacherName": "M. Faye",
+      "mission": "Surveillant relais (11h00 - 12h00)"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S3-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S3",
+      "date": "2026-12-09",
+      "timeSlot": "8h00 - 12h00",
+      "teacherName": "Mme Mourain Diop",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S4-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S4",
+      "date": "2026-12-09",
+      "timeSlot": "8h00 - 12h00",
+      "teacherName": "Mme D'Aquino",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S5__tiers_temps_-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-09",
+      "timeSlot": "8h00 - 13h20",
+      "teacherName": "M. Gomis",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-renfort-session-mercredi-matin",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "Renfort",
+      "date": "2026-12-09",
+      "timeSlot": "08:00 - 12:00",
+      "teacherName": "Mme Diadio",
+      "mission": "Surveillant de renfort & couloir"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S1-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S1",
+      "date": "2026-12-10",
+      "timeSlot": "8h00 - 12h00",
+      "teacherName": "Surveillant affecté",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S2-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "10h00 - 11h00",
+      "teacherName": "Mme Porter",
+      "mission": "Surveillant relais (10h00 - 11h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S2-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "11h00 - 12h00",
+      "teacherName": "Mme Diadio",
+      "mission": "Surveillant relais (11h00 - 12h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S3-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S3",
+      "date": "2026-12-10",
+      "timeSlot": "10h00 - 11h00",
+      "teacherName": "M. Ane",
+      "mission": "Surveillant relais (10h00 - 11h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S3-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S3",
+      "date": "2026-12-10",
+      "timeSlot": "11h00 - 12h00",
+      "teacherName": "M. Baritou",
+      "mission": "Surveillant relais (11h00 - 12h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S4-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S4",
+      "date": "2026-12-10",
+      "timeSlot": "8h00 - 11h30",
+      "teacherName": "Surveillant affecté",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S5__tiers_temps_-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-10",
+      "timeSlot": "9h00 - 10h00",
+      "teacherName": "M. Faye",
+      "mission": "Surveillant relais (9h00 - 10h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S5__tiers_temps_-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-10",
+      "timeSlot": "10h00 - 12h00",
+      "teacherName": "M. Thomas",
+      "mission": "Surveillant relais (10h00 - 12h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S5__tiers_temps_-2",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-10",
+      "timeSlot": "12h00 - 13h20",
+      "teacherName": "M. Faye",
+      "mission": "Surveillant relais (12h00 - 13h20)"
+    },
+    {
+      "id": "surv-off-session-jeudi-aprem-S1-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "S1",
+      "date": "2026-12-10",
+      "timeSlot": "14h00 - 18h00",
+      "teacherName": "M. Ane",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-jeudi-aprem-S2-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "14h00 - 15h00",
+      "teacherName": "Mme Gibus",
+      "mission": "Surveillant relais (14h00 - 15h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-aprem-S2-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "15h00 - 16h00",
+      "teacherName": "Mme Porter",
+      "mission": "Surveillant relais (15h00 - 16h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-aprem-S2-2",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "16h00 - 18h00",
+      "teacherName": "M. Fall",
+      "mission": "Surveillant relais (16h00 - 18h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-aprem-S3-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "S3",
+      "date": "2026-12-10",
+      "timeSlot": "14h00 - 18h00",
+      "teacherName": "Mme Mboup",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-jeudi-aprem-S4-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "S4",
+      "date": "2026-12-10",
+      "timeSlot": "14h00 - 18h00",
+      "teacherName": "M. Gomis",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-jeudi-aprem-S6__tiers_temps_-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "S6 (tiers temps)",
+      "date": "2026-12-10",
+      "timeSlot": "13h00 - 18h20",
+      "teacherName": "Mme Rivière",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-renfort-session-jeudi-aprem",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "Renfort",
+      "date": "2026-12-10",
+      "timeSlot": "14:00 - 18:00",
+      "teacherName": "Mme Perez et Mme D'Aquino",
+      "mission": "Surveillant de renfort & couloir"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S1-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S1",
+      "date": "2026-12-08",
+      "timeSlot": "8h00 - 12h00",
+      "teacherName": "Mme Rivière",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S2-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S2",
+      "date": "2026-12-08",
+      "timeSlot": "8h00 - 12h00",
+      "teacherName": "M. Ane",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S3-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S3",
+      "date": "2026-12-08",
+      "timeSlot": "8h00 - 12h00",
+      "teacherName": "M. Fall",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S4-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S4",
+      "date": "2026-12-08",
+      "timeSlot": "8h00 - 10h00",
+      "teacherName": "Mme Jaït",
+      "mission": "Surveillant relais (8h00 - 10h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S4-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S4",
+      "date": "2026-12-08",
+      "timeSlot": "10h00 - 12h00",
+      "teacherName": "M. Gomis",
+      "mission": "Surveillant relais (10h00 - 12h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S5__tiers_temps_-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-08",
+      "timeSlot": "8h00 - 10h00",
+      "teacherName": "Mme Mboup",
+      "mission": "Surveillant relais (8h00 - 10h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S5__tiers_temps_-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-08",
+      "timeSlot": "10h00 - 11h00",
+      "teacherName": "Mme Mourain Diop",
+      "mission": "Surveillant relais (10h00 - 11h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S5__tiers_temps_-2",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-08",
+      "timeSlot": "11h00 - 12h00",
+      "teacherName": "M. David",
+      "mission": "Surveillant relais (11h00 - 12h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-matin-S5__tiers_temps_-3",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-08",
+      "timeSlot": "12h00 - 13h20",
+      "teacherName": "Mme Diadio",
+      "mission": "Surveillant relais (12h00 - 13h20)"
+    },
+    {
+      "id": "surv-off-renfort-session-mardi-matin",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-matin",
+      "roomName": "Renfort",
+      "date": "2026-12-08",
+      "timeSlot": "08:00 - 12:00",
+      "teacherName": "Mme Diadio et Mme D'Aquino",
+      "mission": "Surveillant de renfort & couloir"
+    },
+    {
+      "id": "surv-off-session-mardi-aprem-S1-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "S1",
+      "date": "2026-12-08",
+      "timeSlot": "13h00 - 15h00",
+      "teacherName": "M. David",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-mardi-aprem-S2-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "S2",
+      "date": "2026-12-08",
+      "timeSlot": "13h00 - 15h00",
+      "teacherName": "M. Ane",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-mardi-aprem-S3-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "S3",
+      "date": "2026-12-08",
+      "timeSlot": "13h00 - 14h00",
+      "teacherName": "Mme Michon-Guillaume",
+      "mission": "Surveillant relais (13h00 - 14h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-aprem-S3-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "S3",
+      "date": "2026-12-08",
+      "timeSlot": "14h00 - 15h00",
+      "teacherName": "Mme Mboup",
+      "mission": "Surveillant relais (14h00 - 15h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-aprem-S4-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "S4",
+      "date": "2026-12-08",
+      "timeSlot": "13h00 - 14h00",
+      "teacherName": "Mme Piaggio",
+      "mission": "Surveillant relais (13h00 - 14h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-aprem-S4-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "S4",
+      "date": "2026-12-08",
+      "timeSlot": "14h00 - 15h00",
+      "teacherName": "Mme D'Aquino",
+      "mission": "Surveillant relais (14h00 - 15h00)"
+    },
+    {
+      "id": "surv-off-session-mardi-aprem-S6__tiers_temps_-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "S6 (tiers temps)",
+      "date": "2026-12-08",
+      "timeSlot": "13h00 - 15h40",
+      "teacherName": "M. Gomis",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-renfort-session-mardi-aprem",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mardi-aprem",
+      "roomName": "Renfort",
+      "date": "2026-12-08",
+      "timeSlot": "13:00 - 15:00",
+      "teacherName": "Mme Diadio",
+      "mission": "Surveillant de renfort & couloir"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S1-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S1",
+      "date": "2026-12-09",
+      "timeSlot": "8h00 - 10h00",
+      "teacherName": "Mme Bossu",
+      "mission": "Surveillant relais (8h00 - 10h00)"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S1-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S1",
+      "date": "2026-12-09",
+      "timeSlot": "10h00 - 11h00",
+      "teacherName": "M. Piaggio",
+      "mission": "Surveillant relais (10h00 - 11h00)"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S1-2",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S1",
+      "date": "2026-12-09",
+      "timeSlot": "11h00 - 12h00",
+      "teacherName": "Mme Porter",
+      "mission": "Surveillant relais (11h00 - 12h00)"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S2-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S2",
+      "date": "2026-12-09",
+      "timeSlot": "8h00 - 10h00",
+      "teacherName": "Mme Jaït",
+      "mission": "Surveillant relais (8h00 - 10h00)"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S2-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S2",
+      "date": "2026-12-09",
+      "timeSlot": "10h00 - 11h00",
+      "teacherName": "Mme Michon-Guillaume",
+      "mission": "Surveillant relais (10h00 - 11h00)"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S2-2",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S2",
+      "date": "2026-12-09",
+      "timeSlot": "11h00 - 12h00",
+      "teacherName": "M. Faye",
+      "mission": "Surveillant relais (11h00 - 12h00)"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S3-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S3",
+      "date": "2026-12-09",
+      "timeSlot": "8h00 - 12h00",
+      "teacherName": "Mme Mourain Diop",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S4-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S4",
+      "date": "2026-12-09",
+      "timeSlot": "8h00 - 12h00",
+      "teacherName": "Mme D'Aquino",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-mercredi-matin-S5__tiers_temps_-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-09",
+      "timeSlot": "8h00 - 13h20",
+      "teacherName": "M. Gomis",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-renfort-session-mercredi-matin",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-mercredi-matin",
+      "roomName": "Renfort",
+      "date": "2026-12-09",
+      "timeSlot": "08:00 - 12:00",
+      "teacherName": "Mme Diadio",
+      "mission": "Surveillant de renfort & couloir"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S1-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S1",
+      "date": "2026-12-10",
+      "timeSlot": "8h00 - 12h00",
+      "teacherName": "Surveillant affecté",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S2-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "10h00 - 11h00",
+      "teacherName": "Mme Porter",
+      "mission": "Surveillant relais (10h00 - 11h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S2-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "11h00 - 12h00",
+      "teacherName": "Mme Diadio",
+      "mission": "Surveillant relais (11h00 - 12h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S3-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S3",
+      "date": "2026-12-10",
+      "timeSlot": "10h00 - 11h00",
+      "teacherName": "M. Ane",
+      "mission": "Surveillant relais (10h00 - 11h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S3-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S3",
+      "date": "2026-12-10",
+      "timeSlot": "11h00 - 12h00",
+      "teacherName": "M. Baritou",
+      "mission": "Surveillant relais (11h00 - 12h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S4-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S4",
+      "date": "2026-12-10",
+      "timeSlot": "8h00 - 11h30",
+      "teacherName": "Surveillant affecté",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S5__tiers_temps_-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-10",
+      "timeSlot": "9h00 - 10h00",
+      "teacherName": "M. Faye",
+      "mission": "Surveillant relais (9h00 - 10h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S5__tiers_temps_-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-10",
+      "timeSlot": "10h00 - 12h00",
+      "teacherName": "M. Thomas",
+      "mission": "Surveillant relais (10h00 - 12h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-matin-S5__tiers_temps_-2",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-matin",
+      "roomName": "S5 (tiers temps)",
+      "date": "2026-12-10",
+      "timeSlot": "12h00 - 13h20",
+      "teacherName": "M. Faye",
+      "mission": "Surveillant relais (12h00 - 13h20)"
+    },
+    {
+      "id": "surv-off-session-jeudi-aprem-S1-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "S1",
+      "date": "2026-12-10",
+      "timeSlot": "14h00 - 18h00",
+      "teacherName": "M. Ane",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-jeudi-aprem-S2-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "14h00 - 15h00",
+      "teacherName": "Mme Gibus",
+      "mission": "Surveillant relais (14h00 - 15h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-aprem-S2-1",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "15h00 - 16h00",
+      "teacherName": "Mme Porter",
+      "mission": "Surveillant relais (15h00 - 16h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-aprem-S2-2",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "16h00 - 18h00",
+      "teacherName": "M. Fall",
+      "mission": "Surveillant relais (16h00 - 18h00)"
+    },
+    {
+      "id": "surv-off-session-jeudi-aprem-S3-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "S3",
+      "date": "2026-12-10",
+      "timeSlot": "14h00 - 18h00",
+      "teacherName": "Mme Mboup",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-jeudi-aprem-S4-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "S4",
+      "date": "2026-12-10",
+      "timeSlot": "14h00 - 18h00",
+      "teacherName": "M. Gomis",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-session-jeudi-aprem-S6__tiers_temps_-0",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "S6 (tiers temps)",
+      "date": "2026-12-10",
+      "timeSlot": "13h00 - 18h20",
+      "teacherName": "Mme Rivière",
+      "mission": "Surveillant titulaire"
+    },
+    {
+      "id": "surv-off-renfort-session-jeudi-aprem",
+      "examTitle": "EXAMEN BLANC DECEMBRE",
+      "slotId": "slot-off-session-jeudi-aprem",
+      "roomName": "Renfort",
+      "date": "2026-12-10",
+      "timeSlot": "14:00 - 18:00",
       "teacherName": "Mme Perez et Mme D'Aquino",
       "mission": "Surveillant de renfort & couloir"
     }
