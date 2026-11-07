@@ -1,4 +1,4 @@
-// Fichier généré automatiquement par le CMS LFJP le 07/11/2026 à 15:32:24
+// Fichier généré automatiquement par le CMS LFJP le 07/11/2026 à 15:38:22
 // Ce fichier est déployé automatiquement sur Vercel lors de chaque commit GitHub.
 
 export const HOME_PAGE_CONTENT = {
@@ -50,16 +50,6 @@ export const HOME_CALLOUT_ENTRIES: HomeCalloutEntry[] = [
     "date": "2026-04-07",
     "footerLabel": "Consulter l'épreuve de spécialité",
     "category": "math"
-  },
-  {
-    "to": "/examens-blancs/oraux-dnb-2026-05-20",
-    "iconLabel": "Accéder à l'organisation des oraux du DNB blanc",
-    "subtitle": "Épreuves orales",
-    "title": "Oraux DNB blanc",
-    "dateLabel": "Mercredi 20 mai 2026",
-    "date": "2026-05-20",
-    "footerLabel": "Consulter le planning des oraux",
-    "category": "oral"
   },
   {
     "to": "/surveillances-bac-dnb",
