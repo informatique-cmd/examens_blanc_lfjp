@@ -154,14 +154,30 @@ export interface CmsData {
   candidates: CmsCandidate[];
 }
 
+export interface SavedConfigSnapshot {
+  id: string;
+  name: string;
+  createdAt: string;
+  schoolYear: string;
+  examsCount: number;
+  slotsCount: number;
+  candidatesCount: number;
+  roomsCount: number;
+  teachersCount: number;
+  data: CmsData;
+}
+
 const CMS_STORAGE_KEY = "lfjp_examens_cms_data_v1";
+const CMS_SNAPSHOTS_KEY = "lfjp_config_snapshots_v1";
 const CMS_EVENT_NAME = "lfjp_cms_updated";
 
 // Default initial state built directly from the school's real configured data
 export const DEFAULT_CMS_DATA: CmsData = defaultCmsDataJson as unknown as CmsData;
 
 /**
- * Reads the latest CMS data from localStorage with full fallback to defaults.
+ * Reads the latest CMS data from localStorage.
+ * If an array property exists in storage (even empty []), it is strictly respected
+ * so deleted items or reset states NEVER resurrect.
  */
 export function getCmsData(): CmsData {
   if (typeof window === "undefined") {
@@ -183,7 +199,7 @@ export function getCmsData(): CmsData {
           ...(parsed.siteInfo?.bannerAlert || {}),
         },
       },
-      callouts: Array.isArray(parsed.callouts) && parsed.callouts.length > 0
+      callouts: Array.isArray(parsed.callouts)
         ? parsed.callouts.map((c, i) => ({
             id: c.id || `callout-${i + 1}`,
             to: c.to || "/",
@@ -204,13 +220,17 @@ export function getCmsData(): CmsData {
       exams: Array.isArray(parsed.exams)
         ? parsed.exams.map((e) => ({ ...e, isPublished: e.isPublished !== false }))
         : DEFAULT_CMS_DATA.exams.map((e) => ({ ...e, isPublished: true })),
-      examSlots: Array.isArray(parsed.examSlots) && parsed.examSlots.length > 0
+      examSlots: Array.isArray(parsed.examSlots)
         ? parsed.examSlots
         : DEFAULT_CMS_DATA.examSlots,
-      rooms: Array.isArray(parsed.rooms) && parsed.rooms.length > 0 ? parsed.rooms : DEFAULT_CMS_DATA.rooms,
-      teachers: Array.isArray(parsed.teachers) && parsed.teachers.length > 0 ? parsed.teachers : DEFAULT_CMS_DATA.teachers,
-      surveillances: Array.isArray(parsed.surveillances) && parsed.surveillances.length > 0 ? parsed.surveillances : DEFAULT_CMS_DATA.surveillances,
-      candidates: Array.isArray(parsed.candidates) && parsed.candidates.length > 0 ? parsed.candidates : DEFAULT_CMS_DATA.candidates,
+      rooms: Array.isArray(parsed.rooms) ? parsed.rooms : DEFAULT_CMS_DATA.rooms,
+      teachers: Array.isArray(parsed.teachers) ? parsed.teachers : DEFAULT_CMS_DATA.teachers,
+      surveillances: Array.isArray(parsed.surveillances)
+        ? parsed.surveillances
+        : DEFAULT_CMS_DATA.surveillances,
+      candidates: Array.isArray(parsed.candidates)
+        ? parsed.candidates
+        : DEFAULT_CMS_DATA.candidates,
     };
   } catch (err) {
     console.error("Erreur lors de la lecture du CMS :", err);
@@ -229,6 +249,61 @@ export function saveCmsData(data: CmsData): void {
   };
   localStorage.setItem(CMS_STORAGE_KEY, JSON.stringify(toSave));
   window.dispatchEvent(new Event(CMS_EVENT_NAME));
+}
+
+/**
+ * Snapshots management: Save and restore named configurations
+ */
+export function getSavedConfigSnapshots(): SavedConfigSnapshot[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CMS_SNAPSHOTS_KEY);
+    if (!raw) return [];
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveConfigSnapshot(name: string, dataToSave?: CmsData): SavedConfigSnapshot {
+  const current = dataToSave || getCmsData();
+  const snapshot: SavedConfigSnapshot = {
+    id: `snap-${Date.now()}`,
+    name: name.trim() || `Configuration du ${new Date().toLocaleDateString("fr-FR")}`,
+    createdAt: new Date().toISOString(),
+    schoolYear: current.siteInfo?.schoolYear || "2026-2027",
+    examsCount: current.exams?.length || 0,
+    slotsCount: current.examSlots?.length || 0,
+    candidatesCount: current.candidates?.length || 0,
+    roomsCount: current.rooms?.length || 0,
+    teachersCount: current.teachers?.length || 0,
+    data: current,
+  };
+
+  const existing = getSavedConfigSnapshots();
+  const next = [snapshot, ...existing];
+  if (typeof window !== "undefined") {
+    localStorage.setItem(CMS_SNAPSHOTS_KEY, JSON.stringify(next));
+  }
+  return snapshot;
+}
+
+export function deleteConfigSnapshot(id: string): SavedConfigSnapshot[] {
+  const existing = getSavedConfigSnapshots();
+  const next = existing.filter((s) => s.id !== id);
+  if (typeof window !== "undefined") {
+    localStorage.setItem(CMS_SNAPSHOTS_KEY, JSON.stringify(next));
+  }
+  return next;
+}
+
+export function restoreConfigSnapshot(id: string): CmsData | null {
+  const existing = getSavedConfigSnapshots();
+  const found = existing.find((s) => s.id === id);
+  if (!found) return null;
+  saveCmsData(found.data);
+  return found.data;
 }
 
 /**
@@ -377,24 +452,20 @@ export function useCmsData() {
     window.addEventListener(CMS_EVENT_NAME, handleUpdate);
     window.addEventListener("storage", handleUpdate);
 
-    // Cross-browser synchronization from remote /cms-data.json (GitHub / Vercel deployment)
+    // Initial synchronization from deployed /cms-data.json ONLY if local storage has never been initialized
     const syncFromRemote = async () => {
       try {
+        const hasCustomLocalStorage = Boolean(localStorage.getItem(CMS_STORAGE_KEY));
+        if (hasCustomLocalStorage) return;
+
         const res = await fetch(`/cms-data.json?_t=${Date.now()}`, { cache: "no-store" });
         if (!res.ok) return;
         const remote = (await res.json()) as CmsData;
         if (!remote || typeof remote !== "object") return;
 
-        const local = getCmsData();
-        const remoteTime = remote.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
-        const localTime = local.updatedAt ? new Date(local.updatedAt).getTime() : 0;
-        const hasCustomLocalStorage = Boolean(localStorage.getItem(CMS_STORAGE_KEY));
-        // If remote has valid data and is fresh or matching, synchronize immediately!
         if (remote && remote.siteInfo && Array.isArray(remote.exams)) {
-          if (!hasCustomLocalStorage || (remoteTime >= localTime && Array.isArray(remote.candidates) && remote.candidates.length > 0)) {
-            saveCmsData(remote);
-            setData(remote);
-          }
+          saveCmsData(remote);
+          setData(remote);
         }
       } catch (err) {
         console.warn("Could not sync remote cms-data.json", err);
@@ -402,12 +473,10 @@ export function useCmsData() {
     };
 
     syncFromRemote();
-    window.addEventListener("focus", syncFromRemote);
 
     return () => {
       window.removeEventListener(CMS_EVENT_NAME, handleUpdate);
       window.removeEventListener("storage", handleUpdate);
-      window.removeEventListener("focus", syncFromRemote);
     };
   }, []);
 
@@ -575,9 +644,47 @@ export function useCmsData() {
   };
 
   const deleteExam = (id: string) => {
+    const target = data.exams.find((e) => e.id === id);
+    const examTitle = target?.title?.trim().toLowerCase();
+
+    // 1. Identify slots belonging to this exam
+    const deletedSlots = (data.examSlots || []).filter(
+      (s) => s.examId === id || (examTitle && s.examTitle?.trim().toLowerCase() === examTitle)
+    );
+    const deletedSlotIds = new Set(deletedSlots.map((s) => s.id));
+
+    // 2. Filter remaining slots
+    const remainingSlots = (data.examSlots || []).filter(
+      (s) => s.examId !== id && (!examTitle || s.examTitle?.trim().toLowerCase() !== examTitle)
+    );
+
+    // 3. Cascade delete surveillances linked to this exam or its slots
+    const remainingSurvs = (data.surveillances || []).filter(
+      (surv) =>
+        (!surv.slotId || !deletedSlotIds.has(surv.slotId)) &&
+        (!examTitle || surv.examTitle?.trim().toLowerCase() !== examTitle)
+    );
+
+    // 4. Cascade reset candidate room assignments for this specific exam
+    const remainingCandidates = (data.candidates || []).map((c) => {
+      if (examTitle && c.examName?.trim().toLowerCase() === examTitle) {
+        return { ...c, roomName: "", tableNumber: "", anonymatNumber: "" };
+      }
+      return c;
+    });
+
+    // 5. Cascade delete callout cards linked to this exam title
+    const remainingCallouts = (data.callouts || []).filter(
+      (c) => !examTitle || c.title?.trim().toLowerCase() !== examTitle
+    );
+
     const next: CmsData = {
       ...data,
       exams: data.exams.filter((e) => e.id !== id),
+      examSlots: remainingSlots,
+      surveillances: remainingSurvs,
+      candidates: remainingCandidates,
+      callouts: remainingCallouts,
     };
     saveCmsData(next);
     setData(next);
@@ -744,6 +851,7 @@ export function useCmsData() {
     const next: CmsData = {
       ...data,
       examSlots: (data.examSlots || []).filter((s) => s.id !== id),
+      surveillances: (data.surveillances || []).filter((s) => s.slotId !== id),
     };
     saveCmsData(next);
     setData(next);
@@ -805,6 +913,22 @@ export function useCmsData() {
     return next;
   };
 
+  const saveSnapshot = (name: string) => {
+    return saveConfigSnapshot(name, data);
+  };
+
+  const restoreSnapshot = (id: string) => {
+    const restored = restoreConfigSnapshot(id);
+    if (restored) {
+      setData(restored);
+    }
+    return restored;
+  };
+
+  const removeSnapshot = (id: string) => {
+    return deleteConfigSnapshot(id);
+  };
+
   return {
     data,
     updateSiteInfo,
@@ -844,6 +968,9 @@ export function useCmsData() {
     saveEntireData,
     resetToDefaults: handleReset,
     resetForNewSchoolYear,
+    saveSnapshot,
+    restoreSnapshot,
+    removeSnapshot,
     markProviseurSaved,
     clearPendingDeployment,
   };

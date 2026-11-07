@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Shuffle,
   Grid,
@@ -10,6 +10,14 @@ import {
   GraduationCap,
   Clock,
   UserCheck,
+  UserPlus,
+  Plus,
+  X,
+  Trash2,
+  Search,
+  SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import type {
   CmsCandidate,
@@ -84,6 +92,25 @@ export default function OrganizationSection({
   // --- SURVEILLANTS ASSIGNMENT STATE ---
   const [selectedSlotId, setSelectedSlotId] = useState<string>("all");
 
+  // --- CUSTOM ROOM CAPACITY (QUOTAS PAR SALLE) ---
+  const [customRoomCapacities, setCustomRoomCapacities] = useState<Record<string, number>>({});
+
+  // Helper to determine the effective capacity / quota of a room
+  const getRoomQuota = useCallback((room: CmsRoom): number => {
+    if (customRoomCapacities[room.id] !== undefined && customRoomCapacities[room.id] > 0) {
+      return customRoomCapacities[room.id];
+    }
+    return room.capacity || 24;
+  }, [customRoomCapacities]);
+
+  // --- MANUAL ASSIGNMENT STATE ---
+  const [isManualAssignOpen, setIsManualAssignOpen] = useState(false);
+  const [manualCandidateId, setManualCandidateId] = useState<string>("");
+  const [manualTargetRoomName, setManualTargetRoomName] = useState<string>("");
+  const [manualTableNumber, setManualTableNumber] = useState<string>("");
+  const [manualSearchTerm, setManualSearchTerm] = useState<string>("");
+  const [inspectingRoomName, setInspectingRoomName] = useState<string | null>(null);
+
   // Summary by class
   const classBreakdown = useMemo(() => {
     const map = new Map<string, number>();
@@ -99,10 +126,10 @@ export default function OrganizationSection({
     return rooms.filter((r) => selectedRoomIds.includes(r.id));
   }, [rooms, selectedRoomIds]);
 
-  // Capacity of chosen rooms
+  // Total capacity of chosen rooms based on custom quotas
   const selectedCapacity = useMemo(() => {
-    return selectedRooms.reduce((acc, r) => acc + (r.capacity || 0), 0);
-  }, [selectedRooms]);
+    return selectedRooms.reduce((acc, r) => acc + getRoomQuota(r), 0);
+  }, [selectedRooms, getRoomQuota]);
 
   // Total capacity of all rooms in school
   const totalCapacity = useMemo(() => {
@@ -120,16 +147,18 @@ export default function OrganizationSection({
       const isTT = ttRoomIds.includes(r.id);
       const assigned = candidates.filter((c) => c.roomName === r.name);
       const ttCount = assigned.filter((c) => c.accommodation?.includes("1/3")).length;
+      const quota = getRoomQuota(r);
       return {
         room: r,
         isMobilized,
         isTT,
+        quota,
         assignedCount: assigned.length,
         ttCount,
-        fillRate: r.capacity > 0 ? Math.round((assigned.length / r.capacity) * 100) : 0,
+        fillRate: quota > 0 ? Math.round((assigned.length / quota) * 100) : 0,
       };
     });
-  }, [rooms, candidates, selectedRoomIds, ttRoomIds, showAllSchoolRooms]);
+  }, [rooms, candidates, selectedRoomIds, ttRoomIds, showAllSchoolRooms, getRoomQuota]);
 
   // Toggle room selection for candidate dispatch
   const handleToggleRoomSelection = (roomId: string) => {
@@ -239,6 +268,7 @@ export default function OrganizationSection({
       ttCandidates.sort((a, b) => a.lastName.localeCompare(b.lastName));
       ttCandidates.forEach((student) => {
         const room = finalTtRooms[currentTTRoomIdx] || selectedRooms[0];
+        const roomLimit = getRoomQuota(room);
         student.roomName = room.name;
         student.tableNumber = String(currentTTTable);
         student.anonymatNumber = `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
@@ -246,7 +276,7 @@ export default function OrganizationSection({
 
         currentTTTable++;
         globalAnonymatIndex++;
-        if (currentTTTable > room.capacity && currentTTRoomIdx < finalTtRooms.length - 1) {
+        if (currentTTTable > roomLimit && currentTTRoomIdx < finalTtRooms.length - 1) {
           currentTTRoomIdx++;
           currentTTTable = 1;
         }
@@ -259,6 +289,7 @@ export default function OrganizationSection({
 
     sortedRegular.forEach((student) => {
       const room = finalStdRooms[currentStdRoomIdx] || selectedRooms[0];
+      const roomLimit = getRoomQuota(room);
       student.roomName = room.name;
       student.tableNumber = String(currentStdTable);
       student.anonymatNumber = `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
@@ -266,7 +297,7 @@ export default function OrganizationSection({
 
       currentStdTable++;
       globalAnonymatIndex++;
-      if (currentStdTable > room.capacity && currentStdRoomIdx < finalStdRooms.length - 1) {
+      if (currentStdTable > roomLimit && currentStdRoomIdx < finalStdRooms.length - 1) {
         currentStdRoomIdx++;
         currentStdTable = 1;
       }
@@ -274,8 +305,81 @@ export default function OrganizationSection({
 
     onSetCandidates(updatedCandidates);
     onShowNotification(
-      `🎉 Répartition réussie ! ${updatedCandidates.length} élèves répartis dans les ${selectedRooms.length} salles sélectionnées (${selectedCapacity} places dispo).`
+      `🎉 Répartition réussie ! ${updatedCandidates.length} élèves répartis dans les ${selectedRooms.length} salles selon vos quotas personnalisés (${selectedCapacity} places disponibles).`
     );
+  };
+
+  // --- MANUAL ASSIGNMENT HELPERS ---
+  const handleOpenManualAssign = (preselectedRoomName?: string) => {
+    if (preselectedRoomName) {
+      setManualTargetRoomName(preselectedRoomName);
+    } else if (selectedRooms.length > 0) {
+      setManualTargetRoomName(selectedRooms[0].name);
+    }
+    // Default to first unassigned candidate if available
+    const unassigned = candidates.find((c) => !c.roomName);
+    if (unassigned) {
+      setManualCandidateId(unassigned.id);
+    } else if (candidates.length > 0) {
+      setManualCandidateId(candidates[0].id);
+    }
+    setIsManualAssignOpen(true);
+  };
+
+  const handleSaveManualAssignment = () => {
+    if (!manualCandidateId) {
+      alert("Veuillez sélectionner un élève.");
+      return;
+    }
+    if (!manualTargetRoomName) {
+      alert("Veuillez sélectionner une salle de destination.");
+      return;
+    }
+
+    const targetCandidate = candidates.find((c) => c.id === manualCandidateId);
+    if (!targetCandidate) return;
+
+    // Auto-calculate table number if empty
+    let finalTable = manualTableNumber.trim();
+    if (!finalTable) {
+      const inRoom = candidates.filter((c) => c.roomName === manualTargetRoomName);
+      const maxTable = inRoom.reduce((max, c) => {
+        const n = parseInt(c.tableNumber || "0", 10);
+        return !isNaN(n) && n > max ? n : max;
+      }, 0);
+      finalTable = String(maxTable + 1);
+    }
+
+    const updated = candidates.map((c) => {
+      if (c.id === manualCandidateId) {
+        return {
+          ...c,
+          roomName: manualTargetRoomName,
+          tableNumber: finalTable,
+          anonymatNumber: c.anonymatNumber || `${anonymatPrefix}${String(100 + candidates.indexOf(c) + 1).padStart(4, "0")}`,
+        };
+      }
+      return c;
+    });
+
+    onSetCandidates(updated);
+    onShowNotification(
+      `✅ Élève ${targetCandidate.lastName} ${targetCandidate.firstName} affecté(e) en ${manualTargetRoomName} (Table ${finalTable})`
+    );
+    setIsManualAssignOpen(false);
+    setManualTableNumber("");
+  };
+
+  const handleRemoveCandidateFromRoom = (candidateId: string) => {
+    const targetCandidate = candidates.find((c) => c.id === candidateId);
+    const updated = candidates.map((c) => {
+      if (c.id === candidateId) {
+        return { ...c, roomName: "", tableNumber: "", anonymatNumber: "" };
+      }
+      return c;
+    });
+    onSetCandidates(updated);
+    onShowNotification(`Élève ${targetCandidate?.lastName} retiré(e) de la salle.`);
   };
 
   // --- AUTOMATIC SUPERVISOR DISPATCH ALGORITHM ---
@@ -607,7 +711,7 @@ export default function OrganizationSection({
 
             {/* Room Cards with Mobilization & TT toggles */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {roomBreakdown.map(({ room, isMobilized, isTT, assignedCount, ttCount, fillRate }) => (
+              {roomBreakdown.map(({ room, isMobilized, isTT, assignedCount, ttCount, fillRate, quota }) => (
                 <div
                   key={room.id}
                   className={`p-4 rounded-xl border transition space-y-3 ${
@@ -645,10 +749,40 @@ export default function OrganizationSection({
 
                   {isMobilized ? (
                     <>
+                      {/* Quota Setting for this room */}
+                      <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                            <SlidersHorizontal className="h-3 w-3 text-blue-600" />
+                            <span>Quota d'élèves pour cette salle :</span>
+                          </label>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              min="1"
+                              max={100}
+                              value={quota}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value, 10);
+                                setCustomRoomCapacities((prev) => ({
+                                  ...prev,
+                                  [room.id]: isNaN(val) || val <= 0 ? 1 : val,
+                                }));
+                              }}
+                              className="w-16 px-2 py-0.5 text-xs font-bold text-center border border-slate-300 rounded bg-white text-slate-900 focus:ring-1 focus:ring-blue-500"
+                            />
+                            <span className="text-[10px] text-slate-400">places</span>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-slate-500">
+                          Capacité physique : <strong>{room.capacity}</strong> places. La répartition placera au maximum <strong>{quota}</strong> élèves ici.
+                        </p>
+                      </div>
+
                       <div className="flex items-center justify-between text-xs text-slate-500">
                         <span>Élèves affectés :</span>
                         <span className="font-bold text-slate-900">
-                          {assignedCount} / {room.capacity} places
+                          {assignedCount} / {quota} prévus ({room.capacity} max phys.)
                         </span>
                       </div>
 
@@ -666,13 +800,77 @@ export default function OrganizationSection({
                       </div>
 
                       <div className="flex items-center justify-between text-[11px] text-slate-500">
-                        <span>Remplissage : {fillRate}%</span>
+                        <span>Remplissage quota : {fillRate}%</span>
                         {ttCount > 0 && (
                           <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[10px]">
                             {ttCount} Tiers-temps
                           </span>
                         )}
                       </div>
+
+                      {/* Action buttons on room card */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenManualAssign(room.name)}
+                          className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold transition flex items-center gap-1 border border-blue-200"
+                        >
+                          <UserPlus className="h-3 w-3" />
+                          <span>+ Ajouter élève</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setInspectingRoomName(inspectingRoomName === room.name ? null : room.name)}
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition flex items-center gap-1"
+                        >
+                          <span>Élèves ({assignedCount})</span>
+                          {inspectingRoomName === room.name ? (
+                            <ChevronUp className="h-3 w-3" />
+                          ) : (
+                            <ChevronDown className="h-3 w-3" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Expandable list of students in this room */}
+                      {inspectingRoomName === room.name && (
+                        <div className="mt-2 pt-2 border-t border-slate-200 space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                          {assignedCount === 0 ? (
+                            <p className="text-[11px] text-slate-400 italic text-center py-2">
+                              Aucun élève affecté à cette salle.
+                            </p>
+                          ) : (
+                            candidates
+                              .filter((c) => c.roomName === room.name)
+                              .sort((a, b) => (parseInt(a.tableNumber || "0", 10) - parseInt(b.tableNumber || "0", 10)))
+                              .map((c) => (
+                                <div
+                                  key={c.id}
+                                  className="flex items-center justify-between p-1.5 rounded bg-white border border-slate-200 text-[11px]"
+                                >
+                                  <div className="flex items-center gap-1.5 overflow-hidden">
+                                    <span className="font-bold text-blue-700 w-6 text-center shrink-0">
+                                      T.{c.tableNumber || "?"}
+                                    </span>
+                                    <span className="font-semibold text-slate-900 truncate">
+                                      {c.lastName} {c.firstName}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 shrink-0">({c.className})</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveCandidateFromRoom(c.id)}
+                                    title="Retirer de la salle"
+                                    className="p-1 text-slate-400 hover:text-rose-600 transition shrink-0"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ))
+                          )}
+                        </div>
+                      )}
                     </>
                   ) : (
                     <p className="text-[11px] text-slate-400 italic">
@@ -681,6 +879,124 @@ export default function OrganizationSection({
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: MANUAL CANDIDATE ASSIGNMENT */}
+      {isManualAssignOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-blue-700">
+                <UserPlus className="h-5 w-5" />
+                <h4 className="font-bold text-slate-900 text-sm">
+                  Affecter Manuellement un Élève à une Salle
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsManualAssignOpen(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              {/* Search candidate filter */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  1. Rechercher et sélectionner l'élève :
+                </label>
+                <div className="relative mb-2">
+                  <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                  <input
+                    type="text"
+                    value={manualSearchTerm}
+                    onChange={(e) => setManualSearchTerm(e.target.value)}
+                    placeholder="Filtrer par nom, prénom ou classe..."
+                    className="w-full pl-8 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs"
+                  />
+                </div>
+                <select
+                  value={manualCandidateId}
+                  onChange={(e) => setManualCandidateId(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg font-medium text-slate-800 bg-white"
+                  size={5}
+                >
+                  {candidates
+                    .filter((c) => {
+                      if (!manualSearchTerm.trim()) return true;
+                      const term = manualSearchTerm.toLowerCase();
+                      return (
+                        c.lastName.toLowerCase().includes(term) ||
+                        c.firstName.toLowerCase().includes(term) ||
+                        c.className.toLowerCase().includes(term)
+                      );
+                    })
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.lastName} {c.firstName} ({c.className}) — {c.roomName ? `Actuellement en ${c.roomName} (T.${c.tableNumber || "?"})` : "⚠️ Non affecté"} {c.accommodation ? `[${c.accommodation}]` : ""}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Target Room */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  2. Salle de destination :
+                </label>
+                <select
+                  value={manualTargetRoomName}
+                  onChange={(e) => setManualTargetRoomName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-slate-800 bg-white"
+                >
+                  {rooms.map((r) => {
+                    const assignedInRoom = candidates.filter((c) => c.roomName === r.name).length;
+                    const quota = getRoomQuota(r);
+                    return (
+                      <option key={r.id} value={r.name}>
+                        {r.name} ({assignedInRoom} / {quota} places prévues - max {r.capacity})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {/* Table Number */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  3. N° de table (optionnel - auto-calculé si vide) :
+                </label>
+                <input
+                  type="text"
+                  value={manualTableNumber}
+                  onChange={(e) => setManualTableNumber(e.target.value)}
+                  placeholder="Laisser vide pour affecter automatiquement le prochain numéro"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsManualAssignOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveManualAssignment}
+                className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition shadow-xs flex items-center gap-1.5"
+              >
+                <UserCheck className="h-4 w-4" />
+                <span>Confirmer l'affectation</span>
+              </button>
             </div>
           </div>
         </div>

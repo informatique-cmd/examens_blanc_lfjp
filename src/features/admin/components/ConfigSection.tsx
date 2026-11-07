@@ -22,11 +22,20 @@ import {
   CheckSquare,
   Square,
   Flame,
+  Download,
+  FolderDown,
+  FolderUp,
+  Bookmark,
 } from "lucide-react";
-import type {
-  SiteInfo,
-  CmsExam,
-  CmsAnnouncement,
+import {
+  type SiteInfo,
+  type CmsExam,
+  type CmsAnnouncement,
+  type SavedConfigSnapshot,
+  getSavedConfigSnapshots,
+  saveConfigSnapshot,
+  deleteConfigSnapshot,
+  restoreConfigSnapshot,
 } from "../../../shared/services/cms-store";
 
 export interface StandardSlotItem {
@@ -225,6 +234,63 @@ export default function ConfigSection({
   });
   const [preserveCatalogs, setPreserveCatalogs] = useState(true);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+
+  // 9. Saved Configuration Snapshots
+  const [snapshots, setSnapshots] = useState<SavedConfigSnapshot[]>(() => getSavedConfigSnapshots());
+  const [newSnapshotName, setNewSnapshotName] = useState("");
+  const [isSnapshotModalOpen, setIsSnapshotModalOpen] = useState(false);
+
+  const handleCreateSnapshot = () => {
+    if (!newSnapshotName.trim()) {
+      alert("Veuillez saisir un nom pour cette configuration (ex: Bac Blanc Décembre 2026).");
+      return;
+    }
+    const snap = saveConfigSnapshot(newSnapshotName.trim());
+    setSnapshots(getSavedConfigSnapshots());
+    setNewSnapshotName("");
+    setIsSnapshotModalOpen(false);
+    onShowNotification(`💾 Configuration « ${snap.name} » sauvegardée avec succès !`);
+  };
+
+  const handleRestoreSnapshot = (id: string) => {
+    const snap = snapshots.find((s) => s.id === id);
+    if (!snap) return;
+    const confirmRestore = confirm(
+      `Êtes-vous sûr de vouloir charger la configuration « ${snap.name} » ?\n\nCela va restaurer ${snap.examsCount} examens, ${snap.candidatesCount} élèves et ${snap.slotsCount} créneaux.`
+    );
+    if (!confirmRestore) return;
+
+    const restored = restoreConfigSnapshot(id);
+    if (restored) {
+      onShowNotification(`🔄 Configuration « ${snap.name} » restaurée avec succès !`);
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    }
+  };
+
+  const handleDeleteSnapshot = (id: string) => {
+    const snap = snapshots.find((s) => s.id === id);
+    if (!snap) return;
+    if (!confirm(`Supprimer définitivement la sauvegarde « ${snap.name} » ?`)) return;
+    const updated = deleteConfigSnapshot(id);
+    setSnapshots(updated);
+    onShowNotification(`Sauvegarde supprimée.`);
+  };
+
+  const handleExportSnapshot = (snap: SavedConfigSnapshot) => {
+    const json = JSON.stringify(snap.data, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `lfjp-config-${snap.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${snap.createdAt.split("T")[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    onShowNotification(`Fichier de configuration téléchargé !`);
+  };
 
   // Save all main settings
   const handleSaveAll = () => {
@@ -1197,6 +1263,170 @@ export default function ConfigSection({
           </button>
         </div>
       </div>
+
+      {/* 9. Profils & Sauvegardes de Configuration */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
+        <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700">
+              <Bookmark className="h-4 w-4" />
+            </span>
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm">
+                Sauvegardes & Profils de Configuration
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Enregistrez des copies de secours de vos examens, créneaux et répartitions pour pouvoir les restaurer à tout moment
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsSnapshotModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 self-start sm:self-auto"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>+ Sauvegarder la configuration actuelle</span>
+          </button>
+        </div>
+
+        {snapshots.length === 0 ? (
+          <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2">
+            <Bookmark className="h-8 w-8 text-slate-400 mx-auto" />
+            <p className="text-xs font-bold text-slate-700">Aucune sauvegarde enregistrée</p>
+            <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+              Cliquez sur le bouton ci-dessus pour immortaliser votre programmation actuelle (épreuves, créneaux, surveillants, candidats et salles).
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {snapshots.map((snap) => (
+              <div
+                key={snap.id}
+                className="p-4 rounded-xl border border-slate-200 bg-white hover:border-emerald-300 hover:shadow-xs transition space-y-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="font-bold text-xs text-slate-900">{snap.name}</h4>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Enregistrée le {new Date(snap.createdAt).toLocaleDateString("fr-FR")} à {new Date(snap.createdAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
+                    {snap.schoolYear}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 py-2 px-3 bg-slate-50 rounded-lg text-center text-[10px] text-slate-600 border border-slate-100">
+                  <div>
+                    <span className="font-bold text-slate-900 block text-xs">{snap.examsCount}</span>
+                    <span>Examens</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-900 block text-xs">{snap.slotsCount}</span>
+                    <span>Créneaux</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-900 block text-xs">{snap.candidatesCount}</span>
+                    <span>Candidats</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleRestoreSnapshot(snap.id)}
+                    className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    <span>Restaurer</span>
+                  </button>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleExportSnapshot(snap)}
+                      title="Télécharger cette configuration au format JSON"
+                      className="p-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-50 transition"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSnapshot(snap.id)}
+                      title="Supprimer cette sauvegarde"
+                      className="p-1.5 rounded-lg border border-slate-300 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Modal: Save Snapshot */}
+      {isSnapshotModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-emerald-700">
+                <Bookmark className="h-5 w-5" />
+                <h4 className="font-bold text-slate-900 text-sm">
+                  Sauvegarder la Configuration Actuelle
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSnapshotModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-slate-600 text-[11px]">
+                Donnez un nom mémorable à cette configuration pour la retrouver facilement plus tard (ex: <em>Bac Blanc Décembre 2026 - Version Finale</em>).
+              </p>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Nom de la configuration :
+                </label>
+                <input
+                  type="text"
+                  value={newSnapshotName}
+                  onChange={(e) => setNewSnapshotName(e.target.value)}
+                  placeholder="Ex: Session Bac Blanc Décembre 2026"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsSnapshotModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateSnapshot}
+                className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition shadow-xs flex items-center gap-1.5"
+              >
+                <Save className="h-4 w-4" />
+                <span>Enregistrer la configuration</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Slot Edit/Add */}
       {isSlotModalOpen && (
