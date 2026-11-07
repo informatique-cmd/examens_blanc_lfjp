@@ -35,6 +35,14 @@ import {
   Bell,
   Save,
   UserCheck,
+  LayoutDashboard,
+  Settings,
+  FolderOpen,
+  ClipboardList,
+  Clock,
+  CalendarRange,
+  BarChart3,
+  Award,
 } from "lucide-react";
 
 import {
@@ -1421,18 +1429,17 @@ export default function AdminPage() {
                 Workflow chronologique :
               </span>
               {[
-                { id: "dashboard", label: "0. Tableau de Bord", icon: "📊" },
-                { id: "config", label: "1. Paramètres & Logo", icon: "⚙️" },
-                { id: "data-eleves", label: "2. Données Pronote", icon: "📂" },
-                { id: "sessions-examens", label: "3. Sessions", icon: "📋" },
-                { id: "creneaux-epreuves", label: "4. Créneaux", icon: "🕒" },
-                { id: "organization", label: "5. Répartition & Brassage", icon: "🧩" },
-                { id: "planning-rooms", label: "6. Plannings", icon: "📅" },
-                { id: "view-edt", label: "7. Vers EDT", icon: "➡️" },
-                { id: "convoc-eleves", label: "8. Convocations", icon: "📨" },
-                { id: "corr-repartition", label: "9. Corrections & Notes", icon: "📦" },
-                { id: "vitrine-publish", label: "10. Vitrine", icon: "📢" },
-                { id: "deployment", label: "11. Déploiement", icon: "🚀" },
+                { id: "dashboard", label: "Tableau de Bord", icon: LayoutDashboard },
+                { id: "config", label: "1. Paramètres", icon: Settings },
+                { id: "data-eleves", label: "2. Données Pronote", icon: FolderOpen },
+                { id: "sessions-examens", label: "3. Sessions", icon: ClipboardList },
+                { id: "creneaux-epreuves", label: "4. Créneaux", icon: Clock },
+                { id: "organization", label: "5. Répartition & Brassage", icon: Shuffle },
+                { id: "planning-rooms", label: "6. Plannings", icon: Calendar },
+                { id: "view-edt", label: "7. Vers EDT", icon: CalendarRange },
+                { id: "corr-repartition", label: "8. Corrections & Notes", icon: BarChart3 },
+                { id: "convoc-eleves", label: "10. Convocations & Vitrine", icon: Printer },
+                { id: "deployment", label: "11. Déploiement", icon: UploadCloud },
               ]
                 .filter((step) => {
                   if (adminSession?.role === "proviseur" && step.id === "config") {
@@ -1441,12 +1448,13 @@ export default function AdminPage() {
                   return true;
                 })
                 .map((step, idx) => {
+                const StepIcon = step.icon;
                 const isActive =
                   currentSection === step.id ||
                   (step.id === "data-eleves" &&
                     ["data-eleves", "data-salles", "data-profs", "data-amenagements", "sec-pochettes"].includes(currentSection)) ||
                   (step.id === "planning-rooms" && ["planning-rooms", "planning-profs"].includes(currentSection)) ||
-                  (step.id === "convoc-eleves" && ["convoc-eleves", "convoc-profs"].includes(currentSection)) ||
+                  (step.id === "convoc-eleves" && ["convoc-eleves", "convoc-profs", "vitrine-publish"].includes(currentSection)) ||
                   (step.id === "corr-repartition" &&
                     ["corr-repartition", "res-import", "res-analyse", "res-releves", "res-datavis", "res-simul"].includes(currentSection));
 
@@ -1456,13 +1464,13 @@ export default function AdminPage() {
                     <button
                       type="button"
                       onClick={() => setCurrentSection(step.id as AdminSection)}
-                      className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1 ${
+                      className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
                         isActive
                           ? "bg-slate-900 text-white shadow-xs"
                           : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                       }`}
                     >
-                      <span>{step.icon}</span>
+                      <StepIcon className="h-3.5 w-3.5" />
                       <span>{step.label}</span>
                     </button>
                   </Fragment>
@@ -1643,23 +1651,6 @@ export default function AdminPage() {
             />
           )}
 
-          {/* 7. CONVOCATIONS ÉLÈVES */}
-          {currentSection === "convoc-eleves" && (
-            <ConvocElevesSection
-              candidates={cmsData.candidates}
-              siteInfo={cmsData.siteInfo}
-            />
-          )}
-
-          {/* 7. CONVOCATIONS PROFESSEURS */}
-          {currentSection === "convoc-profs" && (
-            <ConvocProfsSection
-              teachers={cmsData.teachers}
-              surveillances={cmsData.surveillances}
-              siteInfo={cmsData.siteInfo}
-            />
-          )}
-
           {/* 8. CORRECTIONS */}
           {currentSection === "corr-repartition" && (
             <CorrRepartitionSection
@@ -1679,25 +1670,95 @@ export default function AdminPage() {
             />
           )}
 
-          {/* 9. VITRINE & PUBLICATIONS */}
-          {currentSection === "vitrine-publish" && (
-            <VitrinePublishSection
-              siteInfo={cmsData.siteInfo}
-              exams={cmsData.exams}
-              announcements={cmsData.announcements}
-              surveillances={cmsData.surveillances}
-              examSlots={cmsData.examSlots || []}
-              callouts={cmsData.callouts}
-              onTogglePublishExam={(id, pub) => updateExam(id, { isPublished: pub })}
-              onTogglePublishAnnouncement={(id, pub) => updateAnnouncement(id, { isPublished: pub })}
-              onAddAnnouncement={addAnnouncement}
-              onUpdateAnnouncement={updateAnnouncement}
-              onDeleteAnnouncement={deleteAnnouncement}
-              onAddExam={addExam}
-              onUpdateExam={updateExam}
-              onDeleteExam={deleteExam}
-              onShowNotification={showNotification}
-            />
+          {/* 10. CONVOCATIONS & VITRINE OFFICIELLE (UNIFIÉE) */}
+          {["convoc-eleves", "convoc-profs", "vitrine-publish"].includes(currentSection) && (
+            <div className="space-y-6">
+              {/* Institutional Sub-Navigation for Step 10 */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <Printer className="h-5 w-5 text-cyan-700" />
+                    <span>Étape 10 : Convocations & Vitrine Officielle</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Édition des documents certifiés pour les épreuves et diffusion publique des consignes officielles.
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 border border-slate-200/80">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentSection("convoc-eleves")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                      currentSection === "convoc-eleves"
+                        ? "bg-white text-slate-900 shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>Convocations Élèves</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentSection("convoc-profs")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                      currentSection === "convoc-profs"
+                        ? "bg-white text-slate-900 shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Award className="h-3.5 w-3.5" />
+                    <span>Ordres de Mission Profs</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentSection("vitrine-publish")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                      currentSection === "vitrine-publish"
+                        ? "bg-white text-slate-900 shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    <span>Vitrine & Publications</span>
+                  </button>
+                </div>
+              </div>
+
+              {currentSection === "convoc-eleves" && (
+                <ConvocElevesSection
+                  candidates={cmsData.candidates}
+                  siteInfo={cmsData.siteInfo}
+                />
+              )}
+
+              {currentSection === "convoc-profs" && (
+                <ConvocProfsSection
+                  teachers={cmsData.teachers}
+                  surveillances={cmsData.surveillances}
+                  siteInfo={cmsData.siteInfo}
+                />
+              )}
+
+              {currentSection === "vitrine-publish" && (
+                <VitrinePublishSection
+                  siteInfo={cmsData.siteInfo}
+                  exams={cmsData.exams}
+                  announcements={cmsData.announcements}
+                  surveillances={cmsData.surveillances}
+                  examSlots={cmsData.examSlots || []}
+                  callouts={cmsData.callouts}
+                  onTogglePublishExam={(id, pub) => updateExam(id, { isPublished: pub })}
+                  onTogglePublishAnnouncement={(id, pub) => updateAnnouncement(id, { isPublished: pub })}
+                  onAddAnnouncement={addAnnouncement}
+                  onUpdateAnnouncement={updateAnnouncement}
+                  onDeleteAnnouncement={deleteAnnouncement}
+                  onAddExam={addExam}
+                  onUpdateExam={updateExam}
+                  onDeleteExam={deleteExam}
+                  onShowNotification={showNotification}
+                />
+              )}
+            </div>
           )}
 
           {/* 10. DÉPLOIEMENT VERCEL & GITHUB */}
@@ -1874,42 +1935,7 @@ export default function AdminPage() {
                   <p className="mt-1 text-xs text-slate-500">Créneaux enseignants affectés</p>
                 </div>
               </div>
-
-              {/* Backup & Export Panel */}
-              <div className="max-w-3xl rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-bold text-slate-900">Sauvegarde & Restauration Locale</h3>
-                  <span className="text-xs text-slate-400">Format JSON</span>
-                </div>
-                <p className="text-xs text-slate-600">
-                    Vous pouvez à tout moment exporter l'intégralité des données en fichier JSON ou restaurer une version précédente.
-                  </p>
-                  <div className="grid grid-cols-2 gap-3 pt-1">
-                    <button
-                      onClick={handleDownloadJson}
-                      className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50"
-                    >
-                      <Download className="h-4 w-4 text-emerald-600" />
-                      <span>Télécharger JSON</span>
-                    </button>
-                    <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50">
-                      <UploadCloud className="h-4 w-4 text-blue-600" />
-                      <span>Importer JSON</span>
-                      <input type="file" accept=".json" onChange={handleImportJson} className="hidden" />
-                    </label>
-                  </div>
-                  <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500 space-y-1">
-                    <div className="flex justify-between">
-                      <span>Dépôt GitHub :</span>
-                      <span className="font-mono text-slate-700">{githubConfig.owner}/{githubConfig.repo}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Compte connecté :</span>
-                      <span className="font-semibold text-slate-800">@{githubUser?.login}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            </div>
           )}
         </main>
       </div>

@@ -18,6 +18,7 @@ import {
   SlidersHorizontal,
   ChevronDown,
   ChevronUp,
+  RotateCcw,
 } from "lucide-react";
 import type {
   CmsCandidate,
@@ -309,6 +310,26 @@ export default function OrganizationSection({
     );
   };
 
+  const handleResetDispatch = () => {
+    if (candidates.length === 0) {
+      alert("Aucun élève à réinitialiser.");
+      return;
+    }
+    const confirmed = confirm(
+      "Voulez-vous réinitialiser l'affectation de tous les élèves ?\n\nCela effacera les salles attribuées, les numéros de table et les numéros d'anonymat pour tous les candidats, sans supprimer leurs fiches. Vous pourrez ainsi relancer le brassage de zéro."
+    );
+    if (!confirmed) return;
+
+    const resetCandidates = candidates.map((c) => ({
+      ...c,
+      roomName: "",
+      tableNumber: "",
+      anonymatNumber: "",
+    }));
+    onSetCandidates(resetCandidates);
+    onShowNotification("Le brassage a été réinitialisé. Tous les élèves sont désormais en attente d'affectation.");
+  };
+
   // --- MANUAL ASSIGNMENT HELPERS ---
   const handleOpenManualAssign = (preselectedRoomName?: string) => {
     if (preselectedRoomName) {
@@ -547,8 +568,18 @@ export default function OrganizationSection({
       {/* ======================================================== */}
       {activeTab === "eleves" && (
         <div className="space-y-6">
-          <div className="flex justify-end">
+          <div className="flex justify-end items-center gap-3">
             <button
+              type="button"
+              onClick={handleResetDispatch}
+              className="px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-700 font-semibold text-xs transition shadow-2xs flex items-center gap-2"
+              title="Efface les attributions de salles et tables pour recommencer à zéro sans supprimer les élèves"
+            >
+              <RotateCcw className="h-4 w-4 text-rose-600" />
+              <span>Réinitialiser le brassage</span>
+            </button>
+            <button
+              type="button"
               onClick={handleRunDispatch}
               className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-2"
             >

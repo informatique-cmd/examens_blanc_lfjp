@@ -19,6 +19,11 @@ import {
   ClipboardList,
   Compass,
   FileSpreadsheet,
+  Sliders,
+  Shuffle,
+  CalendarRange,
+  UploadCloud,
+  type LucideIcon,
 } from "lucide-react";
 import type {
   CmsCandidate,
@@ -76,7 +81,7 @@ export default function AdminDashboardSection({
     number: string;
     title: string;
     description: string;
-    icon: string;
+    icon: LucideIcon;
     badge: string;
     count?: string | number;
     color: string;
@@ -86,7 +91,7 @@ export default function AdminDashboardSection({
       number: "01",
       title: "Paramètres & Logos",
       description: "Identité établissement, année scolaire, horaires officiels et logos officiels AEFE.",
-      icon: "⚙️",
+      icon: Sliders,
       badge: "Configuré",
       color: "border-blue-200 bg-blue-50/40 text-blue-800",
     },
@@ -95,7 +100,7 @@ export default function AdminDashboardSection({
       number: "02",
       title: "Données Pronote (Élèves)",
       description: "Cohortes de candidats, divisions de classe, numéros et aménagements.",
-      icon: "👤",
+      icon: Users,
       badge: `${candidates.length} élèves`,
       count: candidates.length,
       color: "border-indigo-200 bg-indigo-50/40 text-indigo-800",
@@ -105,7 +110,7 @@ export default function AdminDashboardSection({
       number: "03",
       title: "Salles d'Examens",
       description: "Capacités d'accueil, bâtiments et configuration des salles dédiées tiers-temps.",
-      icon: "🏫",
+      icon: School,
       badge: `${rooms.length} salles`,
       count: rooms.length,
       color: "border-emerald-200 bg-emerald-50/40 text-emerald-800",
@@ -115,7 +120,7 @@ export default function AdminDashboardSection({
       number: "04",
       title: "Professeurs & Surveillants",
       description: "Répertoire des enseignants, disciplines et suivi des disponibilités.",
-      icon: "🎓",
+      icon: GraduationCap,
       badge: `${teachers.length} enseignants`,
       count: teachers.length,
       color: "border-sky-200 bg-sky-50/40 text-sky-800",
@@ -125,7 +130,7 @@ export default function AdminDashboardSection({
       number: "05",
       title: "Sessions d'Examens",
       description: "Planification des sessions DNB blanc, Baccalauréat et épreuves orales.",
-      icon: "📋",
+      icon: ClipboardList,
       badge: `${exams.length} sessions`,
       count: exams.length,
       color: "border-violet-200 bg-violet-50/40 text-violet-800",
@@ -135,7 +140,7 @@ export default function AdminDashboardSection({
       number: "06",
       title: "Créneaux des Épreuves",
       description: "Disciplines, dates, horaires standard et majoration +1/3 temps calculée.",
-      icon: "🕒",
+      icon: Clock,
       badge: `${examSlots.length} créneaux`,
       count: examSlots.length,
       color: "border-amber-200 bg-amber-50/40 text-amber-800",
@@ -145,7 +150,7 @@ export default function AdminDashboardSection({
       number: "07",
       title: "Répartition & Brassage",
       description: "Brassage inter-classes anti-fraude, affectation aux tables et numéros d'anonymat.",
-      icon: "🧩",
+      icon: Shuffle,
       badge: "Actif",
       color: "border-teal-200 bg-teal-50/40 text-teal-800",
     },
@@ -154,7 +159,7 @@ export default function AdminDashboardSection({
       number: "08",
       title: "Plannings & Surveillances",
       description: "Affectation nominative des enseignants par salle et équilibrage des charges.",
-      icon: "📅",
+      icon: Shield,
       badge: `${surveillances.length} postes`,
       count: surveillances.length,
       color: "border-rose-200 bg-rose-50/40 text-rose-800",
@@ -164,34 +169,25 @@ export default function AdminDashboardSection({
       number: "09",
       title: "Vers EDT & Cours Impactés",
       description: "Visualisation des cours réguliers à déplacer et neutralisation des salles.",
-      icon: "➡️",
+      icon: CalendarRange,
       badge: "Export EDT",
       color: "border-orange-200 bg-orange-50/40 text-orange-800",
     },
     {
       id: "convoc-eleves",
       number: "10",
-      title: "Convocations & Ordres de Mission",
-      description: "Impression officielle A4 (nominative élève avec signature Proviseur(e)).",
-      icon: "📨",
-      badge: "Certifié A4",
+      title: "Convocations & Vitrine Officielle",
+      description: "Impression officielle A4 (nominative élève, ordres de mission) et consignes vitrine.",
+      icon: Printer,
+      badge: "Certifié A4 & Vitrine",
       color: "border-cyan-200 bg-cyan-50/40 text-cyan-800",
     },
     {
-      id: "vitrine-publish",
-      number: "11",
-      title: "Vitrine & Communication",
-      description: "Consignes officielles de direction, affichage des épreuves et alertes.",
-      icon: "📢",
-      badge: `${publishedAnnouncements.length} publiée(s)`,
-      color: "border-fuchsia-200 bg-fuchsia-50/40 text-fuchsia-800",
-    },
-    {
       id: "deployment",
-      number: "12",
+      number: "11",
       title: "Déploiement Vercel & Git",
       description: "Centre de synchronisation GitHub et redéploiement mondial sans frais.",
-      icon: "🚀",
+      icon: UploadCloud,
       badge: "Vercel en ligne",
       color: "border-blue-300 bg-blue-100/50 text-blue-900 font-bold",
     },
@@ -368,13 +364,13 @@ export default function AdminDashboardSection({
         </div>
       </div>
 
-      {/* 3. WORKFLOW CHRONOLOGIQUE COMPLET (12 ÉTAPES PROPRES & CLAIRES) */}
+      {/* 3. WORKFLOW CHRONOLOGIQUE COMPLET (11 ÉTAPES PROPRES & CLAIRES) */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
           <div>
             <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
               <Compass className="h-5 w-5 text-[#002060]" />
-              <span>Workflow Opérationnel des Examens (12 Étapes)</span>
+              <span>Workflow Opérationnel des Examens (11 Étapes)</span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Accédez directement à chaque étape pour configurer, répartir et publier les épreuves.
@@ -386,26 +382,28 @@ export default function AdminDashboardSection({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {displayedWorkflowSteps.map((step) => (
-            <div
-              key={step.id}
-              onClick={() => onNavigateSection(step.id)}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs hover:shadow-xs hover:border-blue-400 transition cursor-pointer flex flex-col justify-between group"
-            >
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-2xl group-hover:scale-110 transition shrink-0">
-                      {step.icon}
-                    </span>
-                    <span className="text-xs font-mono font-bold text-slate-400">
-                      Étape {step.number}
+          {displayedWorkflowSteps.map((step) => {
+            const StepIcon = step.icon;
+            return (
+              <div
+                key={step.id}
+                onClick={() => onNavigateSection(step.id)}
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs hover:shadow-xs hover:border-blue-400 transition cursor-pointer flex flex-col justify-between group"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 group-hover:bg-[#002060] group-hover:text-white transition shrink-0">
+                        <StepIcon className="h-4.5 w-4.5" />
+                      </div>
+                      <span className="text-xs font-mono font-bold text-slate-400">
+                        Étape {step.number}
+                      </span>
+                    </div>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${step.color}`}>
+                      {step.badge}
                     </span>
                   </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${step.color}`}>
-                    {step.badge}
-                  </span>
-                </div>
 
                 <h3 className="font-bold text-sm text-slate-900 group-hover:text-blue-700 transition">
                   {step.title}
@@ -421,7 +419,8 @@ export default function AdminDashboardSection({
                 <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition" />
               </div>
             </div>
-          ))}
+          );
+        })}
         </div>
       </div>
 

@@ -1,9 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import {
+  LayoutDashboard,
   Settings,
   FolderOpen,
-  User,
+  Users,
   School,
   GraduationCap,
   Accessibility,
@@ -27,9 +28,12 @@ import {
   FolderInput,
   ChevronDown,
   ChevronRight,
-  RotateCcw,
   Clock,
   ClipboardList,
+  Shuffle,
+  Printer,
+  CalendarRange,
+  FileText,
 } from "lucide-react";
 
 export type AdminSection =
@@ -108,6 +112,7 @@ export default function AdminSidebar({
   const isConvocActive = [
     "convoc-eleves",
     "convoc-profs",
+    "vitrine-publish",
   ].includes(currentSection);
 
   const isResActive = [
@@ -156,7 +161,7 @@ export default function AdminSidebar({
           }`}
         >
           <div className="flex items-center gap-2.5">
-            <span className="text-base">📊</span>
+            <LayoutDashboard className="h-4 w-4 shrink-0 text-sky-400" />
             <span>Tableau de Bord</span>
           </div>
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/15 text-white">
@@ -175,9 +180,12 @@ export default function AdminSidebar({
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <Settings className="h-4 w-4 shrink-0 text-white/80" />
-              <span>⚙️ Paramètres & Accès</span>
+              <Settings className="h-4 w-4 shrink-0 text-slate-300" />
+              <span>Paramètres & Accès</span>
             </div>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-200 font-mono">
+              01
+            </span>
           </button>
         )}
 
@@ -193,13 +201,18 @@ export default function AdminSidebar({
           >
             <div className="flex items-center gap-2.5">
               <FolderOpen className="h-4 w-4 shrink-0 text-amber-400" />
-              <span>📂 2. Données Pronote</span>
+              <span>Données Pronote</span>
             </div>
-            {openSubmenus.dataMenu ? (
-              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5 opacity-60" />
-            )}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-200 font-mono">
+                02
+              </span>
+              {openSubmenus.dataMenu ? (
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+              )}
+            </div>
           </button>
 
           {openSubmenus.dataMenu && (
@@ -213,8 +226,8 @@ export default function AdminSidebar({
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <User className="h-3.5 w-3.5 text-sky-400" />
-                  <span>👤 Élèves</span>
+                  <Users className="h-3.5 w-3.5 text-sky-400" />
+                  <span>Élèves</span>
                 </div>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 text-slate-300">
                   {candidatesCount}
@@ -231,7 +244,7 @@ export default function AdminSidebar({
               >
                 <div className="flex items-center gap-2">
                   <School className="h-3.5 w-3.5 text-emerald-400" />
-                  <span>🏫 Salles</span>
+                  <span>Salles</span>
                 </div>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 text-slate-300">
                   {roomsCount}
@@ -248,7 +261,7 @@ export default function AdminSidebar({
               >
                 <div className="flex items-center gap-2">
                   <GraduationCap className="h-3.5 w-3.5 text-indigo-400" />
-                  <span>🎓 Professeurs</span>
+                  <span>Professeurs</span>
                 </div>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 text-slate-300">
                   {teachersCount}
@@ -264,7 +277,7 @@ export default function AdminSidebar({
                 }`}
               >
                 <Accessibility className="h-3.5 w-3.5 text-purple-400" />
-                <span>♿ Aménagements (PAP/PPS)</span>
+                <span>Aménagements (PAP/PPS)</span>
               </button>
 
               <button
@@ -276,7 +289,7 @@ export default function AdminSidebar({
                 }`}
               >
                 <FolderArchive className="h-3.5 w-3.5 text-amber-300" />
-                <span>📁 Pochettes Surveillants</span>
+                <span>Pochettes Surveillants</span>
               </button>
             </div>
           )}
@@ -293,13 +306,18 @@ export default function AdminSidebar({
         >
           <div className="flex items-center gap-2.5">
             <ClipboardList className="h-4 w-4 shrink-0 text-amber-400" />
-            <span>📋 3. Sessions d'Examens</span>
+            <span>Sessions d'Examens</span>
           </div>
-          {typeof examsCount === "number" && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/30 text-amber-200 font-bold">
-              {examsCount}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/30 text-violet-200 font-mono">
+              03
             </span>
-          )}
+            {typeof examsCount === "number" && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 text-slate-300">
+                {examsCount}
+              </span>
+            )}
+          </div>
         </button>
 
         {/* 4. Créneaux des Épreuves */}
@@ -313,26 +331,36 @@ export default function AdminSidebar({
         >
           <div className="flex items-center gap-2.5">
             <Clock className="h-4 w-4 shrink-0 text-cyan-400" />
-            <span>🕒 4. Créneaux des Épreuves</span>
+            <span>Créneaux des Épreuves</span>
           </div>
-          {typeof examSlotsCount === "number" && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/30 text-cyan-200 font-bold">
-              {examSlotsCount}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/30 text-amber-200 font-mono">
+              04
             </span>
-          )}
+            {typeof examSlotsCount === "number" && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 text-slate-300">
+                {examSlotsCount}
+              </span>
+            )}
+          </div>
         </button>
 
         {/* 5. Répartition & Brassage */}
         <button
           onClick={() => onSelectSection("organization")}
-          className={`w-full flex items-center gap-2.5 px-4 py-3 text-left transition border-b border-white/5 ${
+          className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
             currentSection === "organization"
               ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
               : "hover:bg-white/5 hover:text-white"
           }`}
         >
-          <Grid className="h-4 w-4 shrink-0 text-emerald-400" />
-          <span>🧩 5. Répartition & Brassage</span>
+          <div className="flex items-center gap-2.5">
+            <Shuffle className="h-4 w-4 shrink-0 text-teal-400" />
+            <span>Répartition & Brassage</span>
+          </div>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-500/30 text-teal-200 font-mono">
+            05
+          </span>
         </button>
 
         {/* 6. Planning (Submenu) */}
@@ -347,13 +375,18 @@ export default function AdminSidebar({
           >
             <div className="flex items-center gap-2.5">
               <Calendar className="h-4 w-4 shrink-0 text-indigo-400" />
-              <span>📅 6. Plannings</span>
+              <span>Plannings Surveillances</span>
             </div>
-            {openSubmenus.planningMenu ? (
-              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5 opacity-60" />
-            )}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-200 font-mono">
+                06
+              </span>
+              {openSubmenus.planningMenu ? (
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+              )}
+            </div>
           </button>
 
           {openSubmenus.planningMenu && (
@@ -367,7 +400,7 @@ export default function AdminSidebar({
                 }`}
               >
                 <School className="h-3.5 w-3.5 text-emerald-400" />
-                <span>🏫 Vue par Salles</span>
+                <span>Vue par Salles</span>
               </button>
 
               <button
@@ -379,7 +412,7 @@ export default function AdminSidebar({
                 }`}
               >
                 <GraduationCap className="h-3.5 w-3.5 text-indigo-400" />
-                <span>🎓 Vue Professeurs</span>
+                <span>Vue Professeurs</span>
               </button>
             </div>
           )}
@@ -388,67 +421,22 @@ export default function AdminSidebar({
         {/* 7. Vers EDT */}
         <button
           onClick={() => onSelectSection("view-edt")}
-          className={`w-full flex items-center gap-2.5 px-4 py-3 text-left transition border-b border-white/5 ${
+          className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
             currentSection === "view-edt"
               ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
               : "hover:bg-white/5 hover:text-white"
           }`}
         >
-          <ArrowRightCircle className="h-4 w-4 shrink-0 text-teal-400" />
-          <span>➡️ 7. Vers EDT</span>
+          <div className="flex items-center gap-2.5">
+            <CalendarRange className="h-4 w-4 shrink-0 text-orange-400" />
+            <span>Vers EDT & Cours Impactés</span>
+          </div>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/30 text-orange-200 font-mono">
+            07
+          </span>
         </button>
 
-        {/* 8. Convocations (Submenu) */}
-        <div>
-          <button
-            onClick={() => onToggleSubmenu("convocMenu")}
-            className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
-              isConvocActive
-                ? "text-white font-semibold bg-white/5"
-                : "hover:bg-white/5 hover:text-white"
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Mail className="h-4 w-4 shrink-0 text-amber-400" />
-              <span>📨 8. Convocations</span>
-            </div>
-            {openSubmenus.convocMenu ? (
-              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5 opacity-60" />
-            )}
-          </button>
-
-          {openSubmenus.convocMenu && (
-            <div className="bg-black/20 py-1 border-b border-white/5">
-              <button
-                onClick={() => onSelectSection("convoc-eleves")}
-                className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
-                  currentSection === "convoc-eleves"
-                    ? "text-white font-bold bg-[#3498db]/40 border-l-2 border-[#3498db]"
-                    : "text-[#bdc3c7] hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <GraduationCap className="h-3.5 w-3.5 text-sky-400" />
-                <span>🎓 Convocations & Étiquettes</span>
-              </button>
-
-              <button
-                onClick={() => onSelectSection("convoc-profs")}
-                className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
-                  currentSection === "convoc-profs"
-                    ? "text-white font-bold bg-[#3498db]/40 border-l-2 border-[#3498db]"
-                    : "text-[#bdc3c7] hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <Award className="h-3.5 w-3.5 text-amber-400" />
-                <span>👔 Ordres de Mission Profs</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* 9. Corrections & Résultats (Submenu) */}
+        {/* 8. Corrections & Résultats (Submenu) */}
         <div>
           <button
             onClick={() => onToggleSubmenu("resMenu")}
@@ -460,13 +448,18 @@ export default function AdminSidebar({
           >
             <div className="flex items-center gap-2.5">
               <BarChart3 className="h-4 w-4 shrink-0 text-cyan-400" />
-              <span>📊 9. Corrections & Résultats</span>
+              <span>Corrections & Notes</span>
             </div>
-            {openSubmenus.resMenu ? (
-              <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5 opacity-60" />
-            )}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-200 font-mono">
+                08
+              </span>
+              {openSubmenus.resMenu ? (
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+              )}
+            </div>
           </button>
 
           {openSubmenus.resMenu && (
@@ -480,7 +473,7 @@ export default function AdminSidebar({
                 }`}
               >
                 <Package className="h-3.5 w-3.5 text-orange-400" />
-                <span>📦 Répartition Copies</span>
+                <span>Répartition Copies</span>
               </button>
 
               <button
@@ -492,7 +485,7 @@ export default function AdminSidebar({
                 }`}
               >
                 <DownloadCloud className="h-3.5 w-3.5 text-sky-400" />
-                <span>📥 Import Notes</span>
+                <span>Import Notes</span>
               </button>
 
               <button
@@ -504,7 +497,7 @@ export default function AdminSidebar({
                 }`}
               >
                 <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-400" />
-                <span>📊 Analyse Corrections</span>
+                <span>Analyse Corrections</span>
               </button>
 
               <button
@@ -516,7 +509,7 @@ export default function AdminSidebar({
                 }`}
               >
                 <FileCheck2 className="h-3.5 w-3.5 text-amber-400" />
-                <span>📄 Relevés de Notes</span>
+                <span>Relevés de Notes</span>
               </button>
 
               <button
@@ -528,7 +521,7 @@ export default function AdminSidebar({
                 }`}
               >
                 <PieChart className="h-3.5 w-3.5 text-purple-400" />
-                <span>📈 DataVisualisation</span>
+                <span>DataVisualisation</span>
               </button>
 
               <button
@@ -540,42 +533,96 @@ export default function AdminSidebar({
                 }`}
               >
                 <Sparkles className="h-3.5 w-3.5 text-yellow-400" />
-                <span>🔮 Simulation DNB / Bac</span>
+                <span>Simulation DNB / Bac</span>
               </button>
             </div>
           )}
         </div>
 
-        {/* 10. Vitrine & Publications (Pilote central de publication) */}
-        <button
-          onClick={() => onSelectSection("vitrine-publish")}
-          className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
-            currentSection === "vitrine-publish"
-              ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
-              : "hover:bg-white/5 hover:text-white"
-          }`}
-        >
-          <div className="flex items-center gap-2.5">
-            <Eye className="h-4 w-4 shrink-0 text-emerald-400" />
-            <span>📢 10. Vitrine & Publications</span>
-          </div>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-300 font-bold uppercase">
-            Acteurs
-          </span>
-        </button>
+        {/* 10. Convocations & Vitrine (Submenu Combiné Étapes 10 & 11) */}
+        <div>
+          <button
+            onClick={() => onToggleSubmenu("convocMenu")}
+            className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
+              isConvocActive
+                ? "text-white font-semibold bg-white/5"
+                : "hover:bg-white/5 hover:text-white"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Printer className="h-4 w-4 shrink-0 text-cyan-400" />
+              <span>Convocations & Vitrine</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/30 text-cyan-200 font-mono">
+                10
+              </span>
+              {openSubmenus.convocMenu ? (
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+              )}
+            </div>
+          </button>
+
+          {openSubmenus.convocMenu && (
+            <div className="bg-black/20 py-1 border-b border-white/5">
+              <button
+                onClick={() => onSelectSection("convoc-eleves")}
+                className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
+                  currentSection === "convoc-eleves"
+                    ? "text-white font-bold bg-[#3498db]/40 border-l-2 border-[#3498db]"
+                    : "text-[#bdc3c7] hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <FileText className="h-3.5 w-3.5 text-sky-400" />
+                <span>Convocations & Étiquettes A4</span>
+              </button>
+
+              <button
+                onClick={() => onSelectSection("convoc-profs")}
+                className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
+                  currentSection === "convoc-profs"
+                    ? "text-white font-bold bg-[#3498db]/40 border-l-2 border-[#3498db]"
+                    : "text-[#bdc3c7] hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <Award className="h-3.5 w-3.5 text-amber-400" />
+                <span>Ordres de Mission Profs</span>
+              </button>
+
+              <button
+                onClick={() => onSelectSection("vitrine-publish")}
+                className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
+                  currentSection === "vitrine-publish"
+                    ? "text-white font-bold bg-[#3498db]/40 border-l-2 border-[#3498db]"
+                    : "text-[#bdc3c7] hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <Eye className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Vitrine & Publications</span>
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* 11. Déploiement Git & Vercel (SuperAdmin) */}
         {role === "superadmin" && (
           <button
             onClick={() => onSelectSection("deployment")}
-            className={`w-full flex items-center gap-2.5 px-4 py-3 text-left transition border-b border-white/5 ${
+            className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
               currentSection === "deployment"
                 ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
                 : "hover:bg-white/5 hover:text-white"
             }`}
           >
-            <UploadCloud className="h-4 w-4 shrink-0 text-sky-400" />
-            <span>🚀 11. Déploiement Git & Vercel</span>
+            <div className="flex items-center gap-2.5">
+              <UploadCloud className="h-4 w-4 shrink-0 text-sky-400" />
+              <span>Déploiement Git & Vercel</span>
+            </div>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-200 font-mono">
+              11
+            </span>
           </button>
         )}
       </nav>
@@ -589,7 +636,7 @@ export default function AdminSidebar({
             className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md border border-emerald-400/30"
           >
             <Save className="h-4 w-4" />
-            <span>💾 Enregistrer & Mettre à jour</span>
+            <span>Enregistrer & Mettre à jour</span>
           </button>
         )}
 
@@ -606,13 +653,13 @@ export default function AdminSidebar({
           onClick={onSaveProject}
           className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#34495e] hover:bg-[#415b76] text-white text-xs font-semibold transition"
         >
-          <Save className="h-3.5 w-3.5" />
-          <span>💾 Sauvegarder Projet</span>
+          <Save className="h-3.5 w-3.5 text-emerald-400" />
+          <span>Sauvegarder Projet (.json)</span>
         </button>
 
         <label className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-semibold cursor-pointer transition">
-          <FolderInput className="h-3.5 w-3.5" />
-          <span>📂 Charger Projet (.json)</span>
+          <FolderInput className="h-3.5 w-3.5 text-amber-300" />
+          <span>Charger Projet (.json)</span>
           <input
             type="file"
             accept=".json"
