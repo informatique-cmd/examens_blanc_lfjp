@@ -2,28 +2,13 @@ import React from "react";
 import {
   Users,
   School,
-  GraduationCap,
   Calendar,
-  Clock,
   Shield,
-  CheckCircle2,
-  ArrowRight,
-  FileText,
   Printer,
-  Layers,
-  ChevronRight,
   Bell,
   Eye,
   ExternalLink,
-  Sparkles,
-  ClipboardList,
   Compass,
-  FileSpreadsheet,
-  Sliders,
-  Shuffle,
-  CalendarRange,
-  UploadCloud,
-  type LucideIcon,
 } from "lucide-react";
 import type {
   CmsCandidate,
@@ -77,116 +62,7 @@ export default function AdminDashboardSection({
   const effectiveSurveillancesCount = exams.length === 0 ? 0 : surveillances.length;
   const publishedAnnouncements = announcements.filter((a) => a.isPublished);
 
-  const workflowSteps: Array<{
-    id: AdminSection;
-    number: string;
-    title: string;
-    description: string;
-    icon: LucideIcon;
-    badge: string;
-    count?: string | number;
-    color: string;
-  }> = [
-    {
-      id: "config",
-      number: "01",
-      title: "Paramètres & Accès",
-      description: "Identité établissement, année scolaire, grilles horaires, types d'évaluations et niveaux scolaires.",
-      icon: Sliders,
-      badge: "Configuré",
-      color: "border-blue-200 bg-blue-50/40 text-blue-800",
-    },
-    {
-      id: "data-eleves",
-      number: "02",
-      title: "Données Pronote",
-      description: "Import des cohortes élèves, des salles d'examens, des professeurs et des aménagements (PAP/PPS).",
-      icon: Users,
-      badge: `${candidates.length} élèves • ${rooms.length} salles • ${teachers.length} profs`,
-      count: candidates.length,
-      color: "border-indigo-200 bg-indigo-50/40 text-indigo-800",
-    },
-    {
-      id: "sessions-examens",
-      number: "03",
-      title: "Sessions d'Examens",
-      description: "Planification des sessions officielles DNB blanc, Baccalauréat 1ère, Terminale et Devoirs communs.",
-      icon: ClipboardList,
-      badge: `${exams.length} session(s)`,
-      count: exams.length,
-      color: "border-violet-200 bg-violet-50/40 text-violet-800",
-    },
-    {
-      id: "creneaux-epreuves",
-      number: "04",
-      title: "Créneaux des Épreuves",
-      description: "Disciplines, dates, horaires standard, majoration +1/3 temps automatique et salles mobilisées.",
-      icon: Clock,
-      badge: `${examSlots.length} épreuve(s)`,
-      count: examSlots.length,
-      color: "border-amber-200 bg-amber-50/40 text-amber-800",
-    },
-    {
-      id: "organization",
-      number: "05",
-      title: "Répartition & Brassage",
-      description: "Brassage inter-classes anti-fraude, jauge par salle personnalisable, numéros d'anonymat et tables.",
-      icon: Shuffle,
-      badge: "Actif",
-      color: "border-teal-200 bg-teal-50/40 text-teal-800",
-    },
-    {
-      id: "planning-rooms",
-      number: "06",
-      title: "Plannings Surveillances",
-      description: "Affectation nominative des enseignants par salle, gestion des sous-créneaux 1h/2h et équilibrage.",
-      icon: Shield,
-      badge: `${effectiveSurveillancesCount} poste(s)`,
-      count: effectiveSurveillancesCount,
-      color: "border-rose-200 bg-rose-50/40 text-rose-800",
-    },
-    {
-      id: "view-edt",
-      number: "07",
-      title: "Vers EDT & Cours Impactés",
-      description: "Visualisation des cours réguliers à déplacer et neutralisation des salles réquisitionnées.",
-      icon: CalendarRange,
-      badge: "Export EDT",
-      color: "border-orange-200 bg-orange-50/40 text-orange-800",
-    },
-    {
-      id: "corr-repartition",
-      number: "08",
-      title: "Corrections & Notes",
-      description: "Répartition des copies, saisie et import Pronote, analyse des moyennes et simulations d'examen.",
-      icon: FileSpreadsheet,
-      badge: "Copies & Notes",
-      color: "border-cyan-200 bg-cyan-50/40 text-cyan-800",
-    },
-    {
-      id: "convoc-eleves",
-      number: "09",
-      title: "Convocations & Ordres de Mission",
-      description: "Génération et impression certifiée A4 : convocations élèves nominatives et ordres de mission surveillants.",
-      icon: Printer,
-      badge: "Impression A4",
-      color: "border-emerald-200 bg-emerald-50/40 text-emerald-800",
-    },
-    {
-      id: "vitrine-publish",
-      number: "10",
-      title: "Vitrine Publique & Déploiement Git / Vercel",
-      description: "Publication des plannings sur la vitrine officielle et synchronisation permanente GitHub / Vercel.",
-      icon: UploadCloud,
-      badge: "Vitrine & En ligne",
-      color: "border-blue-300 bg-blue-100/50 text-blue-900 font-bold",
-    },
-  ];
 
-  // For Proviseur role: exclude "config" (Paramètres & Logos) as requested by user
-  const displayedWorkflowSteps = role === "proviseur"
-    ? workflowSteps.filter((s) => s.id !== "config")
-    : workflowSteps;
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto w-full animate-in fade-in duration-300">
@@ -354,65 +230,7 @@ export default function AdminDashboardSection({
         </div>
       </div>
 
-      {/* 3. WORKFLOW CHRONOLOGIQUE COMPLET (10 ÉTAPES PROPRES & CLAIRES) */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
-          <div>
-            <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <Compass className="h-5 w-5 text-[#002060]" />
-              <span>Workflow Opérationnel des Examens (10 Étapes)</span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Accédez directement à chaque étape pour configurer, répartir et publier les épreuves.
-            </p>
-          </div>
-          <span className="text-xs font-semibold text-slate-500">
-            Navigation guidée pas-à-pas
-          </span>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {displayedWorkflowSteps.map((step) => {
-            const StepIcon = step.icon;
-            return (
-              <div
-                key={step.id}
-                onClick={() => onNavigateSection(step.id)}
-                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs hover:shadow-xs hover:border-blue-400 transition cursor-pointer flex flex-col justify-between group"
-              >
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 group-hover:bg-[#002060] group-hover:text-white transition shrink-0">
-                        <StepIcon className="h-4.5 w-4.5" />
-                      </div>
-                      <span className="text-xs font-mono font-bold text-slate-400">
-                        Étape {step.number}
-                      </span>
-                    </div>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${step.color}`}>
-                      {step.badge}
-                    </span>
-                  </div>
-
-                <h3 className="font-bold text-sm text-slate-900 group-hover:text-blue-700 transition">
-                  {step.title}
-                </h3>
-
-                <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
-                  {step.description}
-                </p>
-              </div>
-
-              <div className="pt-3.5 mt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-slate-500 group-hover:text-blue-700 transition">
-                <span>Accéder à l'étape</span>
-                <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition" />
-              </div>
-            </div>
-          );
-        })}
-        </div>
-      </div>
 
       {/* 4. SUMMARY PANELS: SESSIONS D'EXAMENS & CONSIGNES OFFICIELLES */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
