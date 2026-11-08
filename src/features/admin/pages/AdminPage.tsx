@@ -47,10 +47,12 @@ import {
 
 import {
   useCmsData,
+  saveCmsData,
   exportCmsDataJson,
   importCmsDataJson,
   markProviseurSaved,
   clearPendingDeployment,
+  type CmsData,
   type CmsAnnouncement,
   type CmsExam,
   type CmsRoom,
@@ -468,19 +470,26 @@ export default function AdminPage() {
     }
   };
 
-  // Handle direct Push to GitHub & Vercel without opening any modal window
-  const handlePushToGitHubDirect = async () => {
+  // Handle direct Save & Push to GitHub & Vercel in 1 single click for SuperAdmin
+  const handleSuperAdminSaveAndDeploy = async () => {
+    // 1. Ensure latest state is saved locally with fresh timestamp
+    const updatedData: CmsData = {
+      ...cmsData,
+      updatedAt: new Date().toISOString(),
+    };
+    saveCmsData(updatedData);
+
     setIsSyncing(true);
-    setSyncStep("Connexion au dépôt GitHub & commit...");
+    setSyncStep("Enregistrement local & préparation de l'envoi...");
     setSyncResult(null);
-    showNotification("🚀 Déploiement en cours : commit & push direct vers GitHub et Vercel...");
+    showNotification("🚀 Enregistrement et déploiement en direct vers GitHub & Vercel...");
 
     const tokenToPass = (dashboardTokenInput || githubToken || DEFAULT_GITHUB_TOKEN).trim();
     const now = new Date();
-    const commitMsg = `Mise à jour examens LFJP (${now.toLocaleDateString("fr-FR")} ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })})`;
+    const commitMsg = `Mise à jour examens LFJP (${now.toLocaleDateString("fr-FR")} à ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })})`;
 
     const res = await pushCmsChangesToGitHub({
-      cmsData,
+      cmsData: updatedData,
       commitMessage: commitMsg,
       overrideToken: tokenToPass,
       onProgress: (status) => setSyncStep(status),
@@ -490,11 +499,13 @@ export default function AdminPage() {
     setSyncResult(res);
     if (res.success) {
       clearPendingDeployment();
-      showNotification("✅ Déploiement réussi ! Site vitrine mis à jour en ligne sur Vercel.");
+      showNotification("✓ Enregistré et déployé avec succès sur GitHub & Vercel ! Le site en ligne sera à jour.");
     } else {
       showNotification(`❌ Erreur de déploiement : ${res.error || "Échec"}`);
     }
   };
+
+  const handlePushToGitHubDirect = handleSuperAdminSaveAndDeploy;
 
   // Open GitHub page to generate token with repo scope prefilled
   const handleOpenGitHubTokenPage = () => {
@@ -1018,16 +1029,36 @@ export default function AdminPage() {
             <span className="hidden sm:inline">Espace Impression</span>
           </Link>
 
-          {/* Actions spécifiques selon le profil */}
+          {/* Actions spécifiques selon le profil : bouton Enregistrer & Mettre à jour harmonisé */}
           {adminSession?.role === "proviseur" ? (
             <button
               id="btn-proviseur-save-header"
               onClick={handleProviseurSave}
-              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.98]"
+              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.98] cursor-pointer"
               title="Enregistrer toutes les modifications dans l'application"
             >
               <Save className="h-4 w-4" />
               <span>Enregistrer & Mettre à jour</span>
+            </button>
+          ) : adminSession?.role === "superadmin" ? (
+            <button
+              id="btn-superadmin-save-header"
+              onClick={handleSuperAdminSaveAndDeploy}
+              disabled={isSyncing}
+              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+              title="Enregistrer toutes les modifications et déployer en direct sur GitHub & Vercel en 1 clic"
+            >
+              {isSyncing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-white" />
+                  <span>{syncStep || "Envoi en cours..."}</span>
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" />
+                  <span>Enregistrer & Mettre à jour</span>
+                </>
+              )}
             </button>
           ) : null}
 
@@ -1431,6 +1462,8 @@ export default function AdminPage() {
           schoolYear={cmsData.siteInfo.schoolYear || "2025-2026"}
           role={adminSession?.role}
           onProviseurSave={handleProviseurSave}
+          onSuperadminSave={handleSuperAdminSaveAndDeploy}
+          isSyncing={isSyncing}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />
@@ -1727,8 +1760,8 @@ export default function AdminPage() {
                           : "text-slate-600 hover:text-slate-900"
                       }`}
                     >
-                      <UploadCloud className="h-3.5 w-3.5 text-sky-600" />
-                      <span>Déploiement Git & Vercel</span>
+                      <Save className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Enregistrer & Mettre à jour</span>
                     </button>
                   )}
                 </div>
@@ -1754,29 +1787,29 @@ export default function AdminPage() {
                 />
               )}
 
-          {/* 10. DÉPLOIEMENT VERCEL & GITHUB */}
+          {/* 10. ENREGISTRER & METTRE À JOUR (DÉPLOIEMENT VERCEL) */}
           {(currentSection === "deployment" || activeTab === "deployment") && (
             <div className="space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900">Centre de Déploiement Vercel & Sauvegardes</h2>
+                  <h2 className="text-2xl font-bold text-slate-900">Enregistrer & Mettre à jour en ligne (Vercel)</h2>
                   <p className="mt-1 text-sm text-slate-600">
-                    Contrôlez la synchronisation avec GitHub et le redéploiement mondial sur Vercel sans frais.
+                    Enregistre l'intégralité des données et publie automatiquement sur GitHub et Vercel en 1 seul clic.
                   </p>
                 </div>
               </div>
 
               {/* Status & Token Management Card */}
-              <div className="rounded-2xl border-2 border-blue-200 bg-gradient-to-r from-blue-50/80 via-white to-indigo-50/60 p-6 shadow-sm space-y-4">
+              <div className="rounded-2xl border-2 border-emerald-200 bg-gradient-to-r from-emerald-50/70 via-white to-blue-50/50 p-6 shadow-sm space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-700 text-white shadow">
-                      <UploadCloud className="h-6 w-6" />
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow">
+                      <Save className="h-6 w-6" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="text-base font-bold text-slate-900">
-                          Connexion GitHub & Déploiement Vercel
+                          Enregistrement & Déploiement Vercel
                         </h3>
                         <span className="rounded-full bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
                           ✓ Jeton configuré dans le code
@@ -1790,19 +1823,19 @@ export default function AdminPage() {
 
                   <div className="flex flex-wrap items-center gap-2">
                     <button
-                      onClick={handlePushToGitHubDirect}
+                      onClick={handleSuperAdminSaveAndDeploy}
                       disabled={isSyncing}
-                      className="flex items-center gap-2 rounded-xl bg-blue-700 hover:bg-blue-800 disabled:opacity-50 px-5 py-2.5 text-xs font-bold text-white shadow transition active:scale-[0.98]"
+                      className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-5 py-2.5 text-xs font-bold text-white shadow transition active:scale-[0.98] cursor-pointer"
                     >
                       {isSyncing ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin text-white" />
-                          <span>{syncStep || "Déploiement en cours..."}</span>
+                          <span>{syncStep || "Enregistrement & Déploiement..."}</span>
                         </>
                       ) : (
                         <>
-                          <UploadCloud className="h-4 w-4" />
-                          <span>Mettre à jour GitHub & Vercel maintenant</span>
+                          <Save className="h-4 w-4" />
+                          <span>Enregistrer & Mettre à jour maintenant (1 clic)</span>
                         </>
                       )}
                     </button>

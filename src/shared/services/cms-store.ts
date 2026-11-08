@@ -478,18 +478,27 @@ export function useCmsData() {
     window.addEventListener(CMS_EVENT_NAME, handleUpdate);
     window.addEventListener("storage", handleUpdate);
 
-    // Initial synchronization from deployed /cms-data.json ONLY if local storage has never been initialized
+    // Automatic multi-browser synchronization from deployed /cms-data.json
     const syncFromRemote = async () => {
       try {
-        const hasCustomLocalStorage = Boolean(localStorage.getItem(CMS_STORAGE_KEY));
-        if (hasCustomLocalStorage) return;
-
         const res = await fetch(`/cms-data.json?_t=${Date.now()}`, { cache: "no-store" });
         if (!res.ok) return;
         const remote = (await res.json()) as CmsData;
-        if (!remote || typeof remote !== "object") return;
+        if (!remote || typeof remote !== "object" || !remote.siteInfo || !Array.isArray(remote.exams)) return;
 
-        if (remote && remote.siteInfo && Array.isArray(remote.exams)) {
+        const rawLocal = localStorage.getItem(CMS_STORAGE_KEY);
+        if (!rawLocal) {
+          saveCmsData(remote);
+          setData(remote);
+          return;
+        }
+
+        const local = JSON.parse(rawLocal) as Partial<CmsData>;
+        const remoteTime = remote.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
+        const localTime = local.updatedAt ? new Date(local.updatedAt).getTime() : 0;
+
+        // If remote deployment is newer than this browser's local cache, adopt the deployed data!
+        if (remoteTime > localTime) {
           saveCmsData(remote);
           setData(remote);
         }
@@ -500,9 +509,24 @@ export function useCmsData() {
 
     syncFromRemote();
 
+    // Sync on tab visibility and window focus
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        syncFromRemote();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", syncFromRemote);
+
+    // Periodic check every 20 seconds for multi-device harmony
+    const syncInterval = setInterval(syncFromRemote, 20000);
+
     return () => {
       window.removeEventListener(CMS_EVENT_NAME, handleUpdate);
       window.removeEventListener("storage", handleUpdate);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", syncFromRemote);
+      clearInterval(syncInterval);
     };
   }, []);
 

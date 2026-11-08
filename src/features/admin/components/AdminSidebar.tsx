@@ -36,6 +36,7 @@ import {
   FileText,
   PanelLeftClose,
   PanelLeftOpen,
+  Loader2,
 } from "lucide-react";
 
 export type AdminSection =
@@ -79,6 +80,8 @@ interface AdminSidebarProps {
   schoolYear: string;
   role?: "proviseur" | "superadmin";
   onProviseurSave?: () => void;
+  onSuperadminSave?: () => void;
+  isSyncing?: boolean;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
 }
@@ -99,6 +102,8 @@ export default function AdminSidebar({
   schoolYear,
   role = "superadmin",
   onProviseurSave,
+  onSuperadminSave,
+  isSyncing = false,
   isCollapsed = false,
   onToggleCollapse,
 }: AdminSidebarProps) {
@@ -776,8 +781,8 @@ export default function AdminSidebar({
                       : "text-[#bdc3c7] hover:text-white hover:bg-white/5"
                   }`}
                 >
-                  <UploadCloud className="h-3.5 w-3.5 text-sky-400" />
-                  <span>Déploiement Git & Vercel</span>
+                  <Save className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Enregistrer & Mettre à jour</span>
                 </button>
               )}
             </div>
@@ -798,6 +803,30 @@ export default function AdminSidebar({
           >
             <Save className="h-4 w-4 shrink-0" />
             {!isCollapsed && <span>Enregistrer & Mettre à jour</span>}
+          </button>
+        )}
+
+        {role === "superadmin" && onSuperadminSave && (
+          <button
+            type="button"
+            onClick={onSuperadminSave}
+            disabled={isSyncing}
+            title="Enregistrer et déployer directement sur GitHub & Vercel en 1 clic"
+            className={`w-full flex items-center justify-center gap-2 ${
+              isCollapsed ? "py-2 px-1" : "py-2.5 px-3"
+            } rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md border border-emerald-400/30 cursor-pointer disabled:opacity-50`}
+          >
+            {isSyncing ? (
+              <>
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                {!isCollapsed && <span>Envoi en cours...</span>}
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 shrink-0" />
+                {!isCollapsed && <span>Enregistrer & Mettre à jour</span>}
+              </>
+            )}
           </button>
         )}
 

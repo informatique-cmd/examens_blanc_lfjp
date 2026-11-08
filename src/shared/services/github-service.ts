@@ -528,7 +528,7 @@ export async function pushCmsChangesToGitHub({
       { path: "src/features/admin/components/SessionsExamensSection.tsx", content: sessionsExamensSectionRaw },
       { path: "src/features/admin/components/PlanningOfficialGrid.tsx", content: planningOfficialGridRaw },
       { path: "src/shared/data/official-lfjp-planning.ts", content: officialLfjpPlanningRaw },
-      { path: "src/shared/services/default-cms-data.json", content: defaultCmsDataJsonRaw },
+      { path: "src/shared/services/default-cms-data.json", content: jsonCode },
       { path: "src/features/orga-dnb/pages/OrgaDnbPage.tsx", content: orgaDnbPageRaw },
       { path: "src/features/convocations/pages/ConvocationsPage.tsx", content: convocationsPageRaw },
       { path: "src/features/home/components/HomeCallToActionCard.tsx", content: homeCallToActionCardRaw },
