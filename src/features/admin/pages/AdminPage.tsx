@@ -43,6 +43,7 @@ import {
   CalendarRange,
   BarChart3,
   Award,
+  Rocket,
 } from "lucide-react";
 
 import {
@@ -220,6 +221,19 @@ export default function AdminPage() {
   const [tokenUpdateError, setTokenUpdateError] = useState<string | null>(null);
   const [tokenUpdateSuccess, setTokenUpdateSuccess] = useState<string | null>(null);
 
+  // Modal d'évolution du lancement et déploiement en direct (Proviseur & SuperAdmin)
+  const [isDeployProgressModalOpen, setIsDeployProgressModalOpen] = useState(false);
+  const [deployProgress, setDeployProgress] = useState(0);
+  const [deployStepText, setDeployStepText] = useState("Initialisation...");
+  const [deployActiveStepIndex, setDeployActiveStepIndex] = useState(0);
+  const [deployLogs, setDeployLogs] = useState<string[]>([]);
+  const [deployResult, setDeployResult] = useState<{
+    success: boolean;
+    commitSha?: string;
+    commitUrl?: string;
+    error?: string;
+  } | null>(null);
+
   // Navigation state synchronized with URL search params so browser back/forward works seamlessly
   const [searchParams, setSearchParams] = useSearchParams();
   const sectionFromUrl = (searchParams.get("section") as AdminSection) || "dashboard";
@@ -367,11 +381,9 @@ export default function AdminPage() {
     showNotification(`Connexion réussie ! Bienvenue ${newSession.name}.`);
   };
 
-  // Proviseur Save Changes
+  // Proviseur Save Changes (Direct deployment without waiting for superadmin approval)
   const handleProviseurSave = () => {
-    markProviseurSaved("Mise à jour des examens effectuée par le Proviseur");
-    setProviseurSaveModalOpen(true);
-    showNotification("💾 Modifications enregistrées avec succès !");
+    handleUnifiedSaveAndDeploy();
   };
 
   // Open GitHub OAuth / Token page in popup/tab
@@ -470,42 +482,110 @@ export default function AdminPage() {
     }
   };
 
-  // Handle direct Save & Push to GitHub & Vercel in 1 single click for SuperAdmin
-  const handleSuperAdminSaveAndDeploy = async () => {
-    // 1. Ensure latest state is saved locally with fresh timestamp
-    const updatedData: CmsData = {
-      ...cmsData,
-      updatedAt: new Date().toISOString(),
-    };
-    saveCmsData(updatedData);
-
+  // Unified Direct Save & Push to GitHub & Vercel in 1 single click with live evolution progress
+  // Proviseur AND SuperAdmin both deploy directly without waiting or sending pending alerts!
+  const handleUnifiedSaveAndDeploy = async () => {
+    setIsDeployProgressModalOpen(true);
     setIsSyncing(true);
-    setSyncStep("Enregistrement local & préparation de l'envoi...");
-    setSyncResult(null);
-    showNotification("🚀 Enregistrement et déploiement en direct vers GitHub & Vercel...");
+    setDeployProgress(15);
+    setDeployActiveStepIndex(0);
+    const roleName = adminSession?.role === "proviseur" ? "la Direction (Mme / M. le Proviseur)" : "le Super-Administrateur";
+    const startTimeStr = new Date().toLocaleTimeString("fr-FR");
+    setDeployLogs([
+      `[${startTimeStr}] 🚀 Lancement de la publication en ligne initié par ${roleName}...`,
+    ]);
+    setDeployResult(null);
 
-    const tokenToPass = (dashboardTokenInput || githubToken || DEFAULT_GITHUB_TOKEN).trim();
-    const now = new Date();
-    const commitMsg = `Mise à jour examens LFJP (${now.toLocaleDateString("fr-FR")} à ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })})`;
-
-    const res = await pushCmsChangesToGitHub({
-      cmsData: updatedData,
-      commitMessage: commitMsg,
-      overrideToken: tokenToPass,
-      onProgress: (status) => setSyncStep(status),
-    });
-
-    setIsSyncing(false);
-    setSyncResult(res);
-    if (res.success) {
+    try {
+      // Étape 1 : Sauvegarde locale immédiate avec horodatage mondial
+      setDeployStepText("1/4. Enregistrement des données locales & horodatage...");
+      const updatedData: CmsData = {
+        ...cmsData,
+        updatedAt: new Date().toISOString(),
+        siteInfo: {
+          ...cmsData.siteInfo,
+          pendingDeployment: undefined,
+        },
+      };
+      saveCmsData(updatedData);
       clearPendingDeployment();
-      showNotification("✓ Enregistré et déployé avec succès sur GitHub & Vercel ! Le site en ligne sera à jour.");
-    } else {
-      showNotification(`❌ Erreur de déploiement : ${res.error || "Échec"}`);
+
+      setDeployProgress(35);
+      setDeployActiveStepIndex(1);
+      setDeployLogs((prev) => [
+        ...prev,
+        `[${new Date().toLocaleTimeString("fr-FR")}] ✓ Données locales sauvegardées (${updatedData.candidates.length} candidats, ${updatedData.exams.length} examens, ${updatedData.rooms.length} salles, ${updatedData.examSlots?.length || 0} créneaux).`,
+        `[${new Date().toLocaleTimeString("fr-FR")}] ⚙️ Préparation du payload Git et des fichiers public/cms-data.json...`,
+      ]);
+
+      // Étape 2 & 3 : Préparation et envoi vers GitHub
+      setDeployProgress(55);
+      setDeployActiveStepIndex(2);
+      setDeployStepText("2/4. Transmission sécurisée vers le dépôt GitHub...");
+
+      const tokenToPass = (dashboardTokenInput || githubToken || DEFAULT_GITHUB_TOKEN).trim();
+      const now = new Date();
+      const authorLabel = adminSession?.role === "proviseur" ? "Direction / Proviseur" : "Super-Administrateur";
+      const commitMsg = `Mise à jour par ${authorLabel} (${now.toLocaleDateString("fr-FR")} à ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })})`;
+
+      const res = await pushCmsChangesToGitHub({
+        cmsData: updatedData,
+        commitMessage: commitMsg,
+        overrideToken: tokenToPass,
+        onProgress: (status) => {
+          setDeployStepText(status);
+          setDeployLogs((prev) => [
+            ...prev,
+            `[${new Date().toLocaleTimeString("fr-FR")}] ${status}`,
+          ]);
+          if (status.includes("Déploiement atomique de tous les fichiers")) {
+            setDeployProgress(75);
+          } else if (status.includes("build") || status.includes("réussi")) {
+            setDeployProgress(92);
+            setDeployActiveStepIndex(3);
+          }
+        },
+      });
+
+      setIsSyncing(false);
+      setDeployResult(res);
+
+      if (res.success) {
+        setDeployProgress(100);
+        setDeployActiveStepIndex(4);
+        setDeployStepText("Publication en ligne réussie !");
+        setDeployLogs((prev) => [
+          ...prev,
+          `[${new Date().toLocaleTimeString("fr-FR")}] 🎉 Succès : Commit GitHub ${res.commitSha ? res.commitSha.slice(0, 7) : ""} validé sur la branche main !`,
+          `[${new Date().toLocaleTimeString("fr-FR")}] 🌐 Vercel redéploie le site en direct (examens-blanc-lfjp.vercel.app).`,
+          `[${new Date().toLocaleTimeString("fr-FR")}] ✓ Données propagées sur tous les appareils et navigateurs.`,
+        ]);
+        showNotification("✓ Enregistré et déployé avec succès sur GitHub & Vercel ! Le site en ligne sera à jour.");
+      } else {
+        setDeployProgress(100);
+        setDeployStepText(`Échec : ${res.error || "Erreur de déploiement"}`);
+        setDeployLogs((prev) => [
+          ...prev,
+          `[${new Date().toLocaleTimeString("fr-FR")}] ❌ Erreur : ${res.error || "Échec de connexion ou d'écriture sur GitHub."}`,
+        ]);
+        showNotification(`❌ Erreur de déploiement : ${res.error || "Échec"}`);
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      setIsSyncing(false);
+      setDeployProgress(100);
+      setDeployResult({ success: false, error: errMsg });
+      setDeployStepText(`Erreur : ${errMsg}`);
+      setDeployLogs((prev) => [
+        ...prev,
+        `[${new Date().toLocaleTimeString("fr-FR")}] ❌ Exception : ${errMsg}`,
+      ]);
+      showNotification(`❌ Erreur : ${errMsg}`);
     }
   };
 
-  const handlePushToGitHubDirect = handleSuperAdminSaveAndDeploy;
+  const handleSuperAdminSaveAndDeploy = handleUnifiedSaveAndDeploy;
+  const handlePushToGitHubDirect = handleUnifiedSaveAndDeploy;
 
   // Open GitHub page to generate token with repo scope prefilled
   const handleOpenGitHubTokenPage = () => {
@@ -1029,29 +1109,19 @@ export default function AdminPage() {
             <span className="hidden sm:inline">Espace Impression</span>
           </Link>
 
-          {/* Actions spécifiques selon le profil : bouton Enregistrer & Mettre à jour harmonisé */}
-          {adminSession?.role === "proviseur" ? (
+          {/* Actions : bouton Enregistrer & Mettre à jour direct vers le site en ligne (Vercel & GitHub) */}
+          {(adminSession?.role === "proviseur" || adminSession?.role === "superadmin") && (
             <button
-              id="btn-proviseur-save-header"
-              onClick={handleProviseurSave}
-              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.98] cursor-pointer"
-              title="Enregistrer toutes les modifications dans l'application"
-            >
-              <Save className="h-4 w-4" />
-              <span>Enregistrer & Mettre à jour</span>
-            </button>
-          ) : adminSession?.role === "superadmin" ? (
-            <button
-              id="btn-superadmin-save-header"
-              onClick={handleSuperAdminSaveAndDeploy}
+              id={adminSession?.role === "proviseur" ? "btn-proviseur-save-header" : "btn-superadmin-save-header"}
+              onClick={handleUnifiedSaveAndDeploy}
               disabled={isSyncing}
               className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-              title="Enregistrer toutes les modifications et déployer en direct sur GitHub & Vercel en 1 clic"
+              title="Enregistrer toutes les modifications et déployer en direct sur le site en ligne (Vercel) en 1 clic"
             >
               {isSyncing ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin text-white" />
-                  <span>{syncStep || "Envoi en cours..."}</span>
+                  <span>Envoi en cours... ({deployProgress}%)</span>
                 </>
               ) : (
                 <>
@@ -1060,7 +1130,7 @@ export default function AdminPage() {
                 </>
               )}
             </button>
-          ) : null}
+          )}
 
           {/* Bouton Déconnexion avec redirection automatique vers l'accueil */}
           <button
@@ -1075,63 +1145,265 @@ export default function AdminPage() {
         </div>
       </header>
 
-      {/* SuperAdmin Notification Banner: Pending Deployment from Proviseur */}
-      {adminSession?.role === "superadmin" && cmsData.siteInfo.pendingDeployment && (
-        <div className="border-b border-amber-300 bg-gradient-to-r from-amber-50 via-amber-100/70 to-orange-50 px-6 py-3 shadow-xs">
-          <div className="mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 max-w-7xl">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-white shadow-xs shrink-0">
-                <Bell className="h-5 w-5 animate-bounce" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-amber-950">
-                  🔔 Notification Direction : Le Proviseur ({cmsData.siteInfo.pendingDeployment.savedBy}) a enregistré des modifications prêtes pour déploiement en ligne !
-                </p>
-                <p className="text-[11px] text-amber-800">
-                  Dernier enregistrement : {new Date(cmsData.siteInfo.pendingDeployment.savedAt).toLocaleString("fr-FR")} — « {cmsData.siteInfo.pendingDeployment.notes} »
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => {
-                  setSyncResult(null);
-                  setIsSyncModalOpen(true);
-                }}
-                className="flex items-center gap-1.5 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-amber-700 active:scale-95"
-              >
-                <UploadCloud className="h-4 w-4" />
-                <span>Déployer maintenant sur GitHub & Vercel</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ------------------------------------------------------------------ */}
+      {/* MODAL DE LANCEMENT & DÉPLOIEMENT EN DIRECT (BARRE D'ÉVOLUTION 100%) */}
+      {/* ------------------------------------------------------------------ */}
+      {isDeployProgressModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white shadow-2xl overflow-hidden animate-in zoom-in-95">
+            {/* Tricolore LFJP micro-accent line */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-[#002060] via-[#3498db] to-[#c92a2a]" />
 
-      {/* Proviseur Save Confirmation Modal */}
-      {proviseurSaveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-3xl border border-emerald-200 bg-white p-7 shadow-2xl animate-in fade-in zoom-in-95 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 mb-4 shadow-xs">
-              <CheckCircle2 className="h-8 w-8" />
+            <div className="p-6 sm:p-8 space-y-6">
+              {/* Header with Rocket & Profile */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div
+                    className={`flex h-12 w-12 items-center justify-center rounded-2xl shadow-md text-white shrink-0 ${
+                      deployResult && !deployResult.success
+                        ? "bg-rose-600"
+                        : deployProgress === 100
+                        ? "bg-emerald-600"
+                        : "bg-gradient-to-br from-blue-600 to-indigo-700 animate-pulse"
+                    }`}
+                  >
+                    {deployResult && !deployResult.success ? (
+                      <AlertTriangle className="h-6 w-6" />
+                    ) : deployProgress === 100 ? (
+                      <CheckCircle2 className="h-7 w-7" />
+                    ) : (
+                      <Rocket className="h-6 w-6" />
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                        Lancement du Déploiement en Ligne
+                      </h3>
+                      <span className="rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-bold text-blue-800">
+                        {adminSession?.role === "proviseur"
+                          ? "👔 Direction (Proviseur)"
+                          : "🛠 Super-Administrateur"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Enregistrement des modifications et synchronisation directe vers GitHub & Vercel
+                    </p>
+                  </div>
+                </div>
+
+                {!isSyncing && (
+                  <button
+                    onClick={() => setIsDeployProgressModalOpen(false)}
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                    title="Fermer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Barre d'Évolution du Lancement */}
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 space-y-3.5">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span className="text-slate-700 flex items-center gap-2">
+                    {isSyncing && <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />}
+                    <span>{deployStepText}</span>
+                  </span>
+                  <span
+                    className={`px-2.5 py-1 rounded-md text-xs font-mono font-bold shadow-2xs ${
+                      deployResult && !deployResult.success
+                        ? "bg-rose-100 text-rose-800"
+                        : deployProgress === 100
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-blue-100 text-blue-800"
+                    }`}
+                  >
+                    {deployProgress}%
+                  </span>
+                </div>
+
+                {/* The Visual Progress Bar */}
+                <div className="h-4 w-full rounded-full bg-slate-200 overflow-hidden p-0.5 border border-slate-300/80 shadow-inner">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ease-out relative ${
+                      deployResult && !deployResult.success
+                        ? "bg-rose-600"
+                        : deployProgress === 100
+                        ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600"
+                        : "bg-gradient-to-r from-blue-600 via-sky-500 to-indigo-600"
+                    }`}
+                    style={{ width: `${deployProgress}%` }}
+                  >
+                    {isSyncing && (
+                      <div className="absolute inset-0 bg-white/30 w-full animate-pulse" />
+                    )}
+                  </div>
+                </div>
+
+                {/* 4 Phases de Lancement */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                  {[
+                    {
+                      label: "1. Sauvegarde des données",
+                      desc: "Élèves, créneaux, examens & salles",
+                      stepIdx: 0,
+                    },
+                    {
+                      label: "2. Préparation du code",
+                      desc: "Payloads Git & public/cms-data.json",
+                      stepIdx: 1,
+                    },
+                    {
+                      label: "3. Commit & Push GitHub",
+                      desc: "informatique-cmd/examens_blanc_lfjp",
+                      stepIdx: 2,
+                    },
+                    {
+                      label: "4. Publication Vercel",
+                      desc: "examens-blanc-lfjp.vercel.app",
+                      stepIdx: 3,
+                    },
+                  ].map((step) => {
+                    const isDone = deployActiveStepIndex > step.stepIdx;
+                    const isActive = deployActiveStepIndex === step.stepIdx && isSyncing;
+                    const isFailed =
+                      deployResult && !deployResult.success && deployActiveStepIndex === step.stepIdx;
+
+                    return (
+                      <div
+                        key={step.label}
+                        className={`p-2.5 rounded-xl border text-xs transition flex items-start gap-2.5 ${
+                          isDone
+                            ? "border-emerald-200 bg-emerald-50/60 text-emerald-900"
+                            : isActive
+                            ? "border-blue-300 bg-blue-50/80 text-blue-900 font-semibold shadow-xs"
+                            : isFailed
+                            ? "border-rose-300 bg-rose-50 text-rose-900 font-semibold"
+                            : "border-slate-200 bg-white text-slate-500"
+                        }`}
+                      >
+                        <div className="mt-0.5 shrink-0">
+                          {isDone ? (
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                          ) : isActive ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                          ) : isFailed ? (
+                            <AlertTriangle className="h-4 w-4 text-rose-600" />
+                          ) : (
+                            <div className="h-3.5 w-3.5 rounded-full border-2 border-slate-300" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-bold">{step.label}</p>
+                          <p className="text-[11px] opacity-80">{step.desc}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Journal d'Exécution en Direct */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] text-slate-500 font-semibold px-1">
+                  <span>Journal de synchronisation en direct</span>
+                  <span>{deployLogs.length} étape(s)</span>
+                </div>
+                <div className="h-28 overflow-y-auto rounded-xl bg-slate-900 p-3 font-mono text-[11px] text-emerald-400 border border-slate-800 space-y-1 shadow-inner">
+                  {deployLogs.map((log, i) => (
+                    <div
+                      key={i}
+                      className={
+                        log.includes("❌")
+                          ? "text-rose-400 font-bold"
+                          : log.includes("🎉")
+                          ? "text-emerald-300 font-bold"
+                          : log.includes("🚀")
+                          ? "text-sky-300 font-bold"
+                          : "text-slate-300"
+                      }
+                    >
+                      {log}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Résultat : Succès de la publication */}
+              {deployResult?.success && (
+                <div className="rounded-2xl border border-emerald-300 bg-emerald-50/80 p-4 space-y-3 animate-in fade-in">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white shrink-0 shadow-xs">
+                      <CheckCircle className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-emerald-950">
+                        Déploiement en ligne finalisé avec succès !
+                      </p>
+                      <p className="text-xs text-emerald-800">
+                        Vercel a reçu le commit et redéploie le site mondialement. Toutes vos données sont désormais à jour pour tous les utilisateurs.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-emerald-200">
+                    <a
+                      href="https://examens-blanc-lfjp.vercel.app"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow hover:bg-emerald-700 transition active:scale-95 cursor-pointer"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      <span>Voir le site en ligne (Vercel) ↗</span>
+                    </a>
+                    <button
+                      onClick={() => setIsDeployProgressModalOpen(false)}
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-xs hover:bg-slate-50 transition cursor-pointer"
+                    >
+                      Fermer & Continuer
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Résultat : Erreur lors du déploiement */}
+              {deployResult && !deployResult.success && (
+                <div className="rounded-2xl border border-rose-300 bg-rose-50 p-4 space-y-3 animate-in fade-in">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-6 w-6 text-rose-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-sm text-rose-950">Échec du déploiement</p>
+                      <p className="text-xs text-rose-800 mt-0.5">{deployResult.error}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-rose-200">
+                    <button
+                      onClick={handleUnifiedSaveAndDeploy}
+                      className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-rose-700 transition active:scale-95 cursor-pointer"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      <span>Réessayer le déploiement</span>
+                    </button>
+                    <button
+                      onClick={() => setIsDeployProgressModalOpen(false)}
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-xs hover:bg-slate-50 transition cursor-pointer"
+                    >
+                      Fermer
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Message de chargement en cours */}
+              {isSyncing && (
+                <div className="flex items-center justify-center gap-2 py-2 text-xs text-slate-600 font-medium">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                  <span>Mise en ligne en direct vers Vercel... Veuillez patienter.</span>
+                </div>
+              )}
             </div>
-            <h3 className="text-lg font-bold text-slate-900 mb-2">
-              Modifications enregistrées avec succès !
-            </h3>
-            <p className="text-xs text-slate-600 leading-relaxed mb-6">
-              Vos programmations, examens, créneaux et répartitions ont été sauvegardés.
-              <br /><br />
-              <span className="block rounded-xl bg-blue-50 border border-blue-200 p-3 text-blue-900 font-medium text-left">
-                📢 <strong>Notification envoyée au Super-Administrateur</strong> :
-                Les enregistrements effectués seront déployés en ligne par le Super-Administrateur, qui recevra un avis sur son espace pour lancer le déploiement officiel sur GitHub & Vercel.
-              </span>
-            </p>
-            <button
-              onClick={() => setProviseurSaveModalOpen(false)}
-              className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-emerald-700"
-            >
-              Compris, continuer
-            </button>
           </div>
         </div>
       )}
@@ -1750,7 +2022,7 @@ export default function AdminPage() {
                     <Eye className="h-3.5 w-3.5 text-emerald-600" />
                     <span>Vitrine & Publications</span>
                   </button>
-                  {adminSession?.role === "superadmin" && (
+                  {(adminSession?.role === "superadmin" || adminSession?.role === "proviseur") && (
                     <button
                       type="button"
                       onClick={() => setCurrentSection("deployment")}
@@ -1830,7 +2102,7 @@ export default function AdminPage() {
                       {isSyncing ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin text-white" />
-                          <span>{syncStep || "Enregistrement & Déploiement..."}</span>
+                          <span>{deployStepText || "Enregistrement & Déploiement..."} ({deployProgress}%)</span>
                         </>
                       ) : (
                         <>

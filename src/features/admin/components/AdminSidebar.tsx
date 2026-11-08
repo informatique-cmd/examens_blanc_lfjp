@@ -772,7 +772,7 @@ export default function AdminSidebar({
                 <span>Vitrine & Publications</span>
               </button>
 
-              {role === "superadmin" && (
+              {(role === "superadmin" || role === "proviseur") && (
                 <button
                   onClick={() => onSelectSection("deployment")}
                   className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
@@ -795,20 +795,32 @@ export default function AdminSidebar({
         {role === "proviseur" && onProviseurSave && (
           <button
             type="button"
+            id="btn-proviseur-sidebar-save"
             onClick={onProviseurSave}
-            title="Enregistrer toutes les modifications dans l'application"
+            disabled={isSyncing}
+            title="Enregistrer toutes les modifications et déployer en direct sur le site en ligne (Vercel)"
             className={`w-full flex items-center justify-center gap-2 ${
               isCollapsed ? "py-2 px-1" : "py-2.5 px-3"
-            } rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md border border-emerald-400/30 cursor-pointer`}
+            } rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md border border-emerald-400/30 cursor-pointer disabled:opacity-50`}
           >
-            <Save className="h-4 w-4 shrink-0" />
-            {!isCollapsed && <span>Enregistrer & Mettre à jour</span>}
+            {isSyncing ? (
+              <>
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                {!isCollapsed && <span>Envoi en cours...</span>}
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 shrink-0" />
+                {!isCollapsed && <span>Enregistrer & Mettre à jour</span>}
+              </>
+            )}
           </button>
         )}
 
         {role === "superadmin" && onSuperadminSave && (
           <button
             type="button"
+            id="btn-superadmin-sidebar-save"
             onClick={onSuperadminSave}
             disabled={isSyncing}
             title="Enregistrer et déployer directement sur GitHub & Vercel en 1 clic"
