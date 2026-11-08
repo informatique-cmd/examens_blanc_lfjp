@@ -65,15 +65,15 @@ export default function AdminDashboardSection({
 
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto w-full animate-in fade-in duration-300">
+    <div className="space-y-6 max-w-5xl mx-auto w-full animate-in fade-in duration-300">
       {/* 1. TOP EXECUTIVE WELCOME BANNER (LUMINOUS & REFINED FRENCH INSTITUTIONAL STYLE) */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs relative overflow-hidden">
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-xs relative overflow-hidden">
         {/* Institutional Tricolor Micro-Hairline Accent */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#002060] via-[#002060] to-[#c92a2a]" />
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#002060] via-[#3498db] to-[#c92a2a]" />
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pt-1">
-          <div className="space-y-2.5 max-w-3xl">
-            <div className="flex flex-wrap items-center gap-2.5">
+          <div className="space-y-2 max-w-2xl">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#002060] font-bold text-xs uppercase tracking-wider">
                 <span className="w-2 h-2 rounded-full bg-[#002060]" />
                 {role === "proviseur" ? "Espace Proviseur & Organisation" : "Espace Direction & Organisation"}
@@ -92,12 +92,12 @@ export default function AdminDashboardSection({
             </p>
           </div>
 
-          {/* Quick Institutional Action Links */}
+          {/* Quick Institutional Action Links - Harmonized */}
           <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-start lg:self-center">
             <button
               type="button"
               onClick={() => onNavigateSection("convoc-eleves")}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-[0.98]"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-xs hover:shadow cursor-pointer active:scale-[0.98]"
             >
               <Printer className="h-4 w-4 text-amber-300" />
               <span>Imprimer Convocations</span>
@@ -106,7 +106,7 @@ export default function AdminDashboardSection({
             <button
               type="button"
               onClick={() => onNavigateSection("organization")}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#002060] border border-blue-200 text-xs font-bold transition cursor-pointer active:scale-[0.98]"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-[#002060] text-xs font-bold transition shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.98]"
             >
               <Compass className="h-4 w-4 text-blue-700" />
               <span>Répartition & Brassage</span>
@@ -116,12 +116,12 @@ export default function AdminDashboardSection({
               href="/"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.98]"
               title="Ouvrir le site vitrine dans un nouvel onglet"
             >
-              <Eye className="h-3.5 w-3.5 text-slate-500" />
+              <Eye className="h-4 w-4 text-slate-500" />
               <span>Voir la Vitrine</span>
-              <ExternalLink className="h-3 w-3 opacity-50" />
+              <ExternalLink className="h-3 w-3 opacity-60" />
             </a>
           </div>
         </div>
@@ -230,10 +230,40 @@ export default function AdminDashboardSection({
         </div>
       </div>
 
-
+      {/* 3. RACCOURCIS D'ACCÈS RAPIDE AUX ESPACES CLÉS */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {[
+          { label: "Base Élèves", icon: Users, sec: "data-eleves", badge: `${candidates.length} élèves` },
+          { label: "Salles & Jauges", icon: School, sec: "data-salles", badge: `${rooms.length} salles` },
+          { label: "Enseignants", icon: Shield, sec: "data-profs", badge: `${teachers.length} profs` },
+          { label: "Créneaux Épreuves", icon: Calendar, sec: "creneaux-epreuves", badge: `${examSlots.length} créneaux` },
+          { label: "Brassage Tables", icon: Compass, sec: "organization", badge: "Répartition" },
+          { label: "Convocations A4", icon: Printer, sec: "convoc-eleves", badge: "Impression" },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.label}
+              type="button"
+              onClick={() => onNavigateSection(item.sec as AdminSection)}
+              className="p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-blue-400 hover:shadow-xs transition text-center flex flex-col items-center justify-center gap-1.5 group cursor-pointer"
+            >
+              <div className="h-9 w-9 rounded-xl bg-slate-100 group-hover:bg-blue-50 group-hover:text-blue-700 text-slate-700 flex items-center justify-center transition">
+                <Icon className="h-4.5 w-4.5" />
+              </div>
+              <span className="text-xs font-bold text-slate-800 group-hover:text-blue-700 transition">
+                {item.label}
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400">
+                {item.badge}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       {/* 4. SUMMARY PANELS: SESSIONS D'EXAMENS & CONSIGNES OFFICIELLES */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-1">
         {/* Active Exam Sessions */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">

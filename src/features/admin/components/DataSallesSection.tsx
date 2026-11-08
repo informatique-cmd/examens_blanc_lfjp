@@ -146,45 +146,49 @@ export default function DataSallesSection({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+      {/* Top Banner Header - Harmonized */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800">
-              Salles & Espaces Pronote
+              Pronote & Espaces
             </span>
             <span className="text-xs text-slate-500">
               Jauges et capacités d'accueil
             </span>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mt-1">
+          <h2 className="text-xl font-black text-slate-900 tracking-tight mt-1 flex items-center gap-2">
             🏫 Salles d'Examen & Espaces
           </h2>
-          <p className="text-xs text-slate-600 mt-0.5">
-            Téléchargez le modèle Pronote pour récupérer vos salles de classe ou importez votre fichier CSV.
+          <p className="text-xs text-slate-600 mt-0.5 max-w-2xl leading-relaxed">
+            Téléchargez le modèle Pronote officiel, importez votre fichier CSV ou ajoutez manuellement des salles et espaces d'examen.
           </p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+        {/* Action Buttons - Harmonized */}
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-start lg:self-center">
           <button
+            type="button"
             onClick={() => downloadCsvTemplate("salles")}
-            className="px-3.5 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
-            title="Télécharger le modèle de fichier CSV type Pronote/EDT pour les salles"
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition shadow-2xs hover:shadow-xs active:scale-[0.98] cursor-pointer"
+            title="Télécharger le modèle CSV officiel prêt pour Pronote"
           >
-            <Download className="h-4 w-4 text-emerald-600" />
+            <Download className="h-4 w-4 text-slate-500" />
             <span>Modèle CSV Salles</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setShowImportModal(true)}
-            className="px-4 py-2 rounded-xl bg-[#27ae60] hover:bg-[#219653] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition shadow-2xs hover:shadow-xs active:scale-[0.98] cursor-pointer"
+            title="Importer la liste des salles depuis un fichier Pronote / CSV"
           >
-            <Upload className="h-4 w-4" />
-            <span>Importer les Salles</span>
+            <Upload className="h-4 w-4 text-emerald-700" />
+            <span>Importer depuis Pronote</span>
           </button>
 
           <button
+            type="button"
             onClick={() => {
               setEditingRoom(null);
               setFormName("");
@@ -192,10 +196,11 @@ export default function DataSallesSection({
               setFormNotes("");
               setShowManualModal(true);
             }}
-            className="px-3.5 py-2 rounded-xl bg-[#3498db] hover:bg-[#2980b9] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-xs hover:shadow-sm active:scale-[0.98] cursor-pointer"
+            title="Ajouter une nouvelle salle manuellement"
           >
             <Plus className="h-4 w-4" />
-            <span>Ajout manuel</span>
+            <span>Ajouter une salle</span>
           </button>
         </div>
       </div>

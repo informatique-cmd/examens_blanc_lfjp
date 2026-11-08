@@ -181,46 +181,55 @@ export default function DataProfsSection({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center">
+      {/* Top Banner Header - Harmonized */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
-              <GraduationCap className="h-5 w-5" />
+            <span className="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800">
+              Pronote & Corps Professoral
             </span>
-            <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">
-              Équipe Pédagogique & Professeurs (Pronote / EDT)
-            </h2>
+            <span className="text-xs text-slate-500">
+              Gestion des enseignants et surveillants
+            </span>
           </div>
-          <p className="mt-1.5 text-xs text-slate-500 sm:text-sm">
-            Importez ou gérez la liste officielle des professeurs pour les convocations et surveillances d'examen.
+          <h2 className="text-xl font-black text-slate-900 tracking-tight mt-1 flex items-center gap-2">
+            🧑‍🏫 Enseignants & Surveillants
+          </h2>
+          <p className="text-xs text-slate-600 mt-0.5 max-w-2xl leading-relaxed">
+            Téléchargez le modèle Pronote officiel, importez votre fichier CSV ou ajoutez manuellement des professeurs au corps professoral.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        {/* Action Buttons - Harmonized */}
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-start lg:self-center">
           <button
+            type="button"
             onClick={() => downloadCsvTemplate("profs")}
-            className="flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition"
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition shadow-2xs hover:shadow-xs active:scale-[0.98] cursor-pointer"
             title="Télécharger le modèle CSV officiel prêt pour Pronote"
           >
             <Download className="h-4 w-4 text-slate-500" />
-            <span>Modèle Pronote Profs</span>
+            <span>Modèle CSV Profs</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setShowImportModal(true)}
-            className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-semibold text-blue-700 shadow-xs hover:bg-blue-100 transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition shadow-2xs hover:shadow-xs active:scale-[0.98] cursor-pointer"
+            title="Importer la liste des enseignants depuis un fichier Pronote / CSV"
           >
-            <FileSpreadsheet className="h-4 w-4 text-blue-600" />
-            <span>Importer Pronote / CSV</span>
+            <Upload className="h-4 w-4 text-emerald-700" />
+            <span>Importer depuis Pronote</span>
           </button>
 
           <button
+            type="button"
             onClick={openCreateModal}
-            className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-xs hover:shadow-sm active:scale-[0.98] cursor-pointer"
+            title="Ajouter un nouvel enseignant manuellement"
           >
             <Plus className="h-4 w-4" />
-            <span>Ajouter manuellement</span>
+            <span>Ajouter un enseignant</span>
           </button>
         </div>
       </div>
