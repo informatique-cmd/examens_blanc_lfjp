@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-08T14:13:49.676Z",
+  "updatedAt": "2026-11-08T14:18:30.515Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Lycée Français Jacques Prévert de Saly • Réseau AEFE",
@@ -156,8 +156,468 @@
   ],
   "exams": [],
   "examSlots": [],
-  "rooms": [],
-  "teachers": [],
+  "rooms": [
+    {
+      "id": "room-1794147441014-1-usvy",
+      "name": "BUREAU CPE",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-2-rj7d",
+      "name": "BUREAU PROVISEUR",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-3-wnfb",
+      "name": "CDI",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-4-ume7",
+      "name": "FOYER",
+      "capacity": 10,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-5-glxj",
+      "name": "LABORATOIRE",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-6-087u",
+      "name": "S7 ARTS",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-7-x5xr",
+      "name": "SALLE POLYVALENTE",
+      "capacity": 80,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-8-tefh",
+      "name": "SALLE TECHNOLOGIE",
+      "capacity": 25,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-9-4ifl",
+      "name": "SCIENCES",
+      "capacity": 20,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-10-lvvd",
+      "name": "SCIENCES 1",
+      "capacity": 20,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-11-17jq",
+      "name": "SCIENCES 2",
+      "capacity": 20,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-12-1x80",
+      "name": "SCIENCES 3",
+      "capacity": 20,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-13-xo5b",
+      "name": "SECONDAIRE",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-14-uebs",
+      "name": "24 PLACES",
+      "capacity": 24,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-15-nz6p",
+      "name": "S12",
+      "capacity": 26,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-16-i3yt",
+      "name": "S13",
+      "capacity": 24,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-17-wkqg",
+      "name": "S14",
+      "capacity": 24,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-18-ijsz",
+      "name": "S15",
+      "capacity": 24,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-19-cl38",
+      "name": "30 PLACES",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-20-twnr",
+      "name": "S1",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-21-o56z",
+      "name": "S10",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-22-izw7",
+      "name": "S11",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-23-awgw",
+      "name": "S2",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-24-pv2p",
+      "name": "S3",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-25-ewsy",
+      "name": "S4",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-26-aq5c",
+      "name": "S5",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-27-d364",
+      "name": "S6",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-28-7gis",
+      "name": "S8",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-29-hy72",
+      "name": "S9",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    },
+    {
+      "id": "room-1794147441014-30-dvr9",
+      "name": "TERRAIN DE SPORT SECONDAIRE",
+      "capacity": 30,
+      "building": "Bâtiment Principal",
+      "notes": ""
+    }
+  ],
+  "teachers": [
+    {
+      "id": "teach-1794147505582-1-6v72",
+      "civility": "Monsieur",
+      "lastName": "ANE",
+      "firstName": "Alassane",
+      "subject": "HISTOIRE GEOGRAPHIE, SCIENCES ECONOMIQUES ET SOCIALES",
+      "email": "alassane.ane@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-2-6ai6",
+      "civility": "Monsieur",
+      "lastName": "BARITOU",
+      "firstName": "Olivier",
+      "subject": "FRANCAIS",
+      "email": "olivier.baritou@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-3-ybl1",
+      "civility": "Madame",
+      "lastName": "BOSSU",
+      "firstName": "Claire",
+      "subject": "HISTOIRE GEOGRAPHIE",
+      "email": "claire.bossu@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-4-x6si",
+      "civility": "Madame",
+      "lastName": "CHABERT",
+      "firstName": "Karine",
+      "subject": "MATHEMATIQUES",
+      "email": "karine.chabert@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-5-bj3j",
+      "civility": "Monsieur",
+      "lastName": "CNED",
+      "firstName": "cned",
+      "subject": "Enseignement Général",
+      "email": "c.cned@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-6-0l13",
+      "civility": "Monsieur",
+      "lastName": "COSTE",
+      "firstName": "Clara",
+      "subject": "Enseignement Général",
+      "email": "c.coste@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-7-btls",
+      "civility": "Madame",
+      "lastName": "D'AQUINO",
+      "firstName": "Roselyne",
+      "subject": "PRIO - ADN",
+      "email": "orientation@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-8-yvhu",
+      "civility": "Madame",
+      "lastName": "DABLIN",
+      "firstName": "Lorraine",
+      "subject": "ARTS PLASTIQUES",
+      "email": "lorraine.dablin@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-9-gjso",
+      "civility": "Monsieur",
+      "lastName": "DAVID",
+      "firstName": "Vincent",
+      "subject": "SCIENCES ET VIE DE LA TERRE",
+      "email": "vincent.david@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-10-xqrs",
+      "civility": "Madame",
+      "lastName": "DIADIO",
+      "firstName": "Ira",
+      "subject": "DOCUMENTATION",
+      "email": "ira.diadio@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-11-nvma",
+      "civility": "Monsieur",
+      "lastName": "DIANDY",
+      "firstName": "Antoine",
+      "subject": "EDUCATION MUSICALE",
+      "email": "antoine.diandy@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-12-gzvv",
+      "civility": "Madame",
+      "lastName": "DRAME",
+      "firstName": "Claire",
+      "subject": "EDUCATION PHYSIQUE ET SPORTIVE",
+      "email": "claire.drame@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-13-1xr2",
+      "civility": "Madame",
+      "lastName": "DUFAY",
+      "firstName": "Maguette",
+      "subject": "MATHEMATIQUES",
+      "email": "maguette.dufay@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-14-irai",
+      "civility": "Monsieur",
+      "lastName": "FALL",
+      "firstName": "Baba",
+      "subject": "SCIENCES PHYSIQUES ET CHIMIE",
+      "email": "baba.fall@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-15-l2wk",
+      "civility": "Monsieur",
+      "lastName": "FAYE",
+      "firstName": "François",
+      "subject": "ANGLAIS",
+      "email": "francois.faye@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-16-glzq",
+      "civility": "Madame",
+      "lastName": "FAYE",
+      "firstName": "Maryelle",
+      "subject": "FRANCAIS",
+      "email": "maryelle.faye@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-17-4ode",
+      "civility": "Monsieur",
+      "lastName": "FRAYON",
+      "firstName": "Antoine",
+      "subject": "TECHNOLOGIE, SCIENCE NUMERIQUE",
+      "email": "antoine.frayon@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-18-gvtn",
+      "civility": "Madame",
+      "lastName": "GIBUS",
+      "firstName": "Amandine",
+      "subject": "ESPAGNOL",
+      "email": "amandine.gibus@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-19-zkhw",
+      "civility": "Monsieur",
+      "lastName": "GOMIS",
+      "firstName": "Alain",
+      "subject": "PHILOSOPHIE",
+      "email": "alain.gomis@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-20-38u6",
+      "civility": "Madame",
+      "lastName": "JAÏT",
+      "firstName": "Layla",
+      "subject": "ANGLAIS",
+      "email": "layla.jait@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-21-alh6",
+      "civility": "Madame",
+      "lastName": "MBOUP",
+      "firstName": "Nathalie",
+      "subject": "SCIENCES ET VIE DE LA TERRE",
+      "email": "nathalie.mboup@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-22-0biw",
+      "civility": "Madame",
+      "lastName": "MICHON GUILLAUME",
+      "firstName": "Mathilde",
+      "subject": "HISTOIRE GEOGRAPHIE",
+      "email": "mathilde.michonguillaume@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-23-hltr",
+      "civility": "Madame",
+      "lastName": "MOURAIN DIOP",
+      "firstName": "Fanelly",
+      "subject": "FRANCAIS",
+      "email": "fanelly.mouraindiop@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-24-ce7j",
+      "civility": "Monsieur",
+      "lastName": "NDAW",
+      "firstName": "Adama",
+      "subject": "SCIENCES PHYSIQUES ET CHIMIE",
+      "email": "adama.ndaw@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-25-x719",
+      "civility": "Monsieur",
+      "lastName": "NDIAYE",
+      "firstName": "Alassane",
+      "subject": "EDUCATION PHYSIQUE ET SPORTIVE",
+      "email": "alassane.ndiaye@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-26-o189",
+      "civility": "Madame",
+      "lastName": "PEREZ",
+      "firstName": "Fanny",
+      "subject": "DOCUMENTATION",
+      "email": "fanny.perez@lfjpsal.org"
+    },
+    {
+      "id": "teach-1794147505582-27-jssi",
+      "civility": "Monsieur",
+      "lastName": "PIAGGIO",
+      "firstName": "Fernando",
+      "subject": "ESPAGNOL",
+      "email": "fernando.piaggio@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-28-dmni",
+      "civility": "Madame",
+      "lastName": "PORTER",
+      "firstName": "Elizabeth",
+      "subject": "ANGLAIS",
+      "email": "elizabeth.porter@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-29-h1xm",
+      "civility": "Madame",
+      "lastName": "RIVIERE",
+      "firstName": "Sandrine",
+      "subject": "MATHEMATIQUES",
+      "email": "sandrine.riviere@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-30-rv22",
+      "civility": "Monsieur",
+      "lastName": "SERVATE",
+      "firstName": "Samuel",
+      "subject": "MATHEMATIQUES",
+      "email": "samuel.servate@lfjpsaly.org"
+    },
+    {
+      "id": "teach-1794147505582-31-qnhb",
+      "civility": "Monsieur",
+      "lastName": "THOMAS",
+      "firstName": "Yvon",
+      "subject": "HISTOIRE GEOGRAPHIE",
+      "email": "yvon.thomas@lfjpsaly.org"
+    }
+  ],
   "surveillances": [],
   "candidates": [
     {
