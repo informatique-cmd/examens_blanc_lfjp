@@ -21,7 +21,9 @@ import type {
   CmsRoom,
   CmsSurveillance,
   CmsTeacher,
+  SiteInfo,
 } from "../../../shared/services/cms-store";
+import { DEFAULT_SCHOOL_LEVELS } from "../../../shared/services/cms-store";
 import { OFFICIAL_LFJP_PLANNING_SESSIONS } from "../../../shared/data/official-lfjp-planning";
 
 interface CreneauxSectionProps {
@@ -30,6 +32,7 @@ interface CreneauxSectionProps {
   rooms: CmsRoom[];
   teachers?: CmsTeacher[];
   surveillances: CmsSurveillance[];
+  siteInfo?: SiteInfo;
   onAddExamSlot: (slot: Omit<CmsExamSlot, "id">) => void;
   onUpdateExamSlot: (id: string, updates: Partial<CmsExamSlot>) => void;
   onDeleteExamSlot: (id: string) => void;
@@ -45,6 +48,7 @@ export default function CreneauxSection({
   rooms,
   teachers = [],
   surveillances,
+  siteInfo,
   onAddExamSlot,
   onUpdateExamSlot,
   onDeleteExamSlot,
@@ -56,6 +60,11 @@ export default function CreneauxSection({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
 
+  const availableLevels =
+    siteInfo?.schoolLevels && siteInfo.schoolLevels.length > 0
+      ? siteInfo.schoolLevels
+      : DEFAULT_SCHOOL_LEVELS;
+
   // Form state
   const [formExamTitle, setFormExamTitle] = useState<string>(exams[0]?.title || "DNB blanc");
   const [formSubject, setFormSubject] = useState<string>("");
@@ -63,7 +72,7 @@ export default function CreneauxSection({
   const [formStartTime, setFormStartTime] = useState<string>("08:00");
   const [formEndTime, setFormEndTime] = useState<string>("09:30");
   const [formDurationMinutes, setFormDurationMinutes] = useState<number>(90);
-  const [formTargetLevel, setFormTargetLevel] = useState<string>("3ème");
+  const [formTargetLevel, setFormTargetLevel] = useState<string>(availableLevels[0] || "3ème (DNB Collège)");
   const [formSelectedRooms, setFormSelectedRooms] = useState<string[]>(rooms.map((r) => r.name));
   const [formNotes, setFormNotes] = useState<string>("");
 
@@ -431,7 +440,7 @@ export default function CreneauxSection({
     setFormStartTime("08:00");
     setFormEndTime("09:30");
     setFormDurationMinutes(90);
-    setFormTargetLevel("3ème");
+    setFormTargetLevel(availableLevels[0] || "3ème (DNB Collège)");
     setFormSelectedRooms(rooms.map((r) => r.name));
     setFormNotes("");
     setIsModalOpen(true);
@@ -545,23 +554,14 @@ export default function CreneauxSection({
           </div>
           <h2 className="text-xl font-bold text-slate-900 mt-1 flex items-center gap-2">
             <Clock className="h-5 w-5 text-indigo-600" />
-            <span>🕒 Créneaux des Épreuves & Programmation</span>
+            <span>Créneaux des Épreuves & Programmation</span>
           </h2>
           <p className="text-xs text-slate-600 mt-0.5">
             Définissez les dates, heures de début et fin de chaque épreuve. Le calcul de la majoration Tiers-Temps (+1/3) est automatisé.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={handleLoadOfficialLFJPPlanning}
-            className="px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-900 font-bold text-xs transition shadow-2xs flex items-center gap-2 cursor-pointer"
-            title="Charger les 5 sessions officielles et tous les surveillants du document PDF LFJP (8 au 10 décembre)"
-          >
-            <FileSpreadsheet className="h-4 w-4 text-indigo-700" />
-            <span>Charger Grille PDF LFJP (8-10 déc.)</span>
-          </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
             onClick={handleOpenNewModal}
             className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-sm flex items-center gap-2 cursor-pointer"
@@ -1200,8 +1200,8 @@ export default function CreneauxSection({
       {/* MODAL: Program / Edit Slot */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b pb-3">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 max-h-[88vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between border-b px-6 py-4 shrink-0 bg-slate-50/70">
               <div className="flex items-center gap-2">
                 <Clock className="h-5 w-5 text-indigo-600" />
                 <h3 className="font-bold text-slate-900 text-base">
@@ -1211,13 +1211,13 @@ export default function CreneauxSection({
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold p-1 rounded-lg hover:bg-slate-200 transition"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSubmitSlot} className="space-y-4 pt-4">
+            <form onSubmit={handleSubmitSlot} className="flex-1 overflow-y-auto p-6 space-y-4">
               {/* Exam title & Subject */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -1227,7 +1227,7 @@ export default function CreneauxSection({
                   <select
                     value={formExamTitle}
                     onChange={(e) => setFormExamTitle(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 font-medium"
                   >
                     {exams.map((ex) => (
                       <option key={ex.id} value={ex.title}>
@@ -1247,12 +1247,13 @@ export default function CreneauxSection({
                   <select
                     value={formTargetLevel}
                     onChange={(e) => setFormTargetLevel(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 font-medium"
                   >
-                    <option value="3ème">3ème (DNB Collège)</option>
-                    <option value="1ère">1ère (Baccalauréat EAF)</option>
-                    <option value="Terminale">Terminale (Baccalauréat)</option>
-                    <option value="Tous niveaux">Tous niveaux</option>
+                    {availableLevels.map((lvl) => (
+                      <option key={lvl} value={lvl}>
+                        {lvl}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -1316,16 +1317,18 @@ export default function CreneauxSection({
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Durée totale calculée
                   </label>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <input
                       type="number"
                       min={15}
                       step={5}
                       value={formDurationMinutes}
                       onChange={(e) => handleDurationPresetChange(parseInt(e.target.value, 10) || 60)}
-                      className="w-20 px-2.5 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono font-bold"
+                      className="w-24 px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono font-bold text-slate-900"
                     />
-                    <span className="text-xs text-slate-500 font-semibold">min ({Math.floor(formDurationMinutes / 60)}h{formDurationMinutes % 60 > 0 ? String(formDurationMinutes % 60).padStart(2, '0') : '00'})</span>
+                    <span className="text-xs text-slate-600 font-semibold whitespace-nowrap">
+                      min ({Math.floor(formDurationMinutes / 60)}h{formDurationMinutes % 60 > 0 ? String(formDurationMinutes % 60).padStart(2, '0') : '00'})
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1383,61 +1386,73 @@ export default function CreneauxSection({
                   <label className="text-xs font-semibold text-slate-700">
                     Salles d'examen mobilisées pour cette épreuve :
                   </label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-slate-500 font-medium">
-                      {formSelectedRooms.length} salle(s) • Capacité :{" "}
-                      <strong>
-                        {rooms
-                          .filter((r) => formSelectedRooms.includes(r.name))
-                          .reduce((acc, r) => acc + (r.capacity || 0), 0)}{" "}
-                        places
-                      </strong>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setFormSelectedRooms(rooms.map((r) => r.name))}
-                      className="text-[11px] text-indigo-600 hover:underline font-semibold"
-                    >
-                      Toutes
-                    </button>
-                    <span className="text-slate-300">|</span>
-                    <button
-                      type="button"
-                      onClick={() => setFormSelectedRooms([])}
-                      className="text-[11px] text-slate-500 hover:underline"
-                    >
-                      Aucune
-                    </button>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs max-h-40 overflow-y-auto">
-                  {rooms.map((room) => {
-                    const isChecked = formSelectedRooms.includes(room.name);
-                    return (
-                      <label
-                        key={room.id}
-                        className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition border ${
-                          isChecked
-                            ? "bg-white border-indigo-300 font-bold text-indigo-950 shadow-2xs"
-                            : "bg-slate-50/50 border-transparent text-slate-600 hover:bg-slate-100"
-                        }`}
+                  {rooms.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        {formSelectedRooms.length} salle(s) • Capacité :{" "}
+                        <strong>
+                          {rooms
+                            .filter((r) => formSelectedRooms.includes(r.name))
+                            .reduce((acc, r) => acc + (r.capacity || 0), 0)}{" "}
+                          places
+                        </strong>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setFormSelectedRooms(rooms.map((r) => r.name))}
+                        className="text-[11px] text-indigo-600 hover:underline font-semibold"
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleToggleRoom(room.name)}
-                            className="rounded text-indigo-600 focus:ring-indigo-500"
-                          />
-                          <span className="truncate">{room.name}</span>
-                        </div>
-                        <span className="text-[10px] font-semibold text-slate-400 shrink-0 ml-1">
-                          {room.capacity} pl.
-                        </span>
-                      </label>
-                    );
-                  })}
+                        Toutes
+                      </button>
+                      <span className="text-slate-300">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setFormSelectedRooms([])}
+                        className="text-[11px] text-slate-500 hover:underline"
+                      >
+                        Aucune
+                      </button>
+                    </div>
+                  )}
                 </div>
+
+                {rooms.length === 0 ? (
+                  <div className="p-3.5 bg-slate-50 border border-dashed border-slate-300 rounded-xl text-center text-xs text-slate-500">
+                    <p className="font-semibold text-slate-700">Aucune salle d'examen configurée pour le moment</p>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Vous pouvez enregistrer cette épreuve dès maintenant. Vous pourrez lui assigner les salles ultérieurement à l'Étape 2 (Données Pronote) ou lors du brassage.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs max-h-40 overflow-y-auto">
+                    {rooms.map((room) => {
+                      const isChecked = formSelectedRooms.includes(room.name);
+                      return (
+                        <label
+                          key={room.id}
+                          className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition border ${
+                            isChecked
+                              ? "bg-white border-indigo-300 font-bold text-indigo-950 shadow-2xs"
+                              : "bg-slate-50/50 border-transparent text-slate-600 hover:bg-slate-100"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleRoom(room.name)}
+                              className="rounded text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span className="truncate">{room.name}</span>
+                          </div>
+                          <span className="text-[10px] font-semibold text-slate-400 shrink-0 ml-1">
+                            {room.capacity} pl.
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Notes / Consignes */}

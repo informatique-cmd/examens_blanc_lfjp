@@ -11,11 +11,13 @@ import {
   Sparkles,
   Layers,
 } from "lucide-react";
-import type { CmsExam, CmsExamSlot } from "../../../shared/services/cms-store";
+import type { CmsExam, CmsExamSlot, SiteInfo } from "../../../shared/services/cms-store";
+import { DEFAULT_SCHOOL_LEVELS } from "../../../shared/services/cms-store";
 
 interface SessionsExamensSectionProps {
   exams: CmsExam[];
   examSlots: CmsExamSlot[];
+  siteInfo?: SiteInfo;
   onAddExam: (exam: Omit<CmsExam, "id">) => void;
   onUpdateExam: (id: string, updates: Partial<CmsExam>) => void;
   onDeleteExam: (id: string) => void;
@@ -26,6 +28,7 @@ interface SessionsExamensSectionProps {
 export default function SessionsExamensSection({
   exams,
   examSlots,
+  siteInfo,
   onAddExam,
   onUpdateExam,
   onDeleteExam,
@@ -35,10 +38,15 @@ export default function SessionsExamensSection({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
 
+  const availableLevels =
+    siteInfo?.schoolLevels && siteInfo.schoolLevels.length > 0
+      ? siteInfo.schoolLevels
+      : DEFAULT_SCHOOL_LEVELS;
+
   // Form state
   const [formTitle, setFormTitle] = useState("");
   const [formExamType, setFormExamType] = useState("Examen Blanc");
-  const [formTargetLevel, setFormTargetLevel] = useState("3ème");
+  const [formTargetLevel, setFormTargetLevel] = useState(availableLevels[0] || "3ème");
   const [formPeriod, setFormPeriod] = useState("");
   const [formStartsAt, setFormStartsAt] = useState("");
   const [formEndsAt, setFormEndsAt] = useState("");
@@ -289,10 +297,11 @@ export default function SessionsExamensSection({
                     onChange={(e) => setFormTargetLevel(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
                   >
-                    <option value="3ème">3ème (DNB Collège)</option>
-                    <option value="1ère">1ère (Baccalauréat)</option>
-                    <option value="Terminale">Terminale (Baccalauréat)</option>
-                    <option value="Tous niveaux">Tous niveaux</option>
+                    {availableLevels.map((lvl) => (
+                      <option key={lvl} value={lvl}>
+                        {lvl}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

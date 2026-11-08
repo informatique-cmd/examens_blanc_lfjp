@@ -39,12 +39,24 @@ export interface SiteInfo {
     tiersTempsHours: string;
   }>;
   evaluationTypes?: string[];
+  schoolLevels?: string[];
   sciencesSubjects?: Array<{
     id: string;
     name: string;
     enabled: boolean;
   }>;
 }
+
+export const DEFAULT_SCHOOL_LEVELS: string[] = [
+  "3ème (DNB Collège)",
+  "1ère (Baccalauréat EAF)",
+  "Terminale (Baccalauréat)",
+  "2nde (Seconde)",
+  "4ème (Quatrième)",
+  "5ème (Cinquième)",
+  "6ème (Sixième)",
+  "Tous niveaux",
+];
 
 export interface CmsCallout {
   id: string;
@@ -193,6 +205,9 @@ export function getCmsData(): CmsData {
       updatedAt: parsed.updatedAt || DEFAULT_CMS_DATA.updatedAt,
       siteInfo: {
         ...DEFAULT_CMS_DATA.siteInfo,
+        schoolLevels: Array.isArray(parsed.siteInfo?.schoolLevels) && parsed.siteInfo.schoolLevels.length > 0
+          ? parsed.siteInfo.schoolLevels
+          : DEFAULT_SCHOOL_LEVELS,
         ...(parsed.siteInfo || {}),
         bannerAlert: {
           ...DEFAULT_CMS_DATA.siteInfo.bannerAlert,
@@ -225,9 +240,20 @@ export function getCmsData(): CmsData {
         : DEFAULT_CMS_DATA.examSlots,
       rooms: Array.isArray(parsed.rooms) ? parsed.rooms : DEFAULT_CMS_DATA.rooms,
       teachers: Array.isArray(parsed.teachers) ? parsed.teachers : DEFAULT_CMS_DATA.teachers,
-      surveillances: Array.isArray(parsed.surveillances)
-        ? parsed.surveillances
-        : DEFAULT_CMS_DATA.surveillances,
+      surveillances: (() => {
+        const rawSurvs = Array.isArray(parsed.surveillances)
+          ? parsed.surveillances
+          : DEFAULT_CMS_DATA.surveillances;
+        const examsList = Array.isArray(parsed.exams) ? parsed.exams : DEFAULT_CMS_DATA.exams;
+        if (examsList.length === 0) return [];
+        const validTitles = new Set(examsList.map((e) => e.title?.trim().toLowerCase()).filter(Boolean));
+        const validSlotIds = new Set((Array.isArray(parsed.examSlots) ? parsed.examSlots : []).map((s) => s.id));
+        return rawSurvs.filter((s) => {
+          const hasSlot = s.slotId && validSlotIds.has(s.slotId);
+          const hasExam = s.examTitle && validTitles.has(s.examTitle.trim().toLowerCase());
+          return hasSlot || hasExam;
+        });
+      })(),
       candidates: Array.isArray(parsed.candidates)
         ? parsed.candidates
         : DEFAULT_CMS_DATA.candidates,

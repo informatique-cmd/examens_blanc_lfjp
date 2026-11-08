@@ -34,6 +34,8 @@ import {
   Printer,
   CalendarRange,
   FileText,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 
 export type AdminSection =
@@ -77,6 +79,8 @@ interface AdminSidebarProps {
   schoolYear: string;
   role?: "proviseur" | "superadmin";
   onProviseurSave?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export default function AdminSidebar({
@@ -95,6 +99,8 @@ export default function AdminSidebar({
   schoolYear,
   role = "superadmin",
   onProviseurSave,
+  isCollapsed = false,
+  onToggleCollapse,
 }: AdminSidebarProps) {
   const isDataActive = [
     "data-eleves",
@@ -109,12 +115,6 @@ export default function AdminSidebar({
     "planning-profs",
   ].includes(currentSection);
 
-  const isConvocActive = [
-    "convoc-eleves",
-    "convoc-profs",
-    "vitrine-publish",
-  ].includes(currentSection);
-
   const isResActive = [
     "res-import",
     "res-analyse",
@@ -123,30 +123,78 @@ export default function AdminSidebar({
     "res-simul",
   ].includes(currentSection);
 
+  const isConvocActive = [
+    "convoc-eleves",
+    "convoc-profs",
+  ].includes(currentSection);
+
+  const isPublishDeployActive = [
+    "vitrine-publish",
+    "deployment",
+  ].includes(currentSection);
+
   return (
-    <aside className="w-full lg:w-[260px] bg-[#2c3e50] text-[#bdc3c7] flex flex-col flex-shrink-0 min-h-[calc(100vh-65px)] lg:min-h-screen border-r border-[#1a252f] select-none text-[0.88rem] print:hidden">
+    <aside
+      className={`w-full ${
+        isCollapsed ? "lg:w-[72px]" : "lg:w-[260px]"
+      } bg-[#2c3e50] text-[#bdc3c7] flex flex-col flex-shrink-0 min-h-[calc(100vh-65px)] lg:min-h-screen border-r border-[#1a252f] select-none text-[0.88rem] transition-all duration-200 print:hidden`}
+    >
       {/* Sidebar Header */}
-      <div
-        onClick={() => onSelectSection("dashboard")}
-        className="p-4 bg-black/15 border-b border-white/10 text-center cursor-pointer hover:bg-black/25 transition"
-        title="Accéder au Tableau de Bord"
-      >
-        <div className="flex items-center justify-center gap-2 mb-1">
-          <img
-            src="/assets/aistudio/logo-lfjp_62451311.png"
-            alt="LFJP Logo"
-            className="w-8 h-8 object-contain bg-white rounded-lg p-0.5 shadow-2xs"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = "/logo-lfjp.png";
-            }}
-          />
-          <h2 className="text-white font-bold text-[0.95rem] tracking-wide">
-            Orga Examens
-          </h2>
-        </div>
-        <p className="text-[11px] text-white/80">
-          Session <span className="font-bold text-amber-300">{schoolYear}</span> • Saly Sénégal
-        </p>
+      <div className="p-3 bg-black/20 border-b border-white/10 flex items-center justify-between gap-2">
+        {!isCollapsed ? (
+          <div
+            onClick={() => onSelectSection("dashboard")}
+            className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition min-w-0"
+            title="Accéder au Tableau de Bord"
+          >
+            <img
+              src="/assets/aistudio/logo-lfjp_62451311.png"
+              alt="LFJP Logo"
+              className="w-8 h-8 object-contain bg-white rounded-lg p-0.5 shadow-2xs shrink-0"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/logo-lfjp.png";
+              }}
+            />
+            <div className="min-w-0 text-left">
+              <h2 className="text-white font-bold text-[0.92rem] tracking-wide truncate">
+                Orga Examens
+              </h2>
+              <p className="text-[10px] text-white/70 truncate">
+                {schoolYear} • LFJP Saly
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div
+            onClick={() => onSelectSection("dashboard")}
+            className="mx-auto cursor-pointer hover:opacity-90 transition py-0.5"
+            title="Tableau de bord LFJP"
+          >
+            <img
+              src="/assets/aistudio/logo-lfjp_62451311.png"
+              alt="LFJP Logo"
+              className="w-8 h-8 object-contain bg-white rounded-lg p-0.5 shadow-2xs"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/logo-lfjp.png";
+              }}
+            />
+          </div>
+        )}
+
+        {onToggleCollapse && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            title={isCollapsed ? "Agrandir le menu (Ctrl+B)" : "Réduire le menu (Ctrl+B)"}
+            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition shrink-0 cursor-pointer"
+          >
+            {isCollapsed ? (
+              <PanelLeftOpen className="h-4 w-4 text-sky-400" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4 text-slate-400" />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Navigation List */}
@@ -154,7 +202,10 @@ export default function AdminSidebar({
         {/* 0. Tableau de Bord */}
         <button
           onClick={() => onSelectSection("dashboard")}
-          className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
+          title="00. Tableau de Bord"
+          className={`w-full flex items-center ${
+            isCollapsed ? "justify-center px-2 py-3" : "justify-between px-4 py-3"
+          } text-left transition border-b border-white/5 ${
             currentSection === "dashboard"
               ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
               : "hover:bg-white/5 hover:text-white"
@@ -162,18 +213,23 @@ export default function AdminSidebar({
         >
           <div className="flex items-center gap-2.5">
             <LayoutDashboard className="h-4 w-4 shrink-0 text-sky-400" />
-            <span>Tableau de Bord</span>
+            {!isCollapsed && <span>Tableau de Bord</span>}
           </div>
-          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/15 text-white">
-            Accueil
-          </span>
+          {!isCollapsed && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/15 text-white">
+              Accueil
+            </span>
+          )}
         </button>
 
         {/* 1. Configuration & Logo (SuperAdmin) */}
         {role === "superadmin" && (
           <button
             onClick={() => onSelectSection("config")}
-            className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
+            title="01. Paramètres & Accès"
+            className={`w-full flex items-center ${
+              isCollapsed ? "justify-center px-2 py-3" : "justify-between px-4 py-3"
+            } text-left transition border-b border-white/5 ${
               currentSection === "config"
                 ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
                 : "hover:bg-white/5 hover:text-white"
@@ -181,19 +237,30 @@ export default function AdminSidebar({
           >
             <div className="flex items-center gap-2.5">
               <Settings className="h-4 w-4 shrink-0 text-slate-300" />
-              <span>Paramètres & Accès</span>
+              {!isCollapsed && <span>Paramètres & Accès</span>}
             </div>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-200 font-mono">
-              01
-            </span>
+            {!isCollapsed && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-200 font-mono">
+                01
+              </span>
+            )}
           </button>
         )}
 
-        {/* 2. Données (Submenu) */}
+        {/* 2. Données Pronote (Submenu) */}
         <div>
           <button
-            onClick={() => onToggleSubmenu("dataMenu")}
-            className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
+            onClick={() => {
+              if (isCollapsed) {
+                onSelectSection("data-eleves");
+              } else {
+                onToggleSubmenu("dataMenu");
+              }
+            }}
+            title="02. Données Pronote (Élèves, Salles, Professeurs)"
+            className={`w-full flex items-center ${
+              isCollapsed ? "justify-center px-2 py-3" : "justify-between px-4 py-3"
+            } text-left transition border-b border-white/5 ${
               isDataActive
                 ? "text-white font-semibold bg-white/5"
                 : "hover:bg-white/5 hover:text-white"
@@ -201,21 +268,23 @@ export default function AdminSidebar({
           >
             <div className="flex items-center gap-2.5">
               <FolderOpen className="h-4 w-4 shrink-0 text-amber-400" />
-              <span>Données Pronote</span>
+              {!isCollapsed && <span>Données Pronote</span>}
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-200 font-mono">
-                02
-              </span>
-              {openSubmenus.dataMenu ? (
-                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-              ) : (
-                <ChevronRight className="h-3.5 w-3.5 opacity-60" />
-              )}
-            </div>
+            {!isCollapsed && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-200 font-mono">
+                  02
+                </span>
+                {openSubmenus.dataMenu ? (
+                  <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+                )}
+              </div>
+            )}
           </button>
 
-          {openSubmenus.dataMenu && (
+          {!isCollapsed && openSubmenus.dataMenu && (
             <div className="bg-black/20 py-1 border-b border-white/5">
               <button
                 onClick={() => onSelectSection("data-eleves")}
@@ -298,7 +367,10 @@ export default function AdminSidebar({
         {/* 3. Sessions d'Examens */}
         <button
           onClick={() => onSelectSection("sessions-examens")}
-          className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
+          title="03. Sessions d'Examens"
+          className={`w-full flex items-center ${
+            isCollapsed ? "justify-center px-2 py-3" : "justify-between px-4 py-3"
+          } text-left transition border-b border-white/5 ${
             currentSection === "sessions-examens"
               ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
               : "hover:bg-white/5 hover:text-white"
@@ -306,24 +378,29 @@ export default function AdminSidebar({
         >
           <div className="flex items-center gap-2.5">
             <ClipboardList className="h-4 w-4 shrink-0 text-amber-400" />
-            <span>Sessions d'Examens</span>
+            {!isCollapsed && <span>Sessions d'Examens</span>}
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/30 text-violet-200 font-mono">
-              03
-            </span>
-            {typeof examsCount === "number" && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 text-slate-300">
-                {examsCount}
+          {!isCollapsed && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/30 text-violet-200 font-mono">
+                03
               </span>
-            )}
-          </div>
+              {typeof examsCount === "number" && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 text-slate-300">
+                  {examsCount}
+                </span>
+              )}
+            </div>
+          )}
         </button>
 
         {/* 4. Créneaux des Épreuves */}
         <button
           onClick={() => onSelectSection("creneaux-epreuves")}
-          className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
+          title="04. Créneaux des Épreuves"
+          className={`w-full flex items-center ${
+            isCollapsed ? "justify-center px-2 py-3" : "justify-between px-4 py-3"
+          } text-left transition border-b border-white/5 ${
             currentSection === "creneaux-epreuves"
               ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
               : "hover:bg-white/5 hover:text-white"
@@ -331,24 +408,29 @@ export default function AdminSidebar({
         >
           <div className="flex items-center gap-2.5">
             <Clock className="h-4 w-4 shrink-0 text-cyan-400" />
-            <span>Créneaux des Épreuves</span>
+            {!isCollapsed && <span>Créneaux des Épreuves</span>}
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/30 text-amber-200 font-mono">
-              04
-            </span>
-            {typeof examSlotsCount === "number" && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 text-slate-300">
-                {examSlotsCount}
+          {!isCollapsed && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/30 text-amber-200 font-mono">
+                04
               </span>
-            )}
-          </div>
+              {typeof examSlotsCount === "number" && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/40 text-slate-300">
+                  {examSlotsCount}
+                </span>
+              )}
+            </div>
+          )}
         </button>
 
         {/* 5. Répartition & Brassage */}
         <button
           onClick={() => onSelectSection("organization")}
-          className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
+          title="05. Répartition & Brassage"
+          className={`w-full flex items-center ${
+            isCollapsed ? "justify-center px-2 py-3" : "justify-between px-4 py-3"
+          } text-left transition border-b border-white/5 ${
             currentSection === "organization"
               ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
               : "hover:bg-white/5 hover:text-white"
@@ -356,18 +438,29 @@ export default function AdminSidebar({
         >
           <div className="flex items-center gap-2.5">
             <Shuffle className="h-4 w-4 shrink-0 text-teal-400" />
-            <span>Répartition & Brassage</span>
+            {!isCollapsed && <span>Répartition & Brassage</span>}
           </div>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-500/30 text-teal-200 font-mono">
-            05
-          </span>
+          {!isCollapsed && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-500/30 text-teal-200 font-mono">
+              05
+            </span>
+          )}
         </button>
 
-        {/* 6. Planning (Submenu) */}
+        {/* 6. Plannings Surveillances (Submenu) */}
         <div>
           <button
-            onClick={() => onToggleSubmenu("planningMenu")}
-            className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
+            onClick={() => {
+              if (isCollapsed) {
+                onSelectSection("planning-rooms");
+              } else {
+                onToggleSubmenu("planningMenu");
+              }
+            }}
+            title="06. Plannings Surveillances (Salles & Enseignants)"
+            className={`w-full flex items-center ${
+              isCollapsed ? "justify-center px-2 py-3" : "justify-between px-4 py-3"
+            } text-left transition border-b border-white/5 ${
               isPlanningActive
                 ? "text-white font-semibold bg-white/5"
                 : "hover:bg-white/5 hover:text-white"
@@ -375,21 +468,23 @@ export default function AdminSidebar({
           >
             <div className="flex items-center gap-2.5">
               <Calendar className="h-4 w-4 shrink-0 text-indigo-400" />
-              <span>Plannings Surveillances</span>
+              {!isCollapsed && <span>Plannings Surveillances</span>}
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-200 font-mono">
-                06
-              </span>
-              {openSubmenus.planningMenu ? (
-                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-              ) : (
-                <ChevronRight className="h-3.5 w-3.5 opacity-60" />
-              )}
-            </div>
+            {!isCollapsed && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-200 font-mono">
+                  06
+                </span>
+                {openSubmenus.planningMenu ? (
+                  <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+                )}
+              </div>
+            )}
           </button>
 
-          {openSubmenus.planningMenu && (
+          {!isCollapsed && openSubmenus.planningMenu && (
             <div className="bg-black/20 py-1 border-b border-white/5">
               <button
                 onClick={() => onSelectSection("planning-rooms")}
@@ -421,7 +516,10 @@ export default function AdminSidebar({
         {/* 7. Vers EDT */}
         <button
           onClick={() => onSelectSection("view-edt")}
-          className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
+          title="07. Vers EDT & Cours Impactés"
+          className={`w-full flex items-center ${
+            isCollapsed ? "justify-center px-2 py-3" : "justify-between px-4 py-3"
+          } text-left transition border-b border-white/5 ${
             currentSection === "view-edt"
               ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
               : "hover:bg-white/5 hover:text-white"
@@ -429,18 +527,29 @@ export default function AdminSidebar({
         >
           <div className="flex items-center gap-2.5">
             <CalendarRange className="h-4 w-4 shrink-0 text-orange-400" />
-            <span>Vers EDT & Cours Impactés</span>
+            {!isCollapsed && <span>Vers EDT & Cours Impactés</span>}
           </div>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/30 text-orange-200 font-mono">
-            07
-          </span>
+          {!isCollapsed && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/30 text-orange-200 font-mono">
+              07
+            </span>
+          )}
         </button>
 
-        {/* 8. Corrections & Résultats (Submenu) */}
+        {/* 8. Corrections & Notes (Submenu) */}
         <div>
           <button
-            onClick={() => onToggleSubmenu("resMenu")}
-            className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
+            onClick={() => {
+              if (isCollapsed) {
+                onSelectSection("corr-repartition");
+              } else {
+                onToggleSubmenu("resMenu");
+              }
+            }}
+            title="08. Corrections & Notes"
+            className={`w-full flex items-center ${
+              isCollapsed ? "justify-center px-2 py-3" : "justify-between px-4 py-3"
+            } text-left transition border-b border-white/5 ${
               isResActive || currentSection === "corr-repartition"
                 ? "text-white font-semibold bg-white/5"
                 : "hover:bg-white/5 hover:text-white"
@@ -448,21 +557,23 @@ export default function AdminSidebar({
           >
             <div className="flex items-center gap-2.5">
               <BarChart3 className="h-4 w-4 shrink-0 text-cyan-400" />
-              <span>Corrections & Notes</span>
+              {!isCollapsed && <span>Corrections & Notes</span>}
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-200 font-mono">
-                08
-              </span>
-              {openSubmenus.resMenu ? (
-                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-              ) : (
-                <ChevronRight className="h-3.5 w-3.5 opacity-60" />
-              )}
-            </div>
+            {!isCollapsed && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-200 font-mono">
+                  08
+                </span>
+                {openSubmenus.resMenu ? (
+                  <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+                )}
+              </div>
+            )}
           </button>
 
-          {openSubmenus.resMenu && (
+          {!isCollapsed && openSubmenus.resMenu && (
             <div className="bg-black/20 py-1 border-b border-white/5">
               <button
                 onClick={() => onSelectSection("corr-repartition")}
@@ -539,33 +650,44 @@ export default function AdminSidebar({
           )}
         </div>
 
-        {/* 10. Convocations & Vitrine (Submenu Combiné Étapes 10 & 11) */}
+        {/* 9. Convocations & Ordres de Mission */}
         <div>
           <button
-            onClick={() => onToggleSubmenu("convocMenu")}
-            className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
+            onClick={() => {
+              if (isCollapsed) {
+                onSelectSection("convoc-eleves");
+              } else {
+                onToggleSubmenu("convocMenu");
+              }
+            }}
+            title="09. Convocations & Ordres de Mission"
+            className={`w-full flex items-center ${
+              isCollapsed ? "justify-center px-2 py-3" : "justify-between px-4 py-3"
+            } text-left transition border-b border-white/5 ${
               isConvocActive
                 ? "text-white font-semibold bg-white/5"
                 : "hover:bg-white/5 hover:text-white"
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <Printer className="h-4 w-4 shrink-0 text-cyan-400" />
-              <span>Convocations & Vitrine</span>
+              <Printer className="h-4 w-4 shrink-0 text-emerald-400" />
+              {!isCollapsed && <span>Convocations & Ordres</span>}
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/30 text-cyan-200 font-mono">
-                10
-              </span>
-              {openSubmenus.convocMenu ? (
-                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-              ) : (
-                <ChevronRight className="h-3.5 w-3.5 opacity-60" />
-              )}
-            </div>
+            {!isCollapsed && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-200 font-mono">
+                  09
+                </span>
+                {openSubmenus.convocMenu ? (
+                  <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+                )}
+              </div>
+            )}
           </button>
 
-          {openSubmenus.convocMenu && (
+          {!isCollapsed && openSubmenus.convocMenu && (
             <div className="bg-black/20 py-1 border-b border-white/5">
               <button
                 onClick={() => onSelectSection("convoc-eleves")}
@@ -576,7 +698,7 @@ export default function AdminSidebar({
                 }`}
               >
                 <FileText className="h-3.5 w-3.5 text-sky-400" />
-                <span>Convocations & Étiquettes A4</span>
+                <span>Convocations Élèves A4</span>
               </button>
 
               <button
@@ -590,7 +712,49 @@ export default function AdminSidebar({
                 <Award className="h-3.5 w-3.5 text-amber-400" />
                 <span>Ordres de Mission Profs</span>
               </button>
+            </div>
+          )}
+        </div>
 
+        {/* 10. Vitrine Publique & Déploiement Git / Vercel (Combiné Étape 10) */}
+        <div>
+          <button
+            onClick={() => {
+              if (isCollapsed) {
+                onSelectSection("vitrine-publish");
+              } else {
+                onToggleSubmenu("publishDeployMenu");
+              }
+            }}
+            title="10. Vitrine & Déploiement Vercel"
+            className={`w-full flex items-center ${
+              isCollapsed ? "justify-center px-2 py-3" : "justify-between px-4 py-3"
+            } text-left transition border-b border-white/5 ${
+              isPublishDeployActive
+                ? "text-white font-semibold bg-white/5"
+                : "hover:bg-white/5 hover:text-white"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <UploadCloud className="h-4 w-4 shrink-0 text-sky-400" />
+              {!isCollapsed && <span>Vitrine & Déploiement</span>}
+            </div>
+            {!isCollapsed && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-200 font-mono">
+                  10
+                </span>
+                {openSubmenus.publishDeployMenu ? (
+                  <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 opacity-60" />
+                )}
+              </div>
+            )}
+          </button>
+
+          {!isCollapsed && openSubmenus.publishDeployMenu && (
+            <div className="bg-black/20 py-1 border-b border-white/5">
               <button
                 onClick={() => onSelectSection("vitrine-publish")}
                 className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
@@ -602,64 +766,72 @@ export default function AdminSidebar({
                 <Eye className="h-3.5 w-3.5 text-emerald-400" />
                 <span>Vitrine & Publications</span>
               </button>
+
+              {role === "superadmin" && (
+                <button
+                  onClick={() => onSelectSection("deployment")}
+                  className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
+                    currentSection === "deployment"
+                      ? "text-white font-bold bg-[#3498db]/40 border-l-2 border-[#3498db]"
+                      : "text-[#bdc3c7] hover:text-white hover:bg-white/5"
+                  }`}
+                >
+                  <UploadCloud className="h-3.5 w-3.5 text-sky-400" />
+                  <span>Déploiement Git & Vercel</span>
+                </button>
+              )}
             </div>
           )}
         </div>
-
-        {/* 11. Déploiement Git & Vercel (SuperAdmin) */}
-        {role === "superadmin" && (
-          <button
-            onClick={() => onSelectSection("deployment")}
-            className={`w-full flex items-center justify-between px-4 py-3 text-left transition border-b border-white/5 ${
-              currentSection === "deployment"
-                ? "bg-[#3498db] text-white font-bold border-l-4 border-white shadow-xs"
-                : "hover:bg-white/5 hover:text-white"
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <UploadCloud className="h-4 w-4 shrink-0 text-sky-400" />
-              <span>Déploiement Git & Vercel</span>
-            </div>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-200 font-mono">
-              11
-            </span>
-          </button>
-        )}
       </nav>
 
-      {/* Sidebar Footer: Save / Load / Reset / Direct Link to Showcase */}
-      <div className="p-4 bg-black/20 border-t border-white/10 space-y-2 mt-auto">
+      {/* Sidebar Footer: Save / Load / Reset / Direct Link to Showcase / Collapse Toggle */}
+      <div className="p-3 bg-black/20 border-t border-white/10 space-y-2 mt-auto">
         {role === "proviseur" && onProviseurSave && (
           <button
             type="button"
             onClick={onProviseurSave}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md border border-emerald-400/30"
+            title="Enregistrer toutes les modifications dans l'application"
+            className={`w-full flex items-center justify-center gap-2 ${
+              isCollapsed ? "py-2 px-1" : "py-2.5 px-3"
+            } rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md border border-emerald-400/30 cursor-pointer`}
           >
-            <Save className="h-4 w-4" />
-            <span>Enregistrer & Mettre à jour</span>
+            <Save className="h-4 w-4 shrink-0" />
+            {!isCollapsed && <span>Enregistrer & Mettre à jour</span>}
           </button>
         )}
 
         <Link
           to="/"
           target="_blank"
-          className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold transition shadow-xs"
+          title="Ouvrir la Vitrine Publique"
+          className={`w-full flex items-center justify-center gap-2 ${
+            isCollapsed ? "py-2 px-1" : "py-2 px-3"
+          } rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold transition shadow-xs`}
         >
-          <Eye className="h-3.5 w-3.5 text-emerald-400" />
-          <span>Ouvrir la Vitrine Publique ↗</span>
+          <Eye className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+          {!isCollapsed && <span>Vitrine Publique ↗</span>}
         </Link>
 
         <button
           onClick={onSaveProject}
-          className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#34495e] hover:bg-[#415b76] text-white text-xs font-semibold transition"
+          title="Sauvegarder Projet (.json)"
+          className={`w-full flex items-center justify-center gap-2 ${
+            isCollapsed ? "py-2 px-1" : "py-2 px-3"
+          } rounded-lg bg-[#34495e] hover:bg-[#415b76] text-white text-xs font-semibold transition cursor-pointer`}
         >
-          <Save className="h-3.5 w-3.5 text-emerald-400" />
-          <span>Sauvegarder Projet (.json)</span>
+          <Save className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+          {!isCollapsed && <span>Sauvegarder (.json)</span>}
         </button>
 
-        <label className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-semibold cursor-pointer transition">
-          <FolderInput className="h-3.5 w-3.5 text-amber-300" />
-          <span>Charger Projet (.json)</span>
+        <label
+          title="Charger Projet (.json)"
+          className={`w-full flex items-center justify-center gap-2 ${
+            isCollapsed ? "py-2 px-1" : "py-2 px-3"
+          } rounded-lg bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-semibold cursor-pointer transition`}
+        >
+          <FolderInput className="h-3.5 w-3.5 text-amber-300 shrink-0" />
+          {!isCollapsed && <span>Charger (.json)</span>}
           <input
             type="file"
             accept=".json"
@@ -667,6 +839,30 @@ export default function AdminSidebar({
             className="hidden"
           />
         </label>
+
+        {/* Explicit Collapse / Expand Button */}
+        {onToggleCollapse && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            title={isCollapsed ? "Agrandir le menu" : "Réduire le menu"}
+            className={`w-full flex items-center ${
+              isCollapsed ? "justify-center px-1" : "justify-between px-3"
+            } py-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white text-xs font-medium transition cursor-pointer`}
+          >
+            <div className="flex items-center gap-2">
+              {isCollapsed ? (
+                <PanelLeftOpen className="h-4 w-4 text-sky-400 shrink-0" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4 text-slate-400 shrink-0" />
+              )}
+              {!isCollapsed && <span>Réduire le menu</span>}
+            </div>
+            {!isCollapsed && (
+              <span className="text-[10px] font-mono text-slate-400">Ctrl+B</span>
+            )}
+          </button>
+        )}
       </div>
     </aside>
   );

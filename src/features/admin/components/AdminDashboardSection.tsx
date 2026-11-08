@@ -74,6 +74,7 @@ export default function AdminDashboardSection({
         c.accommodation.toLowerCase().includes("aménag"))
   ).length;
 
+  const effectiveSurveillancesCount = exams.length === 0 ? 0 : surveillances.length;
   const publishedAnnouncements = announcements.filter((a) => a.isPublished);
 
   const workflowSteps: Array<{
@@ -89,8 +90,8 @@ export default function AdminDashboardSection({
     {
       id: "config",
       number: "01",
-      title: "Paramètres & Logos",
-      description: "Identité établissement, année scolaire, horaires officiels et logos officiels AEFE.",
+      title: "Paramètres & Accès",
+      description: "Identité établissement, année scolaire, grilles horaires, types d'évaluations et niveaux scolaires.",
       icon: Sliders,
       badge: "Configuré",
       color: "border-blue-200 bg-blue-50/40 text-blue-800",
@@ -98,97 +99,86 @@ export default function AdminDashboardSection({
     {
       id: "data-eleves",
       number: "02",
-      title: "Données Pronote (Élèves)",
-      description: "Cohortes de candidats, divisions de classe, numéros et aménagements.",
+      title: "Données Pronote",
+      description: "Import des cohortes élèves, des salles d'examens, des professeurs et des aménagements (PAP/PPS).",
       icon: Users,
-      badge: `${candidates.length} élèves`,
+      badge: `${candidates.length} élèves • ${rooms.length} salles • ${teachers.length} profs`,
       count: candidates.length,
       color: "border-indigo-200 bg-indigo-50/40 text-indigo-800",
     },
     {
-      id: "data-salles",
-      number: "03",
-      title: "Salles d'Examens",
-      description: "Capacités d'accueil, bâtiments et configuration des salles dédiées tiers-temps.",
-      icon: School,
-      badge: `${rooms.length} salles`,
-      count: rooms.length,
-      color: "border-emerald-200 bg-emerald-50/40 text-emerald-800",
-    },
-    {
-      id: "data-profs",
-      number: "04",
-      title: "Professeurs & Surveillants",
-      description: "Répertoire des enseignants, disciplines et suivi des disponibilités.",
-      icon: GraduationCap,
-      badge: `${teachers.length} enseignants`,
-      count: teachers.length,
-      color: "border-sky-200 bg-sky-50/40 text-sky-800",
-    },
-    {
       id: "sessions-examens",
-      number: "05",
+      number: "03",
       title: "Sessions d'Examens",
-      description: "Planification des sessions DNB blanc, Baccalauréat et épreuves orales.",
+      description: "Planification des sessions officielles DNB blanc, Baccalauréat 1ère, Terminale et Devoirs communs.",
       icon: ClipboardList,
-      badge: `${exams.length} sessions`,
+      badge: `${exams.length} session(s)`,
       count: exams.length,
       color: "border-violet-200 bg-violet-50/40 text-violet-800",
     },
     {
       id: "creneaux-epreuves",
-      number: "06",
+      number: "04",
       title: "Créneaux des Épreuves",
-      description: "Disciplines, dates, horaires standard et majoration +1/3 temps calculée.",
+      description: "Disciplines, dates, horaires standard, majoration +1/3 temps automatique et salles mobilisées.",
       icon: Clock,
-      badge: `${examSlots.length} créneaux`,
+      badge: `${examSlots.length} épreuve(s)`,
       count: examSlots.length,
       color: "border-amber-200 bg-amber-50/40 text-amber-800",
     },
     {
       id: "organization",
-      number: "07",
+      number: "05",
       title: "Répartition & Brassage",
-      description: "Brassage inter-classes anti-fraude, affectation aux tables et numéros d'anonymat.",
+      description: "Brassage inter-classes anti-fraude, jauge par salle personnalisable, numéros d'anonymat et tables.",
       icon: Shuffle,
       badge: "Actif",
       color: "border-teal-200 bg-teal-50/40 text-teal-800",
     },
     {
       id: "planning-rooms",
-      number: "08",
-      title: "Plannings & Surveillances",
-      description: "Affectation nominative des enseignants par salle et équilibrage des charges.",
+      number: "06",
+      title: "Plannings Surveillances",
+      description: "Affectation nominative des enseignants par salle, gestion des sous-créneaux 1h/2h et équilibrage.",
       icon: Shield,
-      badge: `${surveillances.length} postes`,
-      count: surveillances.length,
+      badge: `${effectiveSurveillancesCount} poste(s)`,
+      count: effectiveSurveillancesCount,
       color: "border-rose-200 bg-rose-50/40 text-rose-800",
     },
     {
       id: "view-edt",
-      number: "09",
+      number: "07",
       title: "Vers EDT & Cours Impactés",
-      description: "Visualisation des cours réguliers à déplacer et neutralisation des salles.",
+      description: "Visualisation des cours réguliers à déplacer et neutralisation des salles réquisitionnées.",
       icon: CalendarRange,
       badge: "Export EDT",
       color: "border-orange-200 bg-orange-50/40 text-orange-800",
     },
     {
-      id: "convoc-eleves",
-      number: "10",
-      title: "Convocations & Vitrine Officielle",
-      description: "Impression officielle A4 (nominative élève, ordres de mission) et consignes vitrine.",
-      icon: Printer,
-      badge: "Certifié A4 & Vitrine",
+      id: "corr-repartition",
+      number: "08",
+      title: "Corrections & Notes",
+      description: "Répartition des copies, saisie et import Pronote, analyse des moyennes et simulations d'examen.",
+      icon: FileSpreadsheet,
+      badge: "Copies & Notes",
       color: "border-cyan-200 bg-cyan-50/40 text-cyan-800",
     },
     {
-      id: "deployment",
-      number: "11",
-      title: "Déploiement Vercel & Git",
-      description: "Centre de synchronisation GitHub et redéploiement mondial sans frais.",
+      id: "convoc-eleves",
+      number: "09",
+      title: "Convocations & Ordres de Mission",
+      description: "Génération et impression certifiée A4 : convocations élèves nominatives et ordres de mission surveillants.",
+      icon: Printer,
+      badge: "Impression A4",
+      color: "border-emerald-200 bg-emerald-50/40 text-emerald-800",
+    },
+    {
+      id: "vitrine-publish",
+      number: "10",
+      title: "Vitrine Publique & Déploiement Git / Vercel",
+      description: "Publication des plannings sur la vitrine officielle et synchronisation permanente GitHub / Vercel.",
       icon: UploadCloud,
-      badge: "Vercel en ligne",
+      badge: "Vitrine & En ligne",
       color: "border-blue-300 bg-blue-100/50 text-blue-900 font-bold",
     },
   ];
@@ -352,7 +342,7 @@ export default function AdminDashboardSection({
             </div>
           </div>
           <p className="mt-3 text-3xl font-black text-slate-900 font-mono">
-            {surveillances.length}
+            {effectiveSurveillancesCount}
           </p>
           <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
             <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-900 font-bold text-[10px] border border-rose-200">
@@ -364,13 +354,13 @@ export default function AdminDashboardSection({
         </div>
       </div>
 
-      {/* 3. WORKFLOW CHRONOLOGIQUE COMPLET (11 ÉTAPES PROPRES & CLAIRES) */}
+      {/* 3. WORKFLOW CHRONOLOGIQUE COMPLET (10 ÉTAPES PROPRES & CLAIRES) */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
           <div>
             <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
               <Compass className="h-5 w-5 text-[#002060]" />
-              <span>Workflow Opérationnel des Examens (11 Étapes)</span>
+              <span>Workflow Opérationnel des Examens (10 Étapes)</span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Accédez directement à chaque étape pour configurer, répartir et publier les épreuves.

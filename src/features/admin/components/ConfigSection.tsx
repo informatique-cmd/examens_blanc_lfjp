@@ -26,6 +26,7 @@ import {
   FolderDown,
   FolderUp,
   Bookmark,
+  GraduationCap,
 } from "lucide-react";
 import {
   type SiteInfo,
@@ -36,6 +37,7 @@ import {
   saveConfigSnapshot,
   deleteConfigSnapshot,
   restoreConfigSnapshot,
+  DEFAULT_SCHOOL_LEVELS,
 } from "../../../shared/services/cms-store";
 
 export interface StandardSlotItem {
@@ -144,6 +146,16 @@ export default function ConfigSection({
   const [newEvalType, setNewEvalType] = useState("");
   const [editingEvalTypeIndex, setEditingEvalTypeIndex] = useState<number | null>(null);
   const [editingEvalTypeValue, setEditingEvalTypeValue] = useState("");
+
+  // 2b. School Levels (CRUD)
+  const [schoolLevels, setSchoolLevels] = useState<string[]>(
+    siteInfo.schoolLevels && siteInfo.schoolLevels.length > 0
+      ? siteInfo.schoolLevels
+      : DEFAULT_SCHOOL_LEVELS
+  );
+  const [newSchoolLevel, setNewSchoolLevel] = useState("");
+  const [editingSchoolLevelIndex, setEditingSchoolLevelIndex] = useState<number | null>(null);
+  const [editingSchoolLevelValue, setEditingSchoolLevelValue] = useState("");
 
   // 3. Sciences Subjects (CRUD + Cocher/Décocher)
   const [sciencesSubjects, setSciencesSubjects] = useState<ScienceSubjectItem[]>(
@@ -305,6 +317,7 @@ export default function ConfigSection({
         type: alertType,
       },
       evaluationTypes: evalTypes,
+      schoolLevels: schoolLevels,
       sciencesSubjects: sciencesSubjects,
       standardSlots: slots,
       proviseurAuth: {
@@ -342,6 +355,34 @@ export default function ConfigSection({
     setEvalTypes(updated);
     onUpdateSiteInfo({ evaluationTypes: updated });
     onShowNotification("Type d'évaluation supprimé.");
+  };
+
+  // School Level Handlers
+  const handleAddSchoolLevel = () => {
+    if (!newSchoolLevel.trim()) return;
+    const updated = [...schoolLevels, newSchoolLevel.trim()];
+    setSchoolLevels(updated);
+    onUpdateSiteInfo({ schoolLevels: updated });
+    setNewSchoolLevel("");
+    onShowNotification("Niveau scolaire ajouté !");
+  };
+
+  const handleSaveEditingSchoolLevel = (idx: number) => {
+    if (!editingSchoolLevelValue.trim()) return;
+    const updated = [...schoolLevels];
+    updated[idx] = editingSchoolLevelValue.trim();
+    setSchoolLevels(updated);
+    onUpdateSiteInfo({ schoolLevels: updated });
+    setEditingSchoolLevelIndex(null);
+    setEditingSchoolLevelValue("");
+    onShowNotification("Niveau scolaire modifié !");
+  };
+
+  const handleDeleteSchoolLevel = (idx: number) => {
+    const updated = schoolLevels.filter((_, i) => i !== idx);
+    setSchoolLevels(updated);
+    onUpdateSiteInfo({ schoolLevels: updated });
+    onShowNotification("Niveau scolaire supprimé.");
   };
 
   // Sciences Handlers
@@ -710,6 +751,105 @@ export default function ConfigSection({
                       onClick={() => handleDeleteEvalType(idx)}
                       className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
                       title="Supprimer ce type"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 2b. Niveaux Scolaires de l'Établissement (CRUD) */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+        <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <GraduationCap className="h-4 w-4 text-indigo-600" />
+              <span>Niveaux Scolaires de l'Établissement (Ajouter, Modifier, Supprimer)</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Définissez les divisions et niveaux scolaires ciblés pour les examens et épreuves (3ème, 1ère, Terminale, etc.).
+            </p>
+          </div>
+          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800">
+            {schoolLevels.length} niveau(x)
+          </span>
+        </div>
+
+        {/* Add Level Form */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newSchoolLevel}
+            onChange={(e) => setNewSchoolLevel(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddSchoolLevel()}
+            placeholder="Ajouter un niveau scolaire (ex: 3ème (DNB Collège), Seconde générale)..."
+            className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:outline-hidden"
+          />
+          <button
+            type="button"
+            onClick={handleAddSchoolLevel}
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 transition"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            <span>Ajouter</span>
+          </button>
+        </div>
+
+        {/* Levels List */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
+          {schoolLevels.map((lvl, idx) => (
+            <div
+              key={idx}
+              className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white transition group"
+            >
+              {editingSchoolLevelIndex === idx ? (
+                <div className="flex items-center gap-1.5 flex-1 mr-2">
+                  <input
+                    type="text"
+                    value={editingSchoolLevelValue}
+                    onChange={(e) => setEditingSchoolLevelValue(e.target.value)}
+                    className="w-full px-2 py-1 text-xs border border-indigo-500 rounded bg-white"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => handleSaveEditingSchoolLevel(idx)}
+                    className="p-1 rounded bg-emerald-600 text-white hover:bg-emerald-700"
+                    title="Valider"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setEditingSchoolLevelIndex(null)}
+                    className="p-1 rounded bg-slate-300 text-slate-700 hover:bg-slate-400"
+                    title="Annuler"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <span className="font-semibold text-xs text-slate-800 truncate mr-2">{lvl}</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingSchoolLevelIndex(idx);
+                        setEditingSchoolLevelValue(lvl);
+                      }}
+                      className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition"
+                      title="Modifier ce niveau scolaire"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSchoolLevel(idx)}
+                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
+                      title="Supprimer ce niveau"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>

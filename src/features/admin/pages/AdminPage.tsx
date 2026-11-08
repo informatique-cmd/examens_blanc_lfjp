@@ -222,6 +222,19 @@ export default function AdminPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const sectionFromUrl = (searchParams.get("section") as AdminSection) || "dashboard";
   const [currentSection, setLocalCurrentSection] = useState<AdminSection>(sectionFromUrl);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Keyboard shortcut Ctrl+B or Cmd+B to toggle sidebar collapse
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setIsSidebarCollapsed((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const setCurrentSection = useCallback((section: AdminSection) => {
     setLocalCurrentSection(section);
@@ -1418,66 +1431,12 @@ export default function AdminPage() {
           schoolYear={cmsData.siteInfo.schoolYear || "2025-2026"}
           role={adminSession?.role}
           onProviseurSave={handleProviseurSave}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         />
 
         {/* Main Content Area */}
         <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full">
-          {/* Chronological Workflow Stepper Bar */}
-          <div className="mb-6 p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs overflow-x-auto print:hidden">
-            <div className="flex items-center gap-1.5 min-w-max text-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-2">
-                Workflow chronologique :
-              </span>
-              {[
-                { id: "dashboard", label: "Tableau de Bord", icon: LayoutDashboard },
-                { id: "config", label: "1. Paramètres", icon: Settings },
-                { id: "data-eleves", label: "2. Données Pronote", icon: FolderOpen },
-                { id: "sessions-examens", label: "3. Sessions", icon: ClipboardList },
-                { id: "creneaux-epreuves", label: "4. Créneaux", icon: Clock },
-                { id: "organization", label: "5. Répartition & Brassage", icon: Shuffle },
-                { id: "planning-rooms", label: "6. Plannings", icon: Calendar },
-                { id: "view-edt", label: "7. Vers EDT", icon: CalendarRange },
-                { id: "corr-repartition", label: "8. Corrections & Notes", icon: BarChart3 },
-                { id: "convoc-eleves", label: "10. Convocations & Vitrine", icon: Printer },
-                { id: "deployment", label: "11. Déploiement", icon: UploadCloud },
-              ]
-                .filter((step) => {
-                  if (adminSession?.role === "proviseur" && step.id === "config") {
-                    return false;
-                  }
-                  return true;
-                })
-                .map((step, idx) => {
-                const StepIcon = step.icon;
-                const isActive =
-                  currentSection === step.id ||
-                  (step.id === "data-eleves" &&
-                    ["data-eleves", "data-salles", "data-profs", "data-amenagements", "sec-pochettes"].includes(currentSection)) ||
-                  (step.id === "planning-rooms" && ["planning-rooms", "planning-profs"].includes(currentSection)) ||
-                  (step.id === "convoc-eleves" && ["convoc-eleves", "convoc-profs", "vitrine-publish"].includes(currentSection)) ||
-                  (step.id === "corr-repartition" &&
-                    ["corr-repartition", "res-import", "res-analyse", "res-releves", "res-datavis", "res-simul"].includes(currentSection));
-
-                return (
-                  <Fragment key={step.id}>
-                    {idx > 0 && <span className="text-slate-300 font-bold">➔</span>}
-                    <button
-                      type="button"
-                      onClick={() => setCurrentSection(step.id as AdminSection)}
-                      className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
-                        isActive
-                          ? "bg-slate-900 text-white shadow-xs"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                      }`}
-                    >
-                      <StepIcon className="h-3.5 w-3.5" />
-                      <span>{step.label}</span>
-                    </button>
-                  </Fragment>
-                );
-              })}
-            </div>
-          </div>
 
           {/* 0. TABLEAU DE BORD CENTRAL */}
           {currentSection === "dashboard" && (
@@ -1571,6 +1530,7 @@ export default function AdminPage() {
             <SessionsExamensSection
               exams={cmsData.exams}
               examSlots={cmsData.examSlots || []}
+              siteInfo={cmsData.siteInfo}
               onAddExam={addExam}
               onUpdateExam={updateExam}
               onDeleteExam={deleteExam}
@@ -1589,6 +1549,7 @@ export default function AdminPage() {
               rooms={cmsData.rooms}
               teachers={cmsData.teachers}
               surveillances={cmsData.surveillances}
+              siteInfo={cmsData.siteInfo}
               onAddExamSlot={addExamSlot}
               onUpdateExamSlot={updateExamSlot}
               onDeleteExamSlot={deleteExamSlot}
@@ -1670,18 +1631,18 @@ export default function AdminPage() {
             />
           )}
 
-          {/* 10. CONVOCATIONS & VITRINE OFFICIELLE (UNIFIÉE) */}
-          {["convoc-eleves", "convoc-profs", "vitrine-publish"].includes(currentSection) && (
+          {/* 9. CONVOCATIONS & ORDRES DE MISSION */}
+          {["convoc-eleves", "convoc-profs"].includes(currentSection) && (
             <div className="space-y-6">
-              {/* Institutional Sub-Navigation for Step 10 */}
+              {/* Institutional Sub-Navigation for Step 9 */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
                 <div>
                   <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <Printer className="h-5 w-5 text-cyan-700" />
-                    <span>Étape 10 : Convocations & Vitrine Officielle</span>
+                    <Printer className="h-5 w-5 text-emerald-700" />
+                    <span>Étape 09 : Convocations & Ordres de Mission</span>
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Édition des documents certifiés pour les épreuves et diffusion publique des consignes officielles.
+                    Édition et impression certifiée A4 : convocations nominatives des candidats et ordres de mission surveillants.
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 border border-slate-200/80">
@@ -1695,7 +1656,7 @@ export default function AdminPage() {
                     }`}
                   >
                     <FileText className="h-3.5 w-3.5" />
-                    <span>Convocations Élèves</span>
+                    <span>Convocations Élèves A4</span>
                   </button>
                   <button
                     type="button"
@@ -1708,18 +1669,6 @@ export default function AdminPage() {
                   >
                     <Award className="h-3.5 w-3.5" />
                     <span>Ordres de Mission Profs</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentSection("vitrine-publish")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                      currentSection === "vitrine-publish"
-                        ? "bg-white text-slate-900 shadow-xs"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    <Eye className="h-3.5 w-3.5" />
-                    <span>Vitrine & Publications</span>
                   </button>
                 </div>
               </div>
@@ -1738,6 +1687,52 @@ export default function AdminPage() {
                   siteInfo={cmsData.siteInfo}
                 />
               )}
+            </div>
+          )}
+
+          {/* 10. VITRINE PUBLIQUE & DÉPLOIEMENT GIT / VERCEL */}
+          {["vitrine-publish", "deployment"].includes(currentSection) && (
+            <div className="space-y-6">
+              {/* Institutional Sub-Navigation for Step 10 */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <UploadCloud className="h-5 w-5 text-sky-700" />
+                    <span>Étape 10 : Vitrine Publique & Déploiement Git / Vercel</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Publication officielle des plannings sur la vitrine et synchronisation cloud GitHub & Vercel.
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 border border-slate-200/80">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentSection("vitrine-publish")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                      currentSection === "vitrine-publish"
+                        ? "bg-white text-slate-900 shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Eye className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Vitrine & Publications</span>
+                  </button>
+                  {adminSession?.role === "superadmin" && (
+                    <button
+                      type="button"
+                      onClick={() => setCurrentSection("deployment")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                        currentSection === "deployment"
+                          ? "bg-white text-slate-900 shadow-xs"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      <UploadCloud className="h-3.5 w-3.5 text-sky-600" />
+                      <span>Déploiement Git & Vercel</span>
+                    </button>
+                  )}
+                </div>
+              </div>
 
               {currentSection === "vitrine-publish" && (
                 <VitrinePublishSection
@@ -1758,8 +1753,6 @@ export default function AdminPage() {
                   onShowNotification={showNotification}
                 />
               )}
-            </div>
-          )}
 
           {/* 10. DÉPLOIEMENT VERCEL & GITHUB */}
           {(currentSection === "deployment" || activeTab === "deployment") && (
@@ -1931,10 +1924,14 @@ export default function AdminPage() {
                     <span className="text-xs font-semibold uppercase tracking-wider">Surveillances</span>
                     <Shield className="h-5 w-5 text-amber-600" />
                   </div>
-                  <p className="mt-3 text-3xl font-bold text-slate-900">{cmsData.surveillances.length}</p>
+                  <p className="mt-3 text-3xl font-bold text-slate-900">
+                    {cmsData.exams.length === 0 ? 0 : cmsData.surveillances.length}
+                  </p>
                   <p className="mt-1 text-xs text-slate-500">Créneaux enseignants affectés</p>
                 </div>
               </div>
+            </div>
+          )}
             </div>
           )}
         </main>

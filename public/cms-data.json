@@ -29,6 +29,16 @@
     },
     "pendingDeployment": null,
     "evaluationTypes": [],
+    "schoolLevels": [
+      "3ème (DNB Collège)",
+      "1ère (Baccalauréat EAF)",
+      "Terminale (Baccalauréat)",
+      "2nde (Seconde)",
+      "4ème (Quatrième)",
+      "5ème (Cinquième)",
+      "6ème (Sixième)",
+      "Tous niveaux"
+    ],
     "sciencesSubjects": [],
     "standardSlots": []
   },
