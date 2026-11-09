@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-09T09:51:11.639Z",
+  "updatedAt": "2026-11-09T10:00:16.733Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Lycée Français Jacques Prévert de Saly • Réseau AEFE",
@@ -208,6 +208,25 @@
       ],
       "notes": "",
       "id": "slot-1794217811471"
+    },
+    {
+      "examTitle": "Examens blancs - décembre 2026",
+      "subject": "EAF",
+      "date": "2026-12-10",
+      "startTime": "13:00",
+      "endTime": "18:20",
+      "durationMinutes": 320,
+      "tiersTempsEndTime": "20:07",
+      "tiersTempsDurationMinutes": 427,
+      "targetLevel": "Terminale (Baccalauréat)",
+      "roomNames": [
+        "S1",
+        "S2",
+        "S3",
+        "S4"
+      ],
+      "notes": "",
+      "id": "slot-1794218055276"
     }
   ],
   "rooms": [
@@ -1032,6 +1051,96 @@
       "timeSlot": "08:00 - 11:30",
       "teacherName": "Mme MICHON GUILLAUME Mathilde",
       "mission": "Surveillant titulaire (plein créneau)"
+    },
+    {
+      "id": "surv-custom-1794218112744-c8t7",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794218055276",
+      "roomName": "S1",
+      "date": "2026-12-10",
+      "timeSlot": "13:00 - 14:00",
+      "teacherName": "Mme PEREZ Fanny",
+      "mission": "Surveillant relais (13:00 - 14:00)"
+    },
+    {
+      "id": "surv-custom-1794218144728-tqk1",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794218055276",
+      "roomName": "S1",
+      "date": "2026-12-10",
+      "timeSlot": "14:00 - 18:20",
+      "teacherName": "M. ANE Alassane",
+      "mission": "Surveillant relais (14:00 - 18:20)"
+    },
+    {
+      "id": "surv-custom-1794218176145-lehz",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794218055276",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "14:00 - 15:00",
+      "teacherName": "Mme GIBUS Amandine",
+      "mission": "Surveillant relais (14:00 - 15:00)"
+    },
+    {
+      "id": "surv-custom-1794218245597-c30p",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794218055276",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "15:00 - 16:00",
+      "teacherName": "Mme PORTER Elizabeth",
+      "mission": "Surveillant relais (15:00 - 16:00)"
+    },
+    {
+      "id": "surv-custom-1794218272931-twkg",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794218055276",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "16:00 - 18:00",
+      "teacherName": "M. FALL Baba",
+      "mission": "Surveillant relais (16:00 - 18:00)"
+    },
+    {
+      "id": "surv-custom-1794218317448-4w2i",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794218055276",
+      "roomName": "S3",
+      "date": "2026-12-10",
+      "timeSlot": "14:00 - 18:00",
+      "teacherName": "Mme D'AQUINO Roselyne",
+      "mission": "Surveillant relais (14:00 - 18:00)"
+    },
+    {
+      "id": "surv-custom-1794218348865-c90j",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794218055276",
+      "roomName": "S4",
+      "date": "2026-12-10",
+      "timeSlot": "14:00 - 18:00",
+      "teacherName": "M. GOMIS Alain",
+      "mission": "Surveillant relais (14:00 - 18:00)"
+    },
+    {
+      "id": "surv-renfort-1794218380699-ci9t",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794218055276",
+      "roomName": "Renfort",
+      "date": "2026-12-10",
+      "timeSlot": "13:00 - 18:20",
+      "teacherName": "Mme PEREZ Fanny",
+      "mission": "Surveillant de renfort & couloir"
+    },
+    {
+      "id": "surv-renfort-1794218408383-1rai",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794218055276",
+      "roomName": "Renfort",
+      "date": "2026-12-10",
+      "timeSlot": "13:00 - 18:20",
+      "teacherName": "M. Toure Babacar (AED / Vie Scolaire)",
+      "mission": "Surveillant de renfort & couloir"
     }
   ],
   "candidates": [
