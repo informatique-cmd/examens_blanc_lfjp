@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-09T08:22:32.998Z",
+  "updatedAt": "2026-11-09T08:28:23.890Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Lycée Français Jacques Prévert de Saly • Réseau AEFE",
@@ -43,7 +43,20 @@
   },
   "callouts": [],
   "announcements": [],
-  "exams": [],
+  "exams": [
+    {
+      "title": "Examens blancs - décembre 2026",
+      "examType": "Examen Blanc",
+      "targetLevel": "Terminale (Baccalauréat)",
+      "period": "08 au 10 Décembre 2026",
+      "startsAt": "2026-11-09",
+      "endsAt": "2026-11-09",
+      "description": "",
+      "status": "Prévu",
+      "isPublished": true,
+      "id": "exam-1794212893090"
+    }
+  ],
   "examSlots": [],
   "rooms": [
     {
