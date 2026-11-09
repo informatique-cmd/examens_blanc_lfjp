@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-09T09:28:43.179Z",
+  "updatedAt": "2026-11-09T09:32:50.251Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Lycée Français Jacques Prévert de Saly • Réseau AEFE",
@@ -112,6 +112,22 @@
       ],
       "notes": "",
       "id": "slot-1794216179405"
+    },
+    {
+      "examTitle": "Examens blancs - décembre 2026",
+      "subject": "Maths / AMC (sujet 1)",
+      "date": "2026-12-09",
+      "startTime": "08:00",
+      "endTime": "12:00",
+      "durationMinutes": 240,
+      "tiersTempsEndTime": "13:20",
+      "tiersTempsDurationMinutes": 320,
+      "targetLevel": "Terminale (Baccalauréat)",
+      "roomNames": [
+        "S3"
+      ],
+      "notes": "",
+      "id": "slot-1794216702499"
     }
   ],
   "rooms": [
@@ -806,6 +822,16 @@
       "timeSlot": "12:00 - 13:00",
       "teacherName": "M. GOMIS Alain",
       "mission": "Surveillant relais (12:00 - 13:00)"
+    },
+    {
+      "id": "surv-full-1794216732000-9w2k",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794216702499",
+      "roomName": "S3",
+      "date": "2026-12-09",
+      "timeSlot": "08:00 - 12:00",
+      "teacherName": "Mme MOURAIN DIOP Fanelly",
+      "mission": "Surveillant titulaire (plein créneau)"
     }
   ],
   "candidates": [
