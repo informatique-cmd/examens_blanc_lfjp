@@ -505,16 +505,33 @@ export function useCmsData() {
         const local = JSON.parse(rawLocal) as Partial<CmsData>;
         const remoteTime = remote.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
         const localTime = local.updatedAt ? new Date(local.updatedAt).getTime() : 0;
+
+        // CRITICAL PROTECTION: If this browser has made any local changes (localTime >= remoteTime),
+        // or has local imported data (candidates, rooms, teachers, exams) or pending deployment,
+        // NEVER overwrite local data with remote!
+        const hasLocalCandidates = Array.isArray(local.candidates) && local.candidates.length > 0;
+        const hasLocalRooms = Array.isArray(local.rooms) && local.rooms.length > 0;
+        const hasLocalTeachers = Array.isArray(local.teachers) && local.teachers.length > 0;
+        const hasLocalExams = Array.isArray(local.exams) && local.exams.length > 0;
         const hasPendingDeployment = Boolean(local.siteInfo?.pendingDeployment);
 
-        // Adopt remote deployed data if:
-        // 1. Remote is newer than local cache, OR
-        // 2. Local has NO un-deployed pending changes and remote has a different timestamp or different evaluationTypes/levels
-        const shouldAdoptRemote =
-          remoteTime > localTime ||
-          (!hasPendingDeployment && (remote.updatedAt !== local.updatedAt || JSON.stringify(remote.siteInfo?.evaluationTypes) !== JSON.stringify(local.siteInfo?.evaluationTypes)));
+        // If local has active changes or was modified after the remote deployment, strictly protect local work
+        if (localTime >= remoteTime || hasPendingDeployment) {
+          return;
+        }
 
-        if (shouldAdoptRemote) {
+        // Only adopt remote if remote is strictly NEWER than local cache AND local has no unpushed data
+        if (remoteTime > localTime) {
+          const remoteIsEmpty = (!remote.candidates || remote.candidates.length === 0) &&
+                                (!remote.rooms || remote.rooms.length === 0) &&
+                                (!remote.teachers || remote.teachers.length === 0);
+          const localHasData = hasLocalCandidates || hasLocalRooms || hasLocalTeachers || hasLocalExams;
+
+          if (localHasData && remoteIsEmpty) {
+            // Protect local work from being wiped out by an empty remote
+            return;
+          }
+
           saveCmsData(remote, true);
           setData(getCmsData());
         }
@@ -891,7 +908,22 @@ export function useCmsData() {
   };
 
   const setCandidates = (newCandidates: CmsCandidate[]) => {
-    const next: CmsData = { ...data, candidates: newCandidates };
+    const next: CmsData = {
+      ...data,
+      candidates: newCandidates,
+      updatedAt: new Date().toISOString(),
+      siteInfo: {
+        ...data.siteInfo,
+        pendingDeployment: {
+          savedAt: new Date().toISOString(),
+          savedBy: "Import Pronote",
+          notes: `${newCandidates.length} élèves importés`,
+          requestedAt: new Date().toISOString(),
+          requestedBy: "Import Pronote",
+          summary: `${newCandidates.length} élèves importés`,
+        },
+      },
+    };
     saveCmsData(next);
     setData(next);
   };
@@ -936,13 +968,43 @@ export function useCmsData() {
   };
 
   const setRooms = (newRooms: CmsRoom[]) => {
-    const next: CmsData = { ...data, rooms: newRooms };
+    const next: CmsData = {
+      ...data,
+      rooms: newRooms,
+      updatedAt: new Date().toISOString(),
+      siteInfo: {
+        ...data.siteInfo,
+        pendingDeployment: {
+          savedAt: new Date().toISOString(),
+          savedBy: "Import Pronote",
+          notes: `${newRooms.length} salles importées`,
+          requestedAt: new Date().toISOString(),
+          requestedBy: "Import Pronote",
+          summary: `${newRooms.length} salles importées`,
+        },
+      },
+    };
     saveCmsData(next);
     setData(next);
   };
 
   const setTeachers = (newTeachers: CmsTeacher[]) => {
-    const next: CmsData = { ...data, teachers: newTeachers };
+    const next: CmsData = {
+      ...data,
+      teachers: newTeachers,
+      updatedAt: new Date().toISOString(),
+      siteInfo: {
+        ...data.siteInfo,
+        pendingDeployment: {
+          savedAt: new Date().toISOString(),
+          savedBy: "Import Pronote",
+          notes: `${newTeachers.length} enseignants importés`,
+          requestedAt: new Date().toISOString(),
+          requestedBy: "Import Pronote",
+          summary: `${newTeachers.length} enseignants importés`,
+        },
+      },
+    };
     saveCmsData(next);
     setData(next);
   };
