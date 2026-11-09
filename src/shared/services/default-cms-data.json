@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-09T00:04:56.252Z",
+  "updatedAt": "2026-11-09T00:15:38.765Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Lycée Français Jacques Prévert de Saly • Réseau AEFE",
@@ -739,6 +739,76 @@
       "date": "2026-12-08",
       "timeSlot": "08:00 - 12:00",
       "teacherName": "Mme D'AQUINO Roselyne",
+      "mission": "Surveillant de renfort & couloir"
+    },
+    {
+      "id": "surv-custom-1794183014792-ru6u",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794182558950",
+      "roomName": "S1",
+      "date": "2026-12-08",
+      "timeSlot": "13:00 - 15:00",
+      "teacherName": "M. DAVID Vincent",
+      "mission": "Surveillant relais (13:00 - 15:00)"
+    },
+    {
+      "id": "surv-custom-1794183082643-0kdx",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794182558950",
+      "roomName": "S1",
+      "date": "2026-12-08",
+      "timeSlot": "15:00 - 16:00",
+      "teacherName": "M. THOMAS Yvon",
+      "mission": "Surveillant relais (15:00 - 16:00)"
+    },
+    {
+      "id": "surv-custom-1794183138811-rsiv",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794182558950",
+      "roomName": "S3",
+      "date": "2026-12-08",
+      "timeSlot": "13:00 - 14:00",
+      "teacherName": "Mme MICHON GUILLAUME Mathilde",
+      "mission": "Surveillant relais (13:00 - 14:00)"
+    },
+    {
+      "id": "surv-custom-1794183200996-gayf",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794182558950",
+      "roomName": "S3",
+      "date": "2026-12-08",
+      "timeSlot": "14:00 - 15:00",
+      "teacherName": "M. GOMIS Alain",
+      "mission": "Surveillant relais (14:00 - 15:00)"
+    },
+    {
+      "id": "surv-custom-1794183238663-7b89",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794182558950",
+      "roomName": "S4",
+      "date": "2026-12-08",
+      "timeSlot": "13:00 - 14:00",
+      "teacherName": "M. PIAGGIO Fernando",
+      "mission": "Surveillant relais (13:00 - 14:00)"
+    },
+    {
+      "id": "surv-custom-1794183296098-uu7g",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794182558950",
+      "roomName": "S4",
+      "date": "2026-12-08",
+      "timeSlot": "14:00 - 15:00",
+      "teacherName": "Mme D'AQUINO Roselyne",
+      "mission": "Surveillant relais (14:00 - 15:00)"
+    },
+    {
+      "id": "surv-renfort-1794183325632-n2ed",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794182558950",
+      "roomName": "Renfort",
+      "date": "2026-12-08",
+      "timeSlot": "13:00 - 16:00",
+      "teacherName": "Mme DIADIO Ira",
       "mission": "Surveillant de renfort & couloir"
     }
   ],
