@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-09T09:48:41.620Z",
+  "updatedAt": "2026-11-09T09:51:11.639Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Lycée Français Jacques Prévert de Saly • Réseau AEFE",
@@ -192,6 +192,22 @@
       ],
       "notes": "",
       "id": "slot-1794217578733"
+    },
+    {
+      "examTitle": "Examens blancs - décembre 2026",
+      "subject": "SVT",
+      "date": "2026-12-10",
+      "startTime": "08:00",
+      "endTime": "11:30",
+      "durationMinutes": 210,
+      "tiersTempsEndTime": "12:40",
+      "tiersTempsDurationMinutes": 280,
+      "targetLevel": "Terminale (Baccalauréat)",
+      "roomNames": [
+        "S4"
+      ],
+      "notes": "",
+      "id": "slot-1794217811471"
     }
   ],
   "rooms": [
@@ -1006,6 +1022,16 @@
       "timeSlot": "12:00 - 13:30",
       "teacherName": "Mme D'AQUINO Roselyne",
       "mission": "Surveillant relais (12:00 - 13:30)"
+    },
+    {
+      "id": "surv-full-1794217843172-3k6a",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794217811471",
+      "roomName": "S4",
+      "date": "2026-12-10",
+      "timeSlot": "08:00 - 11:30",
+      "teacherName": "Mme MICHON GUILLAUME Mathilde",
+      "mission": "Surveillant titulaire (plein créneau)"
     }
   ],
   "candidates": [
