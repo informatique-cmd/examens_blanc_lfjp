@@ -1,4 +1,4 @@
-// Fichier généré automatiquement par le CMS LFJP le 09/11/2026 à 09:39:54
+// Fichier généré automatiquement par le CMS LFJP le 09/11/2026 à 09:44:09
 // Ce fichier est déployé automatiquement sur Vercel lors de chaque commit GitHub.
 
 export const HOME_PAGE_CONTENT = {

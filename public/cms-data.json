@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-09T09:39:54.759Z",
+  "updatedAt": "2026-11-09T09:44:09.047Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Lycée Français Jacques Prévert de Saly • Réseau AEFE",
@@ -160,6 +160,22 @@
       ],
       "notes": "",
       "id": "slot-1794217095840"
+    },
+    {
+      "examTitle": "Examens blancs - décembre 2026",
+      "subject": "SES (sujet 1)",
+      "date": "2026-12-10",
+      "startTime": "08:00",
+      "endTime": "12:00",
+      "durationMinutes": 240,
+      "tiersTempsEndTime": "13:20",
+      "tiersTempsDurationMinutes": 320,
+      "targetLevel": "Terminale (Baccalauréat)",
+      "roomNames": [
+        "S2"
+      ],
+      "notes": "",
+      "id": "slot-1794217321845"
     }
   ],
   "rooms": [
@@ -904,6 +920,36 @@
       "timeSlot": "08:00 - 12:00",
       "teacherName": "Mme D'AQUINO Roselyne",
       "mission": "Surveillant de renfort & couloir"
+    },
+    {
+      "id": "surv-custom-1794217363212-jw5d",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794217321845",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "08:00 - 10:00",
+      "teacherName": "Mme RIVIERE Sandrine",
+      "mission": "Surveillant relais (08:00 - 10:00)"
+    },
+    {
+      "id": "surv-custom-1794217401180-t0ah",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794217321845",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "10:00 - 11:00",
+      "teacherName": "Mme PORTER Elizabeth",
+      "mission": "Surveillant relais (10:00 - 11:00)"
+    },
+    {
+      "id": "surv-custom-1794217426847-xpjv",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794217321845",
+      "roomName": "S2",
+      "date": "2026-12-10",
+      "timeSlot": "11:00 - 12:00",
+      "teacherName": "Mme DIADIO Ira",
+      "mission": "Surveillant relais (11:00 - 12:00)"
     }
   ],
   "candidates": [
