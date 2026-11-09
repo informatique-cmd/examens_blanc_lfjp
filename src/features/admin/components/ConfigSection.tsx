@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Save,
   Check,
@@ -137,11 +137,11 @@ export default function ConfigSection({
   const [schoolCity, setSchoolCity] = useState("Saly, Sénégal");
   const [sessionYear, setSessionYear] = useState(siteInfo.schoolYear || "2025-2026");
 
-  // 2. Evaluation Types (CRUD)
+  // 2. Evaluation Types (CRUD) - empty array is strictly respected so deletions persist
   const [evalTypes, setEvalTypes] = useState<string[]>(
-    siteInfo.evaluationTypes && siteInfo.evaluationTypes.length > 0
+    Array.isArray(siteInfo.evaluationTypes)
       ? siteInfo.evaluationTypes
-      : DEFAULT_EVALUATION_TYPES
+      : []
   );
   const [newEvalType, setNewEvalType] = useState("");
   const [editingEvalTypeIndex, setEditingEvalTypeIndex] = useState<number | null>(null);
@@ -149,7 +149,7 @@ export default function ConfigSection({
 
   // 2b. School Levels (CRUD)
   const [schoolLevels, setSchoolLevels] = useState<string[]>(
-    siteInfo.schoolLevels && siteInfo.schoolLevels.length > 0
+    Array.isArray(siteInfo.schoolLevels)
       ? siteInfo.schoolLevels
       : DEFAULT_SCHOOL_LEVELS
   );
@@ -159,9 +159,9 @@ export default function ConfigSection({
 
   // 3. Sciences Subjects (CRUD + Cocher/Décocher)
   const [sciencesSubjects, setSciencesSubjects] = useState<ScienceSubjectItem[]>(
-    siteInfo.sciencesSubjects && siteInfo.sciencesSubjects.length > 0
+    Array.isArray(siteInfo.sciencesSubjects)
       ? siteInfo.sciencesSubjects
-      : DEFAULT_SCIENCES_SUBJECTS
+      : []
   );
   const [newScienceName, setNewScienceName] = useState("");
   const [editingScienceId, setEditingScienceId] = useState<string | null>(null);
@@ -169,10 +169,42 @@ export default function ConfigSection({
 
   // 4. Standard Exam Slots & Tiers-Temps (CRUD)
   const [slots, setSlots] = useState<StandardSlotItem[]>(
-    siteInfo.standardSlots && siteInfo.standardSlots.length > 0
+    Array.isArray(siteInfo.standardSlots)
       ? siteInfo.standardSlots
-      : DEFAULT_STANDARD_SLOTS
+      : []
   );
+
+  // Synchronize internal state whenever siteInfo updates from remote deployment or storage
+  useEffect(() => {
+    if (Array.isArray(siteInfo.evaluationTypes)) {
+      setEvalTypes(siteInfo.evaluationTypes);
+    }
+    if (Array.isArray(siteInfo.schoolLevels)) {
+      setSchoolLevels(siteInfo.schoolLevels);
+    }
+    if (Array.isArray(siteInfo.sciencesSubjects)) {
+      setSciencesSubjects(siteInfo.sciencesSubjects);
+    }
+    if (Array.isArray(siteInfo.standardSlots)) {
+      setSlots(siteInfo.standardSlots);
+    }
+    if (siteInfo.title) setSchoolName(siteInfo.title);
+    if (siteInfo.schoolYear) setSessionYear(siteInfo.schoolYear);
+    if (siteInfo.proviseurAuth) {
+      if (siteInfo.proviseurAuth.email) setProviseurEmail(siteInfo.proviseurAuth.email);
+      if (siteInfo.proviseurAuth.password) setProviseurPassword(siteInfo.proviseurAuth.password);
+      if (siteInfo.proviseurAuth.name) setProviseurName(siteInfo.proviseurAuth.name);
+    }
+    if (siteInfo.bannerAlert) {
+      setAlertEnabled(siteInfo.bannerAlert.enabled ?? false);
+      setAlertTitle(siteInfo.bannerAlert.title || "");
+      setAlertMessage(siteInfo.bannerAlert.message || "");
+      setAlertType(siteInfo.bannerAlert.type || "info");
+    }
+    if (Array.isArray(siteInfo.logos)) {
+      setLogos(siteInfo.logos);
+    }
+  }, [siteInfo]);
   const [isSlotModalOpen, setIsSlotModalOpen] = useState(false);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
   const [slotFormName, setSlotFormName] = useState("");

@@ -205,10 +205,19 @@ export function getCmsData(): CmsData {
       updatedAt: parsed.updatedAt || DEFAULT_CMS_DATA.updatedAt,
       siteInfo: {
         ...DEFAULT_CMS_DATA.siteInfo,
-        schoolLevels: Array.isArray(parsed.siteInfo?.schoolLevels) && parsed.siteInfo.schoolLevels.length > 0
+        ...(parsed.siteInfo || {}),
+        evaluationTypes: Array.isArray(parsed.siteInfo?.evaluationTypes)
+          ? parsed.siteInfo.evaluationTypes
+          : (Array.isArray(DEFAULT_CMS_DATA.siteInfo?.evaluationTypes) ? DEFAULT_CMS_DATA.siteInfo.evaluationTypes : []),
+        schoolLevels: Array.isArray(parsed.siteInfo?.schoolLevels)
           ? parsed.siteInfo.schoolLevels
           : DEFAULT_SCHOOL_LEVELS,
-        ...(parsed.siteInfo || {}),
+        sciencesSubjects: Array.isArray(parsed.siteInfo?.sciencesSubjects)
+          ? parsed.siteInfo.sciencesSubjects
+          : (Array.isArray(DEFAULT_CMS_DATA.siteInfo?.sciencesSubjects) ? DEFAULT_CMS_DATA.siteInfo.sciencesSubjects : []),
+        standardSlots: Array.isArray(parsed.siteInfo?.standardSlots)
+          ? parsed.siteInfo.standardSlots
+          : (Array.isArray(DEFAULT_CMS_DATA.siteInfo?.standardSlots) ? DEFAULT_CMS_DATA.siteInfo.standardSlots : []),
         bannerAlert: {
           ...DEFAULT_CMS_DATA.siteInfo.bannerAlert,
           ...(parsed.siteInfo?.bannerAlert || {}),
@@ -267,11 +276,11 @@ export function getCmsData(): CmsData {
 /**
  * Saves CMS data to localStorage and dispatches a notification event.
  */
-export function saveCmsData(data: CmsData): void {
+export function saveCmsData(data: CmsData, preserveTimestamp = false): void {
   if (typeof window === "undefined") return;
   const toSave: CmsData = {
     ...data,
-    updatedAt: new Date().toISOString(),
+    updatedAt: preserveTimestamp && data.updatedAt ? data.updatedAt : new Date().toISOString(),
   };
   localStorage.setItem(CMS_STORAGE_KEY, JSON.stringify(toSave));
   window.dispatchEvent(new Event(CMS_EVENT_NAME));
@@ -488,7 +497,7 @@ export function useCmsData() {
 
         const rawLocal = localStorage.getItem(CMS_STORAGE_KEY);
         if (!rawLocal) {
-          saveCmsData(remote);
+          saveCmsData(remote, true);
           setData(remote);
           return;
         }
@@ -496,11 +505,18 @@ export function useCmsData() {
         const local = JSON.parse(rawLocal) as Partial<CmsData>;
         const remoteTime = remote.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
         const localTime = local.updatedAt ? new Date(local.updatedAt).getTime() : 0;
+        const hasPendingDeployment = Boolean(local.siteInfo?.pendingDeployment);
 
-        // If remote deployment is newer than this browser's local cache, adopt the deployed data!
-        if (remoteTime > localTime) {
-          saveCmsData(remote);
-          setData(remote);
+        // Adopt remote deployed data if:
+        // 1. Remote is newer than local cache, OR
+        // 2. Local has NO un-deployed pending changes and remote has a different timestamp or different evaluationTypes/levels
+        const shouldAdoptRemote =
+          remoteTime > localTime ||
+          (!hasPendingDeployment && (remote.updatedAt !== local.updatedAt || JSON.stringify(remote.siteInfo?.evaluationTypes) !== JSON.stringify(local.siteInfo?.evaluationTypes)));
+
+        if (shouldAdoptRemote) {
+          saveCmsData(remote, true);
+          setData(getCmsData());
         }
       } catch (err) {
         console.warn("Could not sync remote cms-data.json", err);

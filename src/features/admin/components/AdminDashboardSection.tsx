@@ -59,7 +59,7 @@ export default function AdminDashboardSection({
         c.accommodation.toLowerCase().includes("aménag"))
   ).length;
 
-  const effectiveSurveillancesCount = exams.length === 0 ? 0 : surveillances.length;
+  const effectiveSurveillancesCount = exams.length === 0 || examSlots.length === 0 ? 0 : surveillances.length;
   const publishedAnnouncements = announcements.filter((a) => a.isPublished);
 
 
