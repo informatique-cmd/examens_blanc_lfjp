@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-09T09:35:53.088Z",
+  "updatedAt": "2026-11-09T09:39:54.759Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Lycée Français Jacques Prévert de Saly • Réseau AEFE",
@@ -144,6 +144,22 @@
       ],
       "notes": "",
       "id": "slot-1794216903837"
+    },
+    {
+      "examTitle": "Examens blancs - décembre 2026",
+      "subject": "Maths",
+      "date": "2026-12-10",
+      "startTime": "08:00",
+      "endTime": "12:00",
+      "durationMinutes": 240,
+      "tiersTempsEndTime": "13:20",
+      "tiersTempsDurationMinutes": 320,
+      "targetLevel": "Terminale (Baccalauréat)",
+      "roomNames": [
+        "S1"
+      ],
+      "notes": "",
+      "id": "slot-1794217095840"
     }
   ],
   "rooms": [
@@ -858,6 +874,36 @@
       "timeSlot": "08:00 - 12:00",
       "teacherName": "Mme D'AQUINO Roselyne",
       "mission": "Surveillant titulaire (plein créneau)"
+    },
+    {
+      "id": "surv-full-1794217117841-xhaq",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794217095840",
+      "roomName": "S1",
+      "date": "2026-12-10",
+      "timeSlot": "08:00 - 12:00",
+      "teacherName": "Mme MBOUP Nathalie",
+      "mission": "Surveillant titulaire (plein créneau)"
+    },
+    {
+      "id": "surv-renfort-1794217166142-1z0r",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794217095840",
+      "roomName": "Renfort",
+      "date": "2026-12-10",
+      "timeSlot": "08:00 - 12:00",
+      "teacherName": "Mme Mbengue Dior (AED / Vie Scolaire)",
+      "mission": "Surveillant de renfort & couloir"
+    },
+    {
+      "id": "surv-renfort-1794217184376-qqv5",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794217095840",
+      "roomName": "Renfort",
+      "date": "2026-12-10",
+      "timeSlot": "08:00 - 12:00",
+      "teacherName": "Mme D'AQUINO Roselyne",
+      "mission": "Surveillant de renfort & couloir"
     }
   ],
   "candidates": [
