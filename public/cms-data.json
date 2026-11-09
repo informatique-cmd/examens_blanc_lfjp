@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-09T09:32:50.251Z",
+  "updatedAt": "2026-11-09T09:35:53.088Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Lycée Français Jacques Prévert de Saly • Réseau AEFE",
@@ -128,6 +128,22 @@
       ],
       "notes": "",
       "id": "slot-1794216702499"
+    },
+    {
+      "examTitle": "Examens blancs - décembre 2026",
+      "subject": "SES (sujet 2)",
+      "date": "2026-12-09",
+      "startTime": "08:00",
+      "endTime": "12:00",
+      "durationMinutes": 240,
+      "tiersTempsEndTime": "13:20",
+      "tiersTempsDurationMinutes": 320,
+      "targetLevel": "Terminale (Baccalauréat)",
+      "roomNames": [
+        "S4"
+      ],
+      "notes": "",
+      "id": "slot-1794216903837"
     }
   ],
   "rooms": [
@@ -831,6 +847,16 @@
       "date": "2026-12-09",
       "timeSlot": "08:00 - 12:00",
       "teacherName": "Mme MOURAIN DIOP Fanelly",
+      "mission": "Surveillant titulaire (plein créneau)"
+    },
+    {
+      "id": "surv-full-1794216942554-4dmo",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794216903837",
+      "roomName": "S4",
+      "date": "2026-12-09",
+      "timeSlot": "08:00 - 12:00",
+      "teacherName": "Mme D'AQUINO Roselyne",
       "mission": "Surveillant titulaire (plein créneau)"
     }
   ],
