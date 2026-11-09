@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-09T09:44:09.047Z",
+  "updatedAt": "2026-11-09T09:48:41.620Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Lycée Français Jacques Prévert de Saly • Réseau AEFE",
@@ -176,6 +176,22 @@
       ],
       "notes": "",
       "id": "slot-1794217321845"
+    },
+    {
+      "examTitle": "Examens blancs - décembre 2026",
+      "subject": "SVT / Maths / AMC",
+      "date": "2026-12-10",
+      "startTime": "08:00",
+      "endTime": "13:30",
+      "durationMinutes": 330,
+      "tiersTempsEndTime": "15:20",
+      "tiersTempsDurationMinutes": 440,
+      "targetLevel": "Terminale (Baccalauréat)",
+      "roomNames": [
+        "S3"
+      ],
+      "notes": "",
+      "id": "slot-1794217578733"
     }
   ],
   "rooms": [
@@ -950,6 +966,46 @@
       "timeSlot": "11:00 - 12:00",
       "teacherName": "Mme DIADIO Ira",
       "mission": "Surveillant relais (11:00 - 12:00)"
+    },
+    {
+      "id": "surv-custom-1794217613401-g6qj",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794217578733",
+      "roomName": "S3",
+      "date": "2026-12-10",
+      "timeSlot": "08:00 - 10:00",
+      "teacherName": "M. PIAGGIO Fernando",
+      "mission": "Surveillant relais (08:00 - 10:00)"
+    },
+    {
+      "id": "surv-custom-1794217636518-djm7",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794217578733",
+      "roomName": "S3",
+      "date": "2026-12-10",
+      "timeSlot": "10:00 - 11:00",
+      "teacherName": "M. ANE Alassane",
+      "mission": "Surveillant relais (10:00 - 11:00)"
+    },
+    {
+      "id": "surv-custom-1794217662852-fdii",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794217578733",
+      "roomName": "S3",
+      "date": "2026-12-10",
+      "timeSlot": "10:00 - 12:00",
+      "teacherName": "M. THOMAS Yvon",
+      "mission": "Surveillant relais (10:00 - 12:00)"
+    },
+    {
+      "id": "surv-custom-1794217707053-6emt",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794217578733",
+      "roomName": "S3",
+      "date": "2026-12-10",
+      "timeSlot": "12:00 - 13:30",
+      "teacherName": "Mme D'AQUINO Roselyne",
+      "mission": "Surveillant relais (12:00 - 13:30)"
     }
   ],
   "candidates": [
