@@ -1,4 +1,4 @@
-// Fichier généré automatiquement par le CMS LFJP le 09/11/2026 à 10:01:18
+// Fichier généré automatiquement par le CMS LFJP le 09/11/2026 à 09:59:49
 // Ce fichier est déployé automatiquement sur Vercel lors de chaque commit GitHub.
 
 export const HOME_PAGE_CONTENT = {
@@ -13,7 +13,7 @@ export const HOME_PAGE_CONTENT = {
     }
   ],
   "subtitle": "Lycée Français Jacques Prévert de Saly • Réseau AEFE",
-  "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
+  "title": "Lycée Français Jacques Prévert",
   "description": "Cet espace réunit l'ensemble des informations pratiques nécessaires pour préparer, coordonner et faire vivre les épreuves. Vous y trouverez les documents, convocations, affectations de salles et les consignes indispensables pour guider sereinement chaque étape du déroulement des examens blancs."
 };
 
