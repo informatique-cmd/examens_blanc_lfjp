@@ -14,6 +14,7 @@ import {
   ChevronUp,
   Shield,
   FileSpreadsheet,
+  UserPlus,
 } from "lucide-react";
 import type {
   CmsExamSlot,
@@ -88,6 +89,74 @@ export default function CreneauxSection({
 
   // State for adding custom sub-slot for a room: key is `${slotId}_${roomName}`
   const [customSubSlotForms, setCustomSubSlotForms] = useState<Record<string, { startTime: string; endTime: string; teacherName: string; isAdding: boolean }>>({});
+
+  // List of custom / external non-teacher surveillants (AED, CPE, personnel administratif, renfort...)
+  const [storedCustomRenforts, setStoredCustomRenforts] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("lfjp_custom_renfort_names");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const customRenfortList = useMemo(() => {
+    const teacherNames = new Set(
+      teachers.map((t) => `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`.toLowerCase())
+    );
+    const fromSurvs = surveillances
+      .map((s) => s.teacherName?.trim())
+      .filter((name) => Boolean(name) && !teacherNames.has(name.toLowerCase()));
+
+    return Array.from(new Set([...storedCustomRenforts, ...fromSurvs])).filter(Boolean);
+  }, [teachers, surveillances, storedCustomRenforts]);
+
+  // Modal state for manual surveillant addition (renfort ou externe)
+  const [manualRenfortModalSlot, setManualRenfortModalSlot] = useState<CmsExamSlot | null>(null);
+  const [manualRenfortCivility, setManualRenfortCivility] = useState<"Mme" | "M.">("Mme");
+  const [manualRenfortName, setManualRenfortName] = useState("");
+  const [manualRenfortRole, setManualRenfortRole] = useState("AED / Vie Scolaire");
+  const [manualRenfortCustomRole, setManualRenfortCustomRole] = useState("");
+
+  const openManualRenfortModal = (slot: CmsExamSlot) => {
+    setManualRenfortModalSlot(slot);
+    setManualRenfortName("");
+    setManualRenfortRole("AED / Vie Scolaire");
+    setManualRenfortCustomRole("");
+    setManualRenfortCivility("Mme");
+  };
+
+  const handleSaveManualRenfort = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualRenfortName.trim() || !manualRenfortModalSlot) {
+      alert("Veuillez renseigner le nom du surveillant.");
+      return;
+    }
+
+    const effectiveRole =
+      manualRenfortRole === "Autre"
+        ? manualRenfortCustomRole.trim()
+        : manualRenfortRole.trim();
+
+    const fullName = `${manualRenfortCivility} ${manualRenfortName.trim()}${
+      effectiveRole ? ` (${effectiveRole})` : ""
+    }`;
+
+    handleAddRenfort(manualRenfortModalSlot, fullName);
+
+    setStoredCustomRenforts((prev) => {
+      const next = Array.from(new Set([...prev, fullName]));
+      try {
+        localStorage.setItem("lfjp_custom_renfort_names", JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+
+    setManualRenfortModalSlot(null);
+    setManualRenfortName("");
+  };
 
   // Helper to get all surveillances tied to a slot
   const getSlotSurveillances = (slot: CmsExamSlot) => {
@@ -940,15 +1009,29 @@ export default function CreneauxSection({
                                               className="w-full text-xs py-1 px-2 rounded-md border border-slate-300 bg-white font-semibold text-slate-900 focus:ring-1 focus:ring-indigo-500"
                                             >
                                               <option value={surv.teacherName}>{surv.teacherName}</option>
-                                              {teachers.map((t) => {
-                                                const fullName = `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`;
-                                                if (fullName === surv.teacherName) return null;
-                                                return (
-                                                  <option key={t.id} value={fullName}>
-                                                    {fullName} ({t.subject})
-                                                  </option>
-                                                );
-                                              })}
+                                              {customRenfortList.length > 0 && (
+                                                <optgroup label="⭐ Surveillants de renfort & externes">
+                                                  {customRenfortList.map((name) => {
+                                                    if (name === surv.teacherName) return null;
+                                                    return (
+                                                      <option key={name} value={name}>
+                                                        {name}
+                                                      </option>
+                                                    );
+                                                  })}
+                                                </optgroup>
+                                              )}
+                                              <optgroup label="📚 Enseignants LFJP">
+                                                {teachers.map((t) => {
+                                                  const fullName = `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`;
+                                                  if (fullName === surv.teacherName) return null;
+                                                  return (
+                                                    <option key={t.id} value={fullName}>
+                                                      {fullName} ({t.subject})
+                                                    </option>
+                                                  );
+                                                })}
+                                              </optgroup>
                                             </select>
                                           </div>
                                         </div>
@@ -1162,28 +1245,57 @@ export default function CreneauxSection({
                                 </span>
                               ))}
 
-                            <select
-                              onChange={(e) => {
-                                if (e.target.value) {
-                                  handleAddRenfort(slot, e.target.value);
-                                  e.target.value = "";
-                                }
-                              }}
-                              defaultValue=""
-                              className="px-3 py-1.5 rounded-xl border border-indigo-300 bg-white text-xs font-semibold text-slate-800"
-                            >
-                              <option value="" disabled>
-                                + Ajouter un surveillant de renfort...
-                              </option>
-                              {teachers.map((t) => {
-                                const fullName = `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`;
-                                return (
-                                  <option key={t.id} value={fullName}>
-                                    {fullName} ({t.subject})
-                                  </option>
-                                );
-                              })}
-                            </select>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <select
+                                onChange={(e) => {
+                                  if (e.target.value === "__MANUAL_ADD__") {
+                                    openManualRenfortModal(slot);
+                                    e.target.value = "";
+                                  } else if (e.target.value) {
+                                    handleAddRenfort(slot, e.target.value);
+                                    e.target.value = "";
+                                  }
+                                }}
+                                defaultValue=""
+                                className="px-3 py-1.5 rounded-xl border border-indigo-300 bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 shadow-2xs"
+                              >
+                                <option value="" disabled>
+                                  + Ajouter un surveillant de renfort...
+                                </option>
+                                <option value="__MANUAL_ADD__" className="font-bold text-indigo-700 bg-indigo-50">
+                                  ✍️ + Saisie manuelle (AED, externe, vie scolaire...)
+                                </option>
+                                {customRenfortList.length > 0 && (
+                                  <optgroup label="⭐ Surveillants de renfort & externes enregistrés">
+                                    {customRenfortList.map((name) => (
+                                      <option key={name} value={name}>
+                                        {name}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )}
+                                <optgroup label="📚 Enseignants LFJP">
+                                  {teachers.map((t) => {
+                                    const fullName = `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`;
+                                    return (
+                                      <option key={t.id} value={fullName}>
+                                        {fullName} ({t.subject})
+                                      </option>
+                                    );
+                                  })}
+                                </optgroup>
+                              </select>
+
+                              <button
+                                type="button"
+                                onClick={() => openManualRenfortModal(slot)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-2xs hover:shadow transition active:scale-[0.98] cursor-pointer whitespace-nowrap"
+                                title="Ajouter manuellement un surveillant de renfort qui ne fait pas partie de la liste des enseignants (ex: AED, CPE, vie scolaire, externe)"
+                              >
+                                <UserPlus className="h-3.5 w-3.5" />
+                                <span>+ Saisie manuelle</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1483,6 +1595,161 @@ export default function CreneauxSection({
                   className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs"
                 >
                   {editingSlotId ? "Enregistrer les modifications" : "Programmer ce créneau"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* MODAL: Saisie Manuelle d'un Surveillant de Renfort (Personnel Externe / AED / CPE / Non-enseignant) */}
+      {manualRenfortModalSlot && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-2xl border border-indigo-200 bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2.5">
+                <div className="h-10 w-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 shadow-2xs">
+                  <UserPlus className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-sm">
+                    Ajouter un Surveillant de Renfort
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Personnel externe, AED, CPE ou non-enseignant
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setManualRenfortModalSlot(null)}
+                className="text-slate-400 hover:text-slate-600 text-lg font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-100 text-xs text-indigo-950 flex items-center gap-2">
+              <Shield className="h-4 w-4 text-indigo-600 shrink-0" />
+              <span>
+                Créneau : <strong>{manualRenfortModalSlot.subject}</strong> ({manualRenfortModalSlot.startTime} - {manualRenfortModalSlot.endTime}) • {manualRenfortModalSlot.date}
+              </span>
+            </div>
+
+            <form onSubmit={handleSaveManualRenfort} className="space-y-4 text-xs">
+              {/* Civilité */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">Civilité *</label>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="renfortCivility"
+                      checked={manualRenfortCivility === "Mme"}
+                      onChange={() => setManualRenfortCivility("Mme")}
+                      className="text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="font-semibold text-slate-800">Madame (Mme)</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="renfortCivility"
+                      checked={manualRenfortCivility === "M."}
+                      onChange={() => setManualRenfortCivility("M.")}
+                      className="text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="font-semibold text-slate-800">Monsieur (M.)</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Nom & Prénom */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Nom & Prénom du surveillant *
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={manualRenfortName}
+                  onChange={(e) => setManualRenfortName(e.target.value)}
+                  placeholder="Ex: DIADIO Mariama, SOW Amadou, D'AQUINO Roselyne..."
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 font-semibold text-slate-900 bg-white"
+                />
+              </div>
+
+              {/* Fonction / Statut */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Fonction / Statut (optionnel)
+                </label>
+                <select
+                  value={manualRenfortRole}
+                  onChange={(e) => setManualRenfortRole(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white font-medium text-slate-800"
+                >
+                  <option value="AED / Vie Scolaire">AED / Vie Scolaire</option>
+                  <option value="Personnel Administratif">Personnel Administratif</option>
+                  <option value="Surveillant Externe / Vacataire">Surveillant Externe / Vacataire</option>
+                  <option value="CPE">CPE</option>
+                  <option value="Direction">Direction</option>
+                  <option value="Secrétariat d'examen">Secrétariat d'examen</option>
+                  <option value="Renfort couloir">Renfort couloir</option>
+                  <option value="Autre">Autre (personnalisé)...</option>
+                </select>
+                {manualRenfortRole === "Autre" && (
+                  <input
+                    type="text"
+                    value={manualRenfortCustomRole}
+                    onChange={(e) => setManualRenfortCustomRole(e.target.value)}
+                    placeholder="Préciser la fonction (ex: Stagiaire, Infirmier...)"
+                    className="w-full mt-2 px-3 py-1.5 text-xs border border-slate-300 rounded-lg"
+                  />
+                )}
+              </div>
+
+              {/* Quick Pick from previously saved custom renforts */}
+              {customRenfortList.length > 0 && (
+                <div className="pt-2 border-t border-slate-100">
+                  <p className="text-[11px] font-bold text-slate-500 mb-1.5">
+                    Ou réutiliser un surveillant de renfort déjà saisi :
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-1.5 bg-slate-50 rounded-xl border border-slate-200">
+                    {customRenfortList.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => {
+                          handleAddRenfort(manualRenfortModalSlot, name);
+                          setManualRenfortModalSlot(null);
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-slate-800 font-semibold text-[11px] transition shadow-2xs flex items-center gap-1 cursor-pointer"
+                        title="Affecter ce surveillant directement à ce créneau"
+                      >
+                        <span>{name}</span>
+                        <span className="text-indigo-600 font-bold">+</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setManualRenfortModalSlot(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-50 cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Ajouter comme surveillant</span>
                 </button>
               </div>
             </form>
