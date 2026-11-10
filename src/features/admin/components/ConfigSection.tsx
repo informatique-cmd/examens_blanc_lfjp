@@ -133,9 +133,10 @@ export default function ConfigSection({
   onDeleteAnnouncement,
 }: ConfigSectionProps) {
   // 1. School Information
-  const [schoolName, setSchoolName] = useState(siteInfo.title || "Lycée Français Jacques Prévert");
-  const [schoolCity, setSchoolCity] = useState("Saly, Sénégal");
-  const [sessionYear, setSessionYear] = useState(siteInfo.schoolYear || "2025-2026");
+  const [schoolName, setSchoolName] = useState(siteInfo.schoolName || siteInfo.title || "Lycée Français Jacques Prévert");
+  const [schoolCity, setSchoolCity] = useState(siteInfo.schoolCity || "Saly, Sénégal");
+  const [sessionYear, setSessionYear] = useState(siteInfo.schoolYear || "2026-2027");
+  const [identitySavedFeedback, setIdentitySavedFeedback] = useState(false);
 
   // 2. Evaluation Types (CRUD) - empty array is strictly respected so deletions persist
   const [evalTypes, setEvalTypes] = useState<string[]>(
@@ -188,8 +189,15 @@ export default function ConfigSection({
     if (Array.isArray(siteInfo.standardSlots)) {
       setSlots(siteInfo.standardSlots);
     }
-    if (siteInfo.title) setSchoolName(siteInfo.title);
-    if (siteInfo.schoolYear) setSessionYear(siteInfo.schoolYear);
+    if (siteInfo.schoolName || siteInfo.title) {
+      setSchoolName(siteInfo.schoolName || siteInfo.title || "Lycée Français Jacques Prévert");
+    }
+    if (siteInfo.schoolCity) {
+      setSchoolCity(siteInfo.schoolCity);
+    }
+    if (siteInfo.schoolYear) {
+      setSessionYear(siteInfo.schoolYear);
+    }
     if (siteInfo.proviseurAuth) {
       if (siteInfo.proviseurAuth.email) setProviseurEmail(siteInfo.proviseurAuth.email);
       if (siteInfo.proviseurAuth.password) setProviseurPassword(siteInfo.proviseurAuth.password);
@@ -336,11 +344,38 @@ export default function ConfigSection({
     onShowNotification(`Fichier de configuration téléchargé !`);
   };
 
+  // Dedicated handler to save School Identity & Session Year
+  const handleSaveIdentity = () => {
+    const trimmedName = schoolName.trim() || "Lycée Français Jacques Prévert";
+    const trimmedCity = schoolCity.trim() || "Saly, Sénégal";
+    const trimmedYear = sessionYear.trim() || "2026-2027";
+    const updatedSubtitle = `${trimmedName} de ${trimmedCity} • Réseau AEFE`;
+
+    onUpdateSiteInfo({
+      title: trimmedName,
+      schoolName: trimmedName,
+      schoolCity: trimmedCity,
+      schoolYear: trimmedYear,
+      subtitle: updatedSubtitle,
+    });
+    setIdentitySavedFeedback(true);
+    setTimeout(() => setIdentitySavedFeedback(false), 3000);
+    onShowNotification(`✅ Identité enregistrée : ${trimmedName} (${trimmedCity}, ${trimmedYear}) !`);
+  };
+
   // Save all main settings
   const handleSaveAll = () => {
+    const trimmedName = schoolName.trim() || "Lycée Français Jacques Prévert";
+    const trimmedCity = schoolCity.trim() || "Saly, Sénégal";
+    const trimmedYear = sessionYear.trim() || "2026-2027";
+    const updatedSubtitle = `${trimmedName} de ${trimmedCity} • Réseau AEFE`;
+
     onUpdateSiteInfo({
-      title: schoolName.trim(),
-      schoolYear: sessionYear.trim(),
+      title: trimmedName,
+      schoolName: trimmedName,
+      schoolCity: trimmedCity,
+      schoolYear: trimmedYear,
+      subtitle: updatedSubtitle,
       logos,
       bannerAlert: {
         enabled: alertEnabled,
@@ -358,6 +393,8 @@ export default function ConfigSection({
         name: proviseurName.trim(),
       },
     });
+    setIdentitySavedFeedback(true);
+    setTimeout(() => setIdentitySavedFeedback(false), 3000);
     onShowNotification("⚙️ Tous les paramètres ont été enregistrés et synchronisés avec le site vitrine !");
   };
 
@@ -638,12 +675,33 @@ export default function ConfigSection({
 
       {/* 1. Établissement & Année scolaire */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
-        <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-          <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-            <Building className="h-4 w-4 text-[#002060]" />
-            <span>Identité de l'Établissement & Année Scolaire</span>
-          </h3>
-          <span className="text-[11px] font-semibold text-slate-400">LFJP Saly</span>
+        <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <Building className="h-4 w-4 text-[#002060]" />
+              <span>Identité de l'Établissement & Année Scolaire</span>
+            </h3>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Définit le nom officiel, la localisation et l'année scolaire affichés sur le portail vitrine et les convocations.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {identitySavedFeedback && (
+              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1 animate-in fade-in">
+                <Check className="h-3 w-3 text-emerald-600" />
+                <span>Enregistré !</span>
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={handleSaveIdentity}
+              className="px-3.5 py-1.5 rounded-xl bg-[#002060] hover:bg-blue-900 text-white font-bold text-xs transition shadow-2xs hover:shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              <Save className="h-3.5 w-3.5 text-amber-300" />
+              <span>Enregistrer l'identité</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -655,7 +713,8 @@ export default function ConfigSection({
               type="text"
               value={schoolName}
               onChange={(e) => setSchoolName(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
+              onBlur={handleSaveIdentity}
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-hidden font-semibold text-slate-900"
               placeholder="Lycée Français Jacques Prévert"
             />
           </div>
@@ -668,7 +727,8 @@ export default function ConfigSection({
               type="text"
               value={schoolCity}
               onChange={(e) => setSchoolCity(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
+              onBlur={handleSaveIdentity}
+              className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-hidden font-semibold text-slate-900"
               placeholder="Saly, Sénégal"
             />
           </div>
@@ -685,13 +745,30 @@ export default function ConfigSection({
                 setSessionYear(val);
                 onUpdateSiteInfo({ schoolYear: val });
               }}
+              onBlur={handleSaveIdentity}
               className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:outline-hidden font-bold text-[#002060]"
               placeholder="Ex: 2026-2027"
             />
-            <p className="text-[10px] text-slate-400 mt-1">
-              S'affiche instantanément sur le site vitrine et les convocations
-            </p>
           </div>
+        </div>
+
+        {/* Live Preview Pill */}
+        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Aperçu en-tête officiel :
+            </span>
+            <span className="font-bold text-[#002060]">{schoolName}</span>
+            <span className="text-slate-300">•</span>
+            <span className="text-slate-600">{schoolCity}</span>
+            <span className="text-slate-300">•</span>
+            <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-900 font-bold text-[10px]">
+              Session {sessionYear}
+            </span>
+          </div>
+          <span className="text-[10px] text-slate-400 italic">
+            Synchronisation immédiate sur le portail et les convocations
+          </span>
         </div>
       </div>
 

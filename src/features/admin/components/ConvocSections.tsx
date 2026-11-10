@@ -362,7 +362,7 @@ export function ConvocElevesSection({
                   </div>
                   <div className="text-center">
                     <p className="text-[11px] text-slate-900 font-bold">Le / La Proviseur(e)</p>
-                    <p className="font-serif italic text-slate-700 mt-2">Direction du Lycée Français Jacques Prévert</p>
+                    <p className="font-serif italic text-slate-700 mt-2">Direction du {siteInfo.title || "Lycée Français Jacques Prévert"}</p>
                     <p className="text-[9px] text-slate-400 mt-1">Cachet et signature officielle</p>
                   </div>
                 </div>
@@ -673,7 +673,7 @@ export function ConvocProfsSection({
                 </div>
                 <div className="text-center">
                   <p className="text-[11px] text-slate-900 font-bold">Le / La Proviseur(e)</p>
-                  <p className="font-serif italic text-slate-700 mt-2">Direction du Lycée Français Jacques Prévert</p>
+                  <p className="font-serif italic text-slate-700 mt-2">Direction du {siteInfo.title || "Lycée Français Jacques Prévert"}</p>
                   <p className="text-[9px] text-slate-400 mt-1">Cachet et signature officielle</p>
                 </div>
               </div>

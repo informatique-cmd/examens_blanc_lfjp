@@ -367,13 +367,19 @@ export default function HomePage() {
   };
 
   return (
-    <HomeLayout schoolYear={cmsData.siteInfo.schoolYear}>
+    <HomeLayout
+      schoolYear={cmsData.siteInfo.schoolYear}
+      schoolName={cmsData.siteInfo.schoolName || cmsData.siteInfo.title}
+      schoolCity={cmsData.siteInfo.schoolCity}
+    >
       {/* 1. Hero Header Centered */}
       <HomeHero
         subtitle={cmsData.siteInfo.subtitle}
         title={cmsData.siteInfo.title}
         description={cmsData.siteInfo.description}
         schoolYear={cmsData.siteInfo.schoolYear}
+        schoolName={cmsData.siteInfo.schoolName || cmsData.siteInfo.title}
+        schoolCity={cmsData.siteInfo.schoolCity}
       />
 
       {/* 2. Direction Alert Banner if enabled */}

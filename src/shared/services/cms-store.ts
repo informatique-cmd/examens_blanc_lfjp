@@ -22,6 +22,8 @@ export interface SiteInfo {
   subtitle: string;
   description: string;
   schoolYear: string;
+  schoolName?: string;
+  schoolCity?: string;
   logos: Array<{ src: string; alt?: string }>;
   bannerAlert: {
     enabled: boolean;
@@ -598,11 +600,25 @@ export function useCmsData() {
   };
 
   const updateSiteInfo = (info: Partial<SiteInfo>) => {
+    const title = info.title ?? info.schoolName ?? data.siteInfo.title;
+    const schoolName = info.schoolName ?? info.title ?? data.siteInfo.schoolName ?? title;
+    const schoolCity = info.schoolCity ?? data.siteInfo.schoolCity ?? "Saly, Sénégal";
+
+    // Auto-harmonize subtitle if not explicitly provided
+    let subtitle = info.subtitle ?? data.siteInfo.subtitle;
+    if (!info.subtitle && (info.title || info.schoolName || info.schoolCity)) {
+      subtitle = `${schoolName} de ${schoolCity} • Réseau AEFE`;
+    }
+
     const next: CmsData = {
       ...data,
       siteInfo: {
         ...data.siteInfo,
         ...info,
+        title,
+        schoolName,
+        schoolCity,
+        subtitle,
       },
     };
     saveCmsData(next);
