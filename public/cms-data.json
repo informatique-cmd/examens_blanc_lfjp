@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-11T12:06:10.070Z",
+  "updatedAt": "2026-11-11T12:07:45.366Z",
   "siteInfo": {
     "title": "Toute l'organisation des examens blancs centralisée pour les enseignants du LFJP",
     "subtitle": "Lycée Français Jacques Prévert de Saly • Réseau AEFE",
@@ -241,7 +241,7 @@
       "id": "slot-1794218055276"
     },
     {
-      "examTitle": "Examens blancs - décembre 2026",
+      "examTitle": "TEST",
       "subject": "MATH",
       "date": "2026-11-11",
       "startTime": "08:00",
