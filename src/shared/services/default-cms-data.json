@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-10T16:49:36.432Z",
+  "updatedAt": "2026-11-11T08:05:21.413Z",
   "siteInfo": {
     "title": "Lycée Français Jacques Prévert",
     "subtitle": "Lycée Français Jacques Prévert de Saly, Sénégal • Réseau AEFE",
@@ -289,13 +289,6 @@
       "notes": ""
     },
     {
-      "id": "room-1794212490400-9-yxti",
-      "name": "SCIENCES",
-      "capacity": 20,
-      "building": "Bâtiment Principal",
-      "notes": ""
-    },
-    {
       "id": "room-1794212490400-10-es5e",
       "name": "SCIENCES 1",
       "capacity": 20,
@@ -313,20 +306,6 @@
       "id": "room-1794212490400-12-nnkj",
       "name": "SCIENCES 3",
       "capacity": 20,
-      "building": "Bâtiment Principal",
-      "notes": ""
-    },
-    {
-      "id": "room-1794212490400-13-4bvo",
-      "name": "SECONDAIRE",
-      "capacity": 30,
-      "building": "Bâtiment Principal",
-      "notes": ""
-    },
-    {
-      "id": "room-1794212490400-14-zsqd",
-      "name": "24 PLACES",
-      "capacity": 24,
       "building": "Bâtiment Principal",
       "notes": ""
     },
@@ -355,13 +334,6 @@
       "id": "room-1794212490400-18-2w1i",
       "name": "S15",
       "capacity": 24,
-      "building": "Bâtiment Principal",
-      "notes": ""
-    },
-    {
-      "id": "room-1794212490400-19-ntob",
-      "name": "30 PLACES",
-      "capacity": 30,
       "building": "Bâtiment Principal",
       "notes": ""
     },
