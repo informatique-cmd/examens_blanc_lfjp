@@ -60,6 +60,77 @@ export const DEFAULT_SCHOOL_LEVELS: string[] = [
   "Tous niveaux",
 ];
 
+/**
+ * Checks whether a student's class name matches an exam's target school level.
+ * Handles French naming conventions (Tle / Terminale, 1ère / Première, 3ème / DNB, 2nde, etc.)
+ */
+export function isCandidateMatchingLevel(className: string = "", targetLevel: string = ""): boolean {
+  if (!targetLevel || targetLevel === "Tous niveaux") return true;
+
+  const normalizedClass = className.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const normalizedLevel = targetLevel.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+  // 1. Terminale (Baccalauréat)
+  if (normalizedLevel.includes("terminale") || normalizedLevel.includes("tle")) {
+    return (
+      normalizedClass.startsWith("tle") ||
+      normalizedClass.includes("terminale") ||
+      normalizedClass.startsWith("term") ||
+      normalizedClass.includes(" tle") ||
+      normalizedClass.includes("tle ")
+    );
+  }
+
+  // 2. 1ère / Première (EAF)
+  if (normalizedLevel.includes("1ere") || normalizedLevel.includes("premiere") || normalizedLevel.includes("eaf")) {
+    return (
+      normalizedClass.startsWith("1") ||
+      normalizedClass.includes("1ere") ||
+      normalizedClass.includes("premiere") ||
+      normalizedClass.includes("1re") ||
+      normalizedClass.includes("1er")
+    );
+  }
+
+  // 3. 3ème / Troisième (DNB)
+  if (normalizedLevel.includes("3") || normalizedLevel.includes("dnb") || normalizedLevel.includes("troisieme")) {
+    return (
+      normalizedClass.startsWith("3") ||
+      normalizedClass.includes("3eme") ||
+      normalizedClass.includes("3e") ||
+      normalizedClass.includes("dnb")
+    );
+  }
+
+  // 4. 2nde / Seconde
+  if (normalizedLevel.includes("2nde") || normalizedLevel.includes("seconde") || normalizedLevel.includes("2nd")) {
+    return (
+      normalizedClass.startsWith("2") ||
+      normalizedClass.includes("2nde") ||
+      normalizedClass.includes("seconde") ||
+      normalizedClass.includes("2nd")
+    );
+  }
+
+  // 5. 4ème
+  if (normalizedLevel.includes("4")) {
+    return normalizedClass.startsWith("4") || normalizedClass.includes("4eme");
+  }
+
+  // 6. 5ème
+  if (normalizedLevel.includes("5")) {
+    return normalizedClass.startsWith("5") || normalizedClass.includes("5eme");
+  }
+
+  // 7. 6ème
+  if (normalizedLevel.includes("6")) {
+    return normalizedClass.startsWith("6") || normalizedClass.includes("6eme");
+  }
+
+  // Fallback: substring match
+  return normalizedClass.includes(normalizedLevel) || normalizedLevel.includes(normalizedClass);
+}
+
 export interface CmsCallout {
   id: string;
   to: string;

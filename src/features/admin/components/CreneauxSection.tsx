@@ -66,8 +66,7 @@ export default function CreneauxSection({
       ? siteInfo.schoolLevels
       : DEFAULT_SCHOOL_LEVELS;
 
-  // Form state
-  const [formExamTitle, setFormExamTitle] = useState<string>(exams[0]?.title || "DNB blanc");
+  const [formExamTitle, setFormExamTitle] = useState<string>(exams[0]?.title || "");
   const [formSubject, setFormSubject] = useState<string>("");
   const [formDate, setFormDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [formStartTime, setFormStartTime] = useState<string>("08:00");
@@ -503,13 +502,14 @@ export default function CreneauxSection({
   // Open modal for new slot
   const handleOpenNewModal = () => {
     setEditingSlotId(null);
-    setFormExamTitle(exams[0]?.title || "DNB blanc");
+    const defaultExam = exams[0];
+    setFormExamTitle(defaultExam?.title || "");
     setFormSubject("");
     setFormDate(new Date().toISOString().split("T")[0]);
     setFormStartTime("08:00");
     setFormEndTime("09:30");
     setFormDurationMinutes(90);
-    setFormTargetLevel(availableLevels[0] || "3ème (DNB Collège)");
+    setFormTargetLevel(defaultExam?.targetLevel || availableLevels[0] || "3ème (DNB Collège)");
     setFormSelectedRooms(rooms.map((r) => r.name));
     setFormNotes("");
     setIsModalOpen(true);
@@ -1312,7 +1312,7 @@ export default function CreneauxSection({
       {/* MODAL: Program / Edit Slot */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 max-h-[88vh] flex flex-col overflow-hidden">
+          <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in fade-in zoom-in-95 max-h-[90vh] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between border-b px-6 py-4 shrink-0 bg-slate-50/70">
               <div className="flex items-center gap-2">
                 <Clock className="h-5 w-5 text-indigo-600" />
@@ -1331,24 +1331,32 @@ export default function CreneauxSection({
 
             <form onSubmit={handleSubmitSlot} className="flex-1 overflow-y-auto p-6 space-y-4">
               {/* Exam title & Subject */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Examen de rattachement
+                    Examen de rattachement *
                   </label>
                   <select
                     value={formExamTitle}
-                    onChange={(e) => setFormExamTitle(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 font-medium"
+                    onChange={(e) => {
+                      const chosen = e.target.value;
+                      setFormExamTitle(chosen);
+                      const matched = exams.find((ex) => ex.title === chosen);
+                      if (matched && matched.targetLevel) {
+                        setFormTargetLevel(matched.targetLevel);
+                      }
+                    }}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 font-bold text-[#002060]"
                   >
-                    {exams.map((ex) => (
-                      <option key={ex.id} value={ex.title}>
-                        {ex.title}
-                      </option>
-                    ))}
-                    <option value="DNB blanc">DNB blanc (Collège)</option>
-                    <option value="Baccalauréat blanc">Baccalauréat blanc (Lycée)</option>
-                    <option value="Devoir Commun">Devoir Commun</option>
+                    {exams.length === 0 ? (
+                      <option value="">Aucune session créée (créez-en une dans Sessions d'Examens)</option>
+                    ) : (
+                      exams.map((ex) => (
+                        <option key={ex.id} value={ex.title}>
+                          {ex.title}
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
 
@@ -1385,35 +1393,35 @@ export default function CreneauxSection({
               </div>
 
               {/* Date, Heure Début, Heure Fin, Durée */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Date de l'épreuve *
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200">
+                <div className="min-w-0">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 truncate" title="Date de l'épreuve">
+                    Date épreuve *
                   </label>
                   <input
                     type="date"
                     required
                     value={formDate}
                     onChange={(e) => setFormDate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-medium"
+                    className="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-medium bg-white"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Heure de début (Appel) *
+                <div className="min-w-0">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 truncate" title="Heure de début (Appel des candidats)">
+                    Heure début (Appel) *
                   </label>
                   <input
                     type="time"
                     required
                     value={formStartTime}
                     onChange={(e) => handleStartTimeChange(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono font-bold"
+                    className="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono font-bold bg-white"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <div className="min-w-0">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 truncate" title="Heure de fin standard de l'épreuve">
                     Heure de fin *
                   </label>
                   <input
@@ -1421,25 +1429,25 @@ export default function CreneauxSection({
                     required
                     value={formEndTime}
                     onChange={(e) => handleEndTimeChange(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono font-bold text-indigo-950"
+                    className="w-full px-2.5 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono font-bold text-indigo-950 bg-white"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Durée totale calculée
+                <div className="min-w-0">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 truncate" title="Durée totale calculée">
+                    Durée totale
                   </label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <input
                       type="number"
                       min={15}
                       step={5}
                       value={formDurationMinutes}
                       onChange={(e) => handleDurationPresetChange(parseInt(e.target.value, 10) || 60)}
-                      className="w-24 px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono font-bold text-slate-900"
+                      className="w-16 px-2 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 font-mono font-bold text-slate-900 bg-white"
                     />
-                    <span className="text-xs text-slate-600 font-semibold whitespace-nowrap">
-                      min ({Math.floor(formDurationMinutes / 60)}h{formDurationMinutes % 60 > 0 ? String(formDurationMinutes % 60).padStart(2, '0') : '00'})
+                    <span className="text-[11px] text-slate-600 font-bold whitespace-nowrap">
+                      {Math.floor(formDurationMinutes / 60)}h{formDurationMinutes % 60 > 0 ? String(formDurationMinutes % 60).padStart(2, '0') : '00'}
                     </span>
                   </div>
                 </div>

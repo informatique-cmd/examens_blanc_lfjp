@@ -1871,6 +1871,7 @@ export default function AdminPage() {
               candidates={cmsData.candidates}
               rooms={cmsData.rooms}
               teachers={cmsData.teachers}
+              exams={cmsData.exams}
               examSlots={cmsData.examSlots || []}
               surveillances={cmsData.surveillances}
               onSetCandidates={setCandidates}
@@ -1981,6 +1982,9 @@ export default function AdminPage() {
               {currentSection === "convoc-eleves" && (
                 <ConvocElevesSection
                   candidates={cmsData.candidates}
+                  exams={cmsData.exams}
+                  examSlots={cmsData.examSlots || []}
+                  rooms={cmsData.rooms}
                   siteInfo={cmsData.siteInfo}
                 />
               )}
@@ -1988,6 +1992,9 @@ export default function AdminPage() {
               {currentSection === "convoc-profs" && (
                 <ConvocProfsSection
                   teachers={cmsData.teachers}
+                  exams={cmsData.exams}
+                  examSlots={cmsData.examSlots || []}
+                  rooms={cmsData.rooms}
                   surveillances={cmsData.surveillances}
                   siteInfo={cmsData.siteInfo}
                 />
