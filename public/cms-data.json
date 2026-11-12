@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-12T09:48:28.397Z",
+  "updatedAt": "2026-11-12T10:48:51.591Z",
   "siteInfo": {
     "title": "Lycée Français Jacques Prévert",
     "subtitle": "Lycée Français Jacques Prévert de Saly, Sénégal • Réseau AEFE",
@@ -88,7 +88,7 @@
       "durationMinutes": 180,
       "tiersTempsEndTime": "17:00",
       "tiersTempsDurationMinutes": 240,
-      "targetLevel": "Terminale (Baccalauréat)",
+      "targetLevel": "1ère (Baccalauréat EAF)",
       "roomNames": [
         "S1",
         "S2",
@@ -219,7 +219,7 @@
       "durationMinutes": 320,
       "tiersTempsEndTime": "20:07",
       "tiersTempsDurationMinutes": 427,
-      "targetLevel": "Terminale (Baccalauréat)",
+      "targetLevel": "1ère (Baccalauréat EAF)",
       "roomNames": [
         "S1",
         "S2",
