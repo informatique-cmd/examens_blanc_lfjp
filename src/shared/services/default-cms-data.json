@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-12T12:43:36.392Z",
+  "updatedAt": "2026-11-12T12:45:01.769Z",
   "siteInfo": {
     "title": "Lycée Français Jacques Prévert",
     "subtitle": "Lycée Français Jacques Prévert de Saly, Sénégal • Réseau AEFE",
@@ -1159,11 +1159,11 @@
       "firstName": "Julie",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "1",
-      "anonymatNumber": "EXAM-0101"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-27-m16h",
