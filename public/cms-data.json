@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-12T09:18:09.756Z",
+  "updatedAt": "2026-11-12T09:22:49.457Z",
   "siteInfo": {
     "title": "Lycée Français Jacques Prévert",
     "subtitle": "Lycée Français Jacques Prévert de Saly, Sénégal • Réseau AEFE",
@@ -1159,11 +1159,11 @@
       "firstName": "Julie",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "1",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0101"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-27-m16h",
@@ -1171,11 +1171,11 @@
       "firstName": "Faustine",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "2",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0102"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-2-19kq",
@@ -1183,11 +1183,11 @@
       "firstName": "Marilyse  Lucia  Fanta",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "3",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0103"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-28-trdj",
@@ -1195,11 +1195,11 @@
       "firstName": "Awa  Eve",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "4",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0104"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-3-4emy",
@@ -1207,11 +1207,11 @@
       "firstName": "Giovanna",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "5",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0105"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-29-r1pi",
@@ -1219,11 +1219,11 @@
       "firstName": "Coumba",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "6",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0106"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-4-xw02",
@@ -1231,11 +1231,11 @@
       "firstName": "Elah-Khayta",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "7",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0107"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-30-vncv",
@@ -1243,11 +1243,11 @@
       "firstName": "Camille Laurence Nella",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "8",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0108"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-5-h06b",
@@ -1255,11 +1255,11 @@
       "firstName": "Iris Marie Raymonde",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "9",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0109"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-31-fls6",
@@ -1267,11 +1267,11 @@
       "firstName": "Marie",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "10",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0110"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-6-xxrq",
@@ -1279,11 +1279,11 @@
       "firstName": "Hoel",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "11",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0111"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-32-1oad",
@@ -1291,11 +1291,11 @@
       "firstName": "Liliane",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "12",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0112"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-7-jwbt",
@@ -1303,11 +1303,11 @@
       "firstName": "Imane",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "13",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0113"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-33-kz7d",
@@ -1315,11 +1315,11 @@
       "firstName": "Kyran Kemi Adetutu",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "14",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0114"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-8-55s3",
@@ -1327,11 +1327,11 @@
       "firstName": "Mattéo",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "15",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0115"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-34-uxwz",
@@ -1339,11 +1339,11 @@
       "firstName": "Clovis",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "1",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0116"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-9-k7m6",
@@ -1351,11 +1351,11 @@
       "firstName": "Maya Aïssatou",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "2",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0117"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-35-uaqy",
@@ -1363,11 +1363,11 @@
       "firstName": "Seydina Alioune",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "3",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0118"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-10-j7a3",
@@ -1375,11 +1375,11 @@
       "firstName": "Juliette",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "4",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0119"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-36-y7t9",
@@ -1387,11 +1387,11 @@
       "firstName": "Safia",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "PAP",
-      "tableNumber": "5",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0120"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-11-iois",
@@ -1399,11 +1399,11 @@
       "firstName": "Bocar",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "6",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0121"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-37-ngwi",
@@ -1411,11 +1411,11 @@
       "firstName": "Assietou Dite Assy",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "7",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0122"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-12-rmv6",
@@ -1423,11 +1423,11 @@
       "firstName": "Aboubacar Biro",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "8",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0123"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-38-beuk",
@@ -1435,11 +1435,11 @@
       "firstName": "Marvin Noah Diouldé",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "9",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0124"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-13-7arw",
@@ -1447,11 +1447,11 @@
       "firstName": "Clara Noémie",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "10",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0125"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-39-7pos",
@@ -1459,11 +1459,11 @@
       "firstName": "Nènè Penda",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "11",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0126"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-14-aln3",
@@ -1471,11 +1471,11 @@
       "firstName": "Simon",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "12",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0127"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-40-fcxy",
@@ -1483,11 +1483,11 @@
       "firstName": "Mohamed",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "13",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0128"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-15-kagy",
@@ -1495,11 +1495,11 @@
       "firstName": "Assy",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "14",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0129"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-41-tmmo",
@@ -1507,11 +1507,11 @@
       "firstName": "Cheikh Saliou Mbacké",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "PPRE (Remobilisation Travail)",
-      "tableNumber": "15",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0130"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-16-c9mo",
@@ -1519,11 +1519,11 @@
       "firstName": "Celia",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S3",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "1",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0131"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-42-xuxm",
@@ -1531,11 +1531,11 @@
       "firstName": "Souleymane",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S3",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "2",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0132"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-17-sphk",
@@ -1543,11 +1543,11 @@
       "firstName": "Achraf",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S3",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "3",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0133"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-43-3gyp",
@@ -1555,11 +1555,11 @@
       "firstName": "Ababacar",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S3",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "4",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0134"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-18-ursd",
@@ -1567,11 +1567,11 @@
       "firstName": "Felwine Alicia",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S3",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "5",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0135"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-44-4fmr",
@@ -1579,11 +1579,11 @@
       "firstName": "Rayan",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S3",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "6",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0136"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-19-k5ue",
@@ -1591,11 +1591,11 @@
       "firstName": "Maty",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S3",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "7",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0137"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-45-udvy",
@@ -1603,11 +1603,11 @@
       "firstName": "Mohamed Lamine",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S3",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "8",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0138"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-20-ohov",
@@ -1615,11 +1615,11 @@
       "firstName": "Aicha Khoyane",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S3",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "9",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0139"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-46-c71p",
@@ -1627,11 +1627,11 @@
       "firstName": "Zeina",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S3",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "PAP",
-      "tableNumber": "10",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0140"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-21-welc",
@@ -1639,11 +1639,11 @@
       "firstName": "Fatoumata Helene Semou",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S3",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "11",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0141"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-47-m3u6",
@@ -1651,11 +1651,11 @@
       "firstName": "Aïssa",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S3",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "12",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0142"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-22-bn73",
@@ -1663,11 +1663,11 @@
       "firstName": "Orient",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S3",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "13",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0143"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-48-33ih",
@@ -1675,11 +1675,11 @@
       "firstName": "Magate Aïcha",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S3",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "14",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0144"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-23-x0f3",
@@ -1687,11 +1687,11 @@
       "firstName": "Agathe",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S3",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "15",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0145"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-49-tk2h",
@@ -1699,11 +1699,11 @@
       "firstName": "Amy",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S4",
+      "roomName": "",
       "convocationTime": "07h45",
-      "accommodation": "",
-      "tableNumber": "1",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0146"
+      "accommodation": "Tiers-temps (+1/3)",
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-24-lpld",
@@ -1711,11 +1711,11 @@
       "firstName": "Sokhna Faty",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S4",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "PAP",
-      "tableNumber": "2",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0147"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-50-59h4",
@@ -1723,11 +1723,11 @@
       "firstName": "Babacar",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S4",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "3",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0148"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-25-rtmf",
@@ -1735,11 +1735,11 @@
       "firstName": "Loris Tahirou",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S4",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "PAP",
-      "tableNumber": "4",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0149"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-51-ibgk",
@@ -1747,11 +1747,11 @@
       "firstName": "Mame Diarra Bousso",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S4",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "5",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0150"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-26-imeu",
@@ -1759,11 +1759,11 @@
       "firstName": "Bella",
       "className": "TERMINALE1",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S4",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "6",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0151"
+      "tableNumber": "",
+      "anonymatNumber": ""
     },
     {
       "id": "cand-1794212480530-52-em4j",
@@ -1771,11 +1771,11 @@
       "firstName": "Ousseynatou",
       "className": "TERMINALE2",
       "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "S4",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "7",
-      "anonymatNumber": "BAC-BLANC1-TERMINALE0152"
+      "tableNumber": "",
+      "anonymatNumber": ""
     }
   ]
 }
