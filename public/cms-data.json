@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-12T09:12:09.865Z",
+  "updatedAt": "2026-11-12T09:16:24.713Z",
   "siteInfo": {
     "title": "Lycée Français Jacques Prévert",
     "subtitle": "Lycée Français Jacques Prévert de Saly, Sénégal • Réseau AEFE",
@@ -1012,16 +1012,6 @@
       "mission": "Surveillant relais (10:00 - 12:00)"
     },
     {
-      "id": "surv-custom-1794217707053-6emt",
-      "examTitle": "Examens blancs - décembre 2026",
-      "slotId": "slot-1794217578733",
-      "roomName": "S3",
-      "date": "2026-12-10",
-      "timeSlot": "12:00 - 13:30",
-      "teacherName": "Mme D'AQUINO Roselyne",
-      "mission": "Surveillant relais (12:00 - 13:30)"
-    },
-    {
       "id": "surv-full-1794217843172-3k6a",
       "examTitle": "Examens blancs - décembre 2026",
       "slotId": "slot-1794217811471",
@@ -1150,6 +1140,16 @@
       "timeSlot": "11:00 - 12:00",
       "teacherName": "Mme PORTER Elizabeth",
       "mission": "Surveillant relais (11:00 - 12:00)"
+    },
+    {
+      "id": "surv-custom-1794474875471-2a5m",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794217578733",
+      "roomName": "S3",
+      "date": "2026-12-10",
+      "timeSlot": "12:00 - 13:20",
+      "teacherName": "Mme D'AQUINO Roselyne",
+      "mission": "Surveillant relais (12:00 - 13:20)"
     }
   ],
   "candidates": [
