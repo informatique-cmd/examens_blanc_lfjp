@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-13T12:14:09.164Z",
+  "updatedAt": "2026-11-13T12:51:42.472Z",
   "siteInfo": {
     "title": "Lycée Français Jacques Prévert",
     "subtitle": "Lycée Français Jacques Prévert de Saly, Sénégal • Réseau AEFE",
@@ -41,7 +41,19 @@
     "sciencesSubjects": [],
     "standardSlots": [],
     "schoolName": "Lycée Français Jacques Prévert",
-    "schoolCity": "Saly, Sénégal"
+    "schoolCity": "Saly, Sénégal",
+    "proviseurVisibleModules": {
+      "dashboard": true,
+      "dataMenu": true,
+      "sessions-examens": true,
+      "creneaux-epreuves": true,
+      "organization": true,
+      "planningMenu": true,
+      "view-edt": false,
+      "resMenu": false,
+      "convocMenu": true,
+      "publishDeployMenu": true
+    }
   },
   "callouts": [],
   "announcements": [],
