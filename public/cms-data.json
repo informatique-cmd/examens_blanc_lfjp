@@ -1807,5 +1807,43 @@
       "tableNumber": "",
       "anonymatNumber": ""
     }
+  ],
+  "officialRules": [
+    {
+      "id": "rule-ponctualite",
+      "title": "Ponctualité & Appel",
+      "content": "Appel obligatoire des candidats 15 min avant l'épreuve. Aucun accès en salle après distribution des sujets.",
+      "icon": "clock",
+      "category": "Horaires",
+      "isPublished": true,
+      "order": 1
+    },
+    {
+      "id": "rule-mode-examen",
+      "title": "Mode Examen",
+      "content": "Calculatrices avec mode examen activé (voyant clignotant). Tout téléphone doit être éteint dans le sac.",
+      "icon": "book",
+      "category": "Matériel",
+      "isPublished": true,
+      "order": 2
+    },
+    {
+      "id": "rule-tiers-temps",
+      "title": "Tiers-Temps (+1/3)",
+      "content": "Majoration horaire automatique et salles dédiées pour les élèves bénéficiant d'aménagements PAP / PPS validés.",
+      "icon": "shield",
+      "category": "Aménagements",
+      "isPublished": true,
+      "order": 3
+    },
+    {
+      "id": "rule-convocation",
+      "title": "Pièce & Convocation",
+      "content": "Convocation imprimée et pièce d'identité avec photo obligatoires pour émarger avant de débuter l'épreuve.",
+      "icon": "file",
+      "category": "Contrôle",
+      "isPublished": true,
+      "order": 4
+    }
   ]
 }

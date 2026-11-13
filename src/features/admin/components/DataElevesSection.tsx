@@ -16,6 +16,7 @@ import {
   Accessibility,
 } from "lucide-react";
 import type { CmsCandidate, CmsRoom } from "../../../shared/services/cms-store";
+import { isCandidateTiersTemps } from "../../../shared/services/cms-store";
 import {
   downloadCsvTemplate,
   parsePronoteElevesCsv,
@@ -56,6 +57,7 @@ export default function DataElevesSection({
   const [formLastName, setFormLastName] = useState("");
   const [formFirstName, setFormFirstName] = useState("");
   const [formClass, setFormClass] = useState("3A");
+  const [formSpecialty, setFormSpecialty] = useState("");
   const [formAccommodation, setFormAccommodation] = useState("");
   const [formRoom, setFormRoom] = useState("");
   const [formTable, setFormTable] = useState("");
@@ -134,6 +136,7 @@ export default function DataElevesSection({
         lastName: formLastName.toUpperCase().trim(),
         firstName: formFirstName.trim(),
         className: formClass.trim(),
+        specialty: formSpecialty.trim(),
         accommodation: formAccommodation.trim(),
         roomName: formRoom.trim(),
         tableNumber: formTable.trim(),
@@ -147,6 +150,7 @@ export default function DataElevesSection({
         examName: "DNB Blanc / Bac Blanc",
         roomName: formRoom.trim(),
         convocationTime: "07h45",
+        specialty: formSpecialty.trim(),
         accommodation: formAccommodation.trim(),
         tableNumber: formTable.trim(),
       });
@@ -157,6 +161,7 @@ export default function DataElevesSection({
     setShowManualModal(false);
     setFormLastName("");
     setFormFirstName("");
+    setFormSpecialty("");
     setFormAccommodation("");
   };
 
@@ -165,6 +170,7 @@ export default function DataElevesSection({
     setFormLastName(c.lastName);
     setFormFirstName(c.firstName);
     setFormClass(c.className);
+    setFormSpecialty(c.specialty || "");
     setFormAccommodation(c.accommodation || "");
     setFormRoom(c.roomName || "");
     setFormTable(c.tableNumber || "");
@@ -243,9 +249,9 @@ export default function DataElevesSection({
           <p className="text-xl font-black text-slate-900 mt-0.5">{classesList.length}</p>
         </div>
         <div className="p-3.5 rounded-xl border border-purple-200 bg-purple-50/50 shadow-xs">
-          <p className="text-[11px] font-bold uppercase text-purple-700">Tiers-Temps (+1/3)</p>
+          <p className="text-[11px] font-bold uppercase text-purple-700">Tiers-Temps / PAP / PPS</p>
           <p className="text-xl font-black text-purple-900 mt-0.5">
-            {candidates.filter((c) => c.accommodation?.includes("1/3") || c.accommodation?.includes("Tiers")).length}
+            {candidates.filter((c) => isCandidateTiersTemps(c)).length}
           </p>
         </div>
         <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50 shadow-xs">
@@ -305,16 +311,19 @@ export default function DataElevesSection({
             <tbody className="divide-y divide-slate-100">
               {filteredCandidates.length > 0 ? (
                 filteredCandidates.map((cand, idx) => {
-                  const isTT =
-                    cand.accommodation?.includes("1/3") ||
-                    cand.accommodation?.toLowerCase().includes("tiers");
+                  const isTT = isCandidateTiersTemps(cand);
                   return (
                     <tr key={cand.id} className="hover:bg-slate-50/70 transition">
                       <td className="p-3 text-center text-slate-400 font-mono text-[11px]">
                         {idx + 1}
                       </td>
                       <td className="p-3 font-bold text-slate-900">
-                        {cand.lastName.toUpperCase()} {cand.firstName}
+                        <div>{cand.lastName.toUpperCase()} {cand.firstName}</div>
+                        {cand.specialty && (
+                          <div className="text-[10px] font-semibold text-indigo-700 mt-0.5">
+                            Spé/Série : {cand.specialty}
+                          </div>
+                        )}
                       </td>
                       <td className="p-3 text-center">
                         <span className="px-2 py-0.5 rounded font-mono font-bold bg-slate-100 text-slate-700 text-[11px]">
@@ -588,13 +597,26 @@ FALL;Fatou;3A;F;05/09/2011;Tiers-temps;3EME"
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
+                  Spécialité / Série / Option (optionnel)
+                </label>
+                <input
+                  type="text"
+                  value={formSpecialty}
+                  onChange={(e) => setFormSpecialty(e.target.value)}
+                  placeholder="Ex: Maths / Physique-Chimie, SES / HGGSP, LLCE..."
+                  className="w-full px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
                   Aménagement officiel (PAP / PPS / Tiers-Temps)
                 </label>
                 <input
                   type="text"
                   value={formAccommodation}
                   onChange={(e) => setFormAccommodation(e.target.value)}
-                  placeholder="Ex: Tiers-temps (+1/3 temps), Ordinateur..."
+                  placeholder="Ex: Tiers-temps (+1/3 temps), PAP, PPS, Ordinateur..."
                   className="w-full px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db]"
                 />
               </div>

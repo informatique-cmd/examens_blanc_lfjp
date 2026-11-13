@@ -3,7 +3,9 @@ import { generateConstantsTsCode, exportCmsDataJson, type CmsData } from "./cms-
 
 // Import project files as raw strings to synchronize codebase to GitHub & Vercel
 import appTsxRaw from "../../app/App.tsx?raw";
+import indexCssRaw from "../../index.css?raw";
 import homePageRaw from "../../features/home/pages/HomePage.tsx?raw";
+import homeLayoutRaw from "../../features/home/components/HomeLayout.tsx?raw";
 import homeCallToActionCardRaw from "../../features/home/components/HomeCallToActionCard.tsx?raw";
 import schoolYearPageRaw from "../../features/home/pages/SchoolYearPage.tsx?raw";
 import schoolExamPageRaw from "../../features/home/pages/SchoolExamPage.tsx?raw";
@@ -32,7 +34,8 @@ import adminDashboardSectionRaw from "../../features/admin/components/AdminDashb
 import sessionsExamensSectionRaw from "../../features/admin/components/SessionsExamensSection.tsx?raw";
 import planningOfficialGridRaw from "../../features/admin/components/PlanningOfficialGrid.tsx?raw";
 import officialLfjpPlanningRaw from "../data/official-lfjp-planning.ts?raw";
-import defaultCmsDataJsonRaw from "./default-cms-data.json?raw";
+import viteConfigRaw from "../../../vite.config.ts?raw";
+import vercelJsonRaw from "../../../vercel.json?raw";
 
 export interface GitHubUser {
   login: string;
@@ -95,11 +98,9 @@ export function getStoredGitHubAuth(): GitHubAuthState {
       return resetToDefaultGitHubToken();
     }
     const parsed = JSON.parse(raw);
-    let token = parsed.token;
+    let token = typeof parsed.token === "string" ? parsed.token.trim() : "";
 
-    // If no token or if the token is outdated/different from DEFAULT_GITHUB_TOKEN,
-    // automatically migrate to the provided working token
-    if (!token || token !== DEFAULT_GITHUB_TOKEN) {
+    if (!token) {
       token = DEFAULT_GITHUB_TOKEN;
       parsed.token = token;
       if (!parsed.user) {
@@ -506,8 +507,10 @@ export async function pushCmsChangesToGitHub({
       { path: "src/shared/services/pronote-csv-service.ts", content: pronoteCsvServiceRaw },
       { path: "src/shared/services/github-service.ts", content: githubServiceRaw },
       { path: "src/features/home/constants.ts", content: tsCode },
+      { path: "src/index.css", content: indexCssRaw },
       { path: "src/app/App.tsx", content: appTsxRaw },
       { path: "src/features/home/pages/HomePage.tsx", content: homePageRaw },
+      { path: "src/features/home/components/HomeLayout.tsx", content: homeLayoutRaw },
       { path: "src/features/admin/pages/AdminPage.tsx", content: adminPageRaw },
       { path: "src/features/admin/components/AdminSidebar.tsx", content: adminSidebarRaw },
       { path: "src/features/admin/components/ConfigSection.tsx", content: configSectionRaw },
@@ -535,10 +538,8 @@ export async function pushCmsChangesToGitHub({
       { path: "src/features/home/pages/SchoolYearPage.tsx", content: schoolYearPageRaw },
       { path: "src/features/home/pages/SchoolExamPage.tsx", content: schoolExamPageRaw },
       { path: "public/cms-data.json", content: jsonCode },
-      {
-        path: "vercel.json",
-        content: JSON.stringify({ rewrites: [{ source: "/(.*)", destination: "/index.html" }] }, null, 2),
-      },
+      { path: "vite.config.ts", content: viteConfigRaw },
+      { path: "vercel.json", content: vercelJsonRaw },
     ];
 
     // Attempt 1: Atomic commit of all files in a single Git commit

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Clock,
   Calendar,
@@ -24,7 +24,11 @@ import type {
   CmsTeacher,
   SiteInfo,
 } from "../../../shared/services/cms-store";
-import { DEFAULT_SCHOOL_LEVELS } from "../../../shared/services/cms-store";
+import {
+  DEFAULT_SCHOOL_LEVELS,
+  getExamTargetLevels,
+  getShortLevelBadge,
+} from "../../../shared/services/cms-store";
 import { OFFICIAL_LFJP_PLANNING_SESSIONS } from "../../../shared/data/official-lfjp-planning";
 
 interface CreneauxSectionProps {
@@ -34,6 +38,7 @@ interface CreneauxSectionProps {
   teachers?: CmsTeacher[];
   surveillances: CmsSurveillance[];
   siteInfo?: SiteInfo;
+  initialExamFilter?: string;
   onAddExamSlot: (slot: Omit<CmsExamSlot, "id">) => void;
   onUpdateExamSlot: (id: string, updates: Partial<CmsExamSlot>) => void;
   onDeleteExamSlot: (id: string) => void;
@@ -50,6 +55,7 @@ export default function CreneauxSection({
   teachers = [],
   surveillances,
   siteInfo,
+  initialExamFilter,
   onAddExamSlot,
   onUpdateExamSlot,
   onDeleteExamSlot,
@@ -66,19 +72,56 @@ export default function CreneauxSection({
       ? siteInfo.schoolLevels
       : DEFAULT_SCHOOL_LEVELS;
 
-  const [formExamTitle, setFormExamTitle] = useState<string>(exams[0]?.title || "");
+  const [formExamTitle, setFormExamTitle] = useState<string>(() => {
+    return initialExamFilter || exams[0]?.title || "";
+  });
   const [formSubject, setFormSubject] = useState<string>("");
   const [formDate, setFormDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [formStartTime, setFormStartTime] = useState<string>("08:00");
   const [formEndTime, setFormEndTime] = useState<string>("09:30");
   const [formDurationMinutes, setFormDurationMinutes] = useState<number>(90);
   const [formTargetLevel, setFormTargetLevel] = useState<string>(availableLevels[0] || "3ème (DNB Collège)");
+  const [formTargetSpecialty, setFormTargetSpecialty] = useState<string>("");
   const [formSelectedRooms, setFormSelectedRooms] = useState<string[]>(rooms.map((r) => r.name));
   const [formNotes, setFormNotes] = useState<string>("");
 
   // Filter state
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>("all");
-  const [selectedExamFilter, setSelectedExamFilter] = useState<string>("all");
+  const [selectedExamFilter, setSelectedExamFilter] = useState<string>(() => {
+    return initialExamFilter || "all";
+  });
+
+  // Synchronize strictly when initialExamFilter changes (from Sessions -> Programmer les épreuves, or sidebar reset)
+  useEffect(() => {
+    if (initialExamFilter && initialExamFilter.trim() !== "") {
+      setSelectedExamFilter(initialExamFilter);
+      setFormExamTitle(initialExamFilter);
+      setSelectedDateFilter("all");
+    } else if (initialExamFilter === "") {
+      setSelectedExamFilter("all");
+      setSelectedDateFilter("all");
+    }
+  }, [initialExamFilter]);
+
+  // Compute allowed school levels based on the currently selected parent session in modal
+  const parentExamForForm = useMemo(() => {
+    return exams.find(
+      (ex) => ex.title.trim().toLowerCase() === (formExamTitle || "").trim().toLowerCase()
+    );
+  }, [exams, formExamTitle]);
+
+  const allowedFormLevels = useMemo(() => {
+    if (!parentExamForForm) return availableLevels;
+    const parentLevels = getExamTargetLevels(parentExamForForm);
+    if (parentLevels.some((l) => l.toLowerCase().includes("tous"))) {
+      return availableLevels;
+    }
+    const base = parentLevels.length > 1 ? [...parentLevels, "Tous niveaux"] : [...parentLevels];
+    if (formTargetLevel && !base.includes(formTargetLevel)) {
+      base.push(formTargetLevel);
+    }
+    return base;
+  }, [parentExamForForm, availableLevels, formTargetLevel]);
 
   // State to track which slot has its surveillance drawer expanded
   const [expandedSurvSlotIds, setExpandedSurvSlotIds] = useState<Record<string, boolean>>({});
@@ -502,14 +545,19 @@ export default function CreneauxSection({
   // Open modal for new slot
   const handleOpenNewModal = () => {
     setEditingSlotId(null);
-    const defaultExam = exams[0];
-    setFormExamTitle(defaultExam?.title || "");
+    const activeExam =
+      (selectedExamFilter !== "all" &&
+        exams.find((e) => e.title.trim().toLowerCase() === selectedExamFilter.trim().toLowerCase())) ||
+      exams[0];
+    setFormExamTitle(activeExam?.title || "");
     setFormSubject("");
     setFormDate(new Date().toISOString().split("T")[0]);
     setFormStartTime("08:00");
     setFormEndTime("09:30");
     setFormDurationMinutes(90);
-    setFormTargetLevel(defaultExam?.targetLevel || availableLevels[0] || "3ème (DNB Collège)");
+    const activeLevels = activeExam ? getExamTargetLevels(activeExam) : [];
+    setFormTargetLevel(activeLevels[0] || availableLevels[0] || "3ème (DNB Collège)");
+    setFormTargetSpecialty("");
     setFormSelectedRooms(rooms.map((r) => r.name));
     setFormNotes("");
     setIsModalOpen(true);
@@ -526,6 +574,7 @@ export default function CreneauxSection({
     setFormEndTime(endT);
     setFormDurationMinutes(slot.durationMinutes);
     setFormTargetLevel(slot.targetLevel || "3ème");
+    setFormTargetSpecialty(slot.targetSpecialty || "");
     setFormSelectedRooms(slot.roomNames || rooms.map((r) => r.name));
     setFormNotes(slot.notes || "");
     setIsModalOpen(true);
@@ -539,7 +588,12 @@ export default function CreneauxSection({
       return;
     }
 
+    const matchedExam = exams.find(
+      (ex) => ex.title.trim().toLowerCase() === formExamTitle.trim().toLowerCase()
+    );
+
     const payload: Omit<CmsExamSlot, "id"> = {
+      ...(matchedExam?.id ? { examId: matchedExam.id } : {}),
       examTitle: formExamTitle,
       subject: formSubject.trim(),
       date: formDate,
@@ -549,6 +603,7 @@ export default function CreneauxSection({
       tiersTempsEndTime: formTiersTempsEndTime,
       tiersTempsDurationMinutes: formTiersTempsDuration,
       targetLevel: formTargetLevel,
+      targetSpecialty: formTargetSpecialty.trim(),
       roomNames: formSelectedRooms.length > 0 ? formSelectedRooms : rooms.map((r) => r.name),
       notes: formNotes.trim(),
     };
@@ -587,7 +642,11 @@ export default function CreneauxSection({
     return examSlots
       .filter((s) => {
         const matchDate = selectedDateFilter === "all" || s.date === selectedDateFilter;
-        const matchExam = selectedExamFilter === "all" || s.examTitle === selectedExamFilter;
+        const matchExam =
+          selectedExamFilter === "all" ||
+          (Boolean(s.examTitle) &&
+            Boolean(selectedExamFilter) &&
+            s.examTitle.trim().toLowerCase() === selectedExamFilter.trim().toLowerCase());
         return matchDate && matchExam;
       })
       .sort((a, b) => {
@@ -626,7 +685,7 @@ export default function CreneauxSection({
             <span>Créneaux des Épreuves & Programmation</span>
           </h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            Définissez les dates, heures de début et fin de chaque épreuve. Le calcul de la majoration Tiers-Temps (+1/3) est automatisé.
+            Définissez les dates, heures de début et fin de chaque épreuve pour chaque session et niveau scolaire ciblé.
           </p>
         </div>
 
@@ -684,10 +743,16 @@ export default function CreneauxSection({
             <span className="text-xs font-semibold text-slate-700">Examen :</span>
             <select
               value={selectedExamFilter}
-              onChange={(e) => setSelectedExamFilter(e.target.value)}
+              onChange={(e) => {
+                setSelectedExamFilter(e.target.value);
+                setSelectedDateFilter("all");
+                if (e.target.value !== "all") {
+                  setFormExamTitle(e.target.value);
+                }
+              }}
               className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-indigo-500"
             >
-              <option value="all">Toutes les sessions</option>
+              <option value="all">Toutes les sessions ({exams.length})</option>
               {exams.map((ex) => (
                 <option key={ex.id} value={ex.title}>
                   {ex.title}
@@ -701,6 +766,34 @@ export default function CreneauxSection({
           Affichage : <strong>{filteredSlots.length}</strong> créneau(x)
         </span>
       </div>
+
+      {/* Active Exam Filter Banner */}
+      {selectedExamFilter !== "all" && (
+        <div className="flex flex-wrap items-center justify-between gap-2 p-3 px-4 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <span className="font-bold flex items-center gap-1.5 text-blue-800">
+              <Calendar className="h-4 w-4" />
+              <span>Session affichée :</span>
+            </span>
+            <span className="px-2.5 py-0.5 rounded-lg bg-blue-700 text-white font-bold">
+              {selectedExamFilter}
+            </span>
+            <span className="text-blue-700 font-semibold">
+              • {filteredSlots.length} créneau(x)
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedExamFilter("all");
+              setSelectedDateFilter("all");
+            }}
+            className="text-xs font-bold text-blue-700 hover:text-blue-900 underline"
+          >
+            Afficher toutes les sessions
+          </button>
+        </div>
+      )}
 
       {/* Chronological Slot Listing grouped by Date */}
       <div className="space-y-6">
@@ -755,31 +848,26 @@ export default function CreneauxSection({
                           </span>
                           {slot.targetLevel && (
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
-                              Niveau {slot.targetLevel}
+                              {getShortLevelBadge(slot.targetLevel) || slot.targetLevel}
+                            </span>
+                          )}
+                          {slot.targetSpecialty && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              Spé : {slot.targetSpecialty}
                             </span>
                           )}
                         </div>
 
-                        {/* Schedules */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                        {/* Schedules (simplified clean view, Tiers-Temps managed in dedicated rooms) */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                           <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200">
                             <Clock className="h-3.5 w-3.5 text-slate-500 shrink-0" />
                             <div>
-                              <p className="text-[10px] text-slate-500 font-semibold uppercase">Standard ({slot.durationMinutes} min)</p>
+                              <p className="text-[10px] text-slate-500 font-semibold uppercase">
+                                Horaires ({Math.floor(slot.durationMinutes / 60)}h{slot.durationMinutes % 60 > 0 ? String(slot.durationMinutes % 60).padStart(2, "0") : "00"} • {slot.durationMinutes} min)
+                              </p>
                               <p className="font-mono font-bold text-slate-800">
                                 {slot.startTime} ➔ {slot.endTime}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 p-2 rounded-lg bg-purple-50/70 border border-purple-200">
-                            <Clock className="h-3.5 w-3.5 text-purple-600 shrink-0" />
-                            <div>
-                              <p className="text-[10px] text-purple-700 font-semibold uppercase">
-                                Tiers-Temps +1/3 ({slot.tiersTempsDurationMinutes || Math.round(slot.durationMinutes * 4 / 3)} min)
-                              </p>
-                              <p className="font-mono font-bold text-purple-900">
-                                {slot.startTime} ➔ {slot.tiersTempsEndTime || calculateEndTime(slot.startTime, Math.round(slot.durationMinutes * 4 / 3))}
                               </p>
                             </div>
                           </div>
@@ -1342,8 +1430,9 @@ export default function CreneauxSection({
                       const chosen = e.target.value;
                       setFormExamTitle(chosen);
                       const matched = exams.find((ex) => ex.title === chosen);
-                      if (matched && matched.targetLevel) {
-                        setFormTargetLevel(matched.targetLevel);
+                      if (matched) {
+                        const lvls = getExamTargetLevels(matched);
+                        setFormTargetLevel(lvls[0] || availableLevels[0] || "Tous niveaux");
                       }
                     }}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 font-bold text-[#002060]"
@@ -1362,14 +1451,14 @@ export default function CreneauxSection({
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Niveau scolaire ciblé
+                    Niveau scolaire concerné *
                   </label>
                   <select
                     value={formTargetLevel}
                     onChange={(e) => setFormTargetLevel(e.target.value)}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 font-medium"
                   >
-                    {availableLevels.map((lvl) => (
+                    {allowedFormLevels.map((lvl) => (
                       <option key={lvl} value={lvl}>
                         {lvl}
                       </option>
@@ -1378,18 +1467,32 @@ export default function CreneauxSection({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Discipline / Intitulé précis de l'épreuve *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formSubject}
-                  onChange={(e) => setFormSubject(e.target.value)}
-                  placeholder="Ex: Français (Grammaire, Dictée & Compréhension), Mathématiques..."
-                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Discipline / Intitulé précis de l'épreuve *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formSubject}
+                    onChange={(e) => setFormSubject(e.target.value)}
+                    placeholder="Ex: Français, Mathématiques, Philosophie..."
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Spécialité / Option (optionnel)
+                  </label>
+                  <input
+                    type="text"
+                    value={formTargetSpecialty}
+                    onChange={(e) => setFormTargetSpecialty(e.target.value)}
+                    placeholder="Ex: Maths, SES, HGGSP..."
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
 
               {/* Date, Heure Début, Heure Fin, Durée */}
@@ -1478,26 +1581,19 @@ export default function CreneauxSection({
                 ))}
               </div>
 
-              {/* Automated calculation summary banner */}
-              <div className="p-3.5 rounded-xl bg-gradient-to-r from-indigo-50/90 to-purple-50/90 border border-indigo-200 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              {/* Simplified single schedule preview */}
+              <div className="p-3 rounded-xl bg-indigo-50/70 border border-indigo-200 flex items-center justify-between text-xs">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-indigo-700 tracking-wider">
-                    Horaires Standard ({formDurationMinutes} min)
+                    Horaire retenu pour le créneau ({formDurationMinutes} min)
                   </span>
                   <p className="font-mono font-black text-slate-900 text-sm mt-0.5">
                     {formStartTime} ➔ {formEndTime}
                   </p>
-                  <p className="text-[11px] text-slate-500">Fin de l'épreuve pour tous les candidats standard</p>
                 </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-purple-700 tracking-wider">
-                    Aménagement Tiers-Temps +1/3 ({formTiersTempsDuration} min)
-                  </span>
-                  <p className="font-mono font-black text-purple-900 text-sm mt-0.5">
-                    {formStartTime} ➔ {formTiersTempsEndTime}
-                  </p>
-                  <p className="text-[11px] text-purple-700/80">Calcul automatique réglementaire (+{formTiersTempsDuration - formDurationMinutes} min)</p>
-                </div>
+                <span className="text-[11px] text-indigo-800 font-medium">
+                  Les élèves Tiers-Temps sont affectés dans leurs salles dédiées.
+                </span>
               </div>
 
               {/* Salles mobilisées */}

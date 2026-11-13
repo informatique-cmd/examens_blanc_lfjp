@@ -166,6 +166,9 @@ export function parsePronoteElevesCsv(content: string): {
     let idxPrenom = header.findIndex((h) => h.includes("prenom"));
     let idxClasse = header.findIndex((h) => h.includes("classe") || h.includes("division") || h.includes("groupe") || h.includes("mef"));
     const idxAménagement = header.findIndex((h) => h.includes("amenagement") || h.includes("tiers") || h.includes("pap") || h.includes("pps"));
+    const idxSpecialite = header.findIndex(
+      (h) => h.includes("specialite") || h.includes("serie") || h.includes("option") || h.includes("eds")
+    );
 
     // Fallbacks if Pronote exported without standard headers
     if (idxNom === -1) idxNom = 0;
@@ -182,6 +185,7 @@ export function parsePronoteElevesCsv(content: string): {
       const prenom = row[idxPrenom] || "";
       const classe = (idxClasse !== -1 && row[idxClasse]) ? row[idxClasse] : "3ème";
       const amenagement = (idxAménagement !== -1 && row[idxAménagement]) ? row[idxAménagement] : "";
+      const specialite = (idxSpecialite !== -1 && row[idxSpecialite]) ? row[idxSpecialite] : "";
 
       if (!nom.trim()) continue;
 
@@ -194,6 +198,7 @@ export function parsePronoteElevesCsv(content: string): {
         roomName: "",
         convocationTime: "07h45",
         accommodation: amenagement,
+        ...(specialite ? { specialty: specialite } : {}),
         tableNumber: "",
         anonymatNumber: "",
       });

@@ -60,15 +60,51 @@ export const DEFAULT_SCHOOL_LEVELS: string[] = [
   "Tous niveaux",
 ];
 
-/**
- * Checks whether a student's class name matches an exam's target school level.
- * Handles French naming conventions (Tle / Terminale, 1ère / Première, 3ème / DNB, 2nde, etc.)
- */
-export function isCandidateMatchingLevel(className: string = "", targetLevel: string = ""): boolean {
-  if (!targetLevel || targetLevel === "Tous niveaux") return true;
+export function getShortLevelBadge(level: string = ""): string {
+  const norm = level.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  if (!norm) return "";
+  if (norm.includes("tous")) return "Tous niveaux";
+  if (norm.includes("terminale") || norm.includes("tle")) return "Terminale";
+  if (norm.includes("1ere") || norm.includes("premiere") || norm.includes("eaf")) return "1ère";
+  if (norm.includes("2nde") || norm.includes("seconde") || norm.includes("2nd")) return "2nde";
+  if (norm.includes("3") || norm.includes("dnb")) return "3ème";
+  if (norm.includes("4")) return "4ème";
+  if (norm.includes("5")) return "5ème";
+  if (norm.includes("6")) return "6ème";
+  return level.split("(")[0].trim();
+}
 
-  const normalizedClass = className.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-  const normalizedLevel = targetLevel.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+export function getExamTargetLevels(exam?: Partial<CmsExam> | null): string[] {
+  if (!exam) return ["Tous niveaux"];
+  if (Array.isArray(exam.targetLevels) && exam.targetLevels.length > 0) {
+    return exam.targetLevels.map((l) => l.trim()).filter(Boolean);
+  }
+  const raw = (exam.targetLevel || "").trim();
+  if (!raw) return ["Tous niveaux"];
+  if (raw.includes(",")) {
+    return raw.split(",").map((s) => s.trim()).filter(Boolean);
+  }
+  if (raw.includes("+")) {
+    return raw.split("+").map((s) => s.trim()).filter(Boolean);
+  }
+  return [raw];
+}
+
+export function formatTargetLevelsSummary(levels: string[]): string {
+  const clean = levels.map((l) => l.trim()).filter(Boolean);
+  if (clean.length === 0) return "Tous niveaux";
+  if (clean.some((l) => l.toLowerCase().includes("tous"))) return "Tous niveaux";
+  return clean.join(", ");
+}
+
+function matchSingleTargetLevel(normalizedClass: string, singleLevel: string): boolean {
+  const normalizedLevel = singleLevel
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+  if (!normalizedLevel || normalizedLevel.includes("tous")) return true;
 
   // 1. Terminale (Baccalauréat)
   if (normalizedLevel.includes("terminale") || normalizedLevel.includes("tle")) {
@@ -96,8 +132,9 @@ export function isCandidateMatchingLevel(className: string = "", targetLevel: st
   if (normalizedLevel.includes("3") || normalizedLevel.includes("dnb") || normalizedLevel.includes("troisieme")) {
     return (
       normalizedClass.startsWith("3") ||
+      /\b3[a-z0-9]*\b/.test(normalizedClass) ||
       normalizedClass.includes("3eme") ||
-      normalizedClass.includes("3e") ||
+      normalizedClass.includes("troisieme") ||
       normalizedClass.includes("dnb")
     );
   }
@@ -106,6 +143,7 @@ export function isCandidateMatchingLevel(className: string = "", targetLevel: st
   if (normalizedLevel.includes("2nde") || normalizedLevel.includes("seconde") || normalizedLevel.includes("2nd")) {
     return (
       normalizedClass.startsWith("2") ||
+      /\b2[a-z0-9]*\b/.test(normalizedClass) ||
       normalizedClass.includes("2nde") ||
       normalizedClass.includes("seconde") ||
       normalizedClass.includes("2nd")
@@ -127,8 +165,235 @@ export function isCandidateMatchingLevel(className: string = "", targetLevel: st
     return normalizedClass.startsWith("6") || normalizedClass.includes("6eme");
   }
 
-  // Fallback: substring match
   return normalizedClass.includes(normalizedLevel) || normalizedLevel.includes(normalizedClass);
+}
+
+/**
+ * Checks whether a student's class name matches an exam's target school level(s).
+ * Supports single string, comma-separated multi-levels, or string arrays.
+ */
+export function isCandidateMatchingLevel(
+  className: string = "",
+  targetLevel: string | string[] = ""
+): boolean {
+  const levels = Array.isArray(targetLevel)
+    ? targetLevel
+    : targetLevel
+      ? targetLevel.split(/[,+]/).map((s) => s.trim()).filter(Boolean)
+      : [];
+
+  if (levels.length === 0) return true;
+  if (levels.some((l) => l.toLowerCase().includes("tous"))) return true;
+
+  const normalizedClass = className
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+  if (!normalizedClass) return false;
+  return levels.some((lvl) => matchSingleTargetLevel(normalizedClass, lvl));
+}
+
+/**
+ * Checks whether an exam or slot's level(s) match a selected level filter key (e.g. "all", "3ème", "2nde", "1ère", "Terminale").
+ */
+export function isLevelFilterMatch(
+  levelSource: string | string[] | undefined,
+  selectedFilter: string
+): boolean {
+  if (!selectedFilter || selectedFilter === "all") return true;
+  const levels = Array.isArray(levelSource)
+    ? levelSource
+    : levelSource
+      ? levelSource.split(/[,+]/).map((s) => s.trim()).filter(Boolean)
+      : [];
+
+  if (levels.length === 0) return true;
+  if (levels.some((l) => l.toLowerCase().includes("tous"))) return true;
+
+  const filterBadge = getShortLevelBadge(selectedFilter).toLowerCase();
+  return levels.some((lvl) => {
+    const badge = getShortLevelBadge(lvl).toLowerCase();
+    if (badge === filterBadge) return true;
+    const normL = lvl.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const normF = selectedFilter.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return normL.includes(normF) || normF.includes(normL);
+  });
+}
+
+/**
+ * Accurately detects whether a candidate benefits from Tiers-Temps (+1/3) or exam accommodation
+ * (Tiers-Temps, PAP, PPS, PAI, Aménagement) while excluding PPRE classroom remediation.
+ */
+export function isCandidateTiersTemps(cand?: Partial<CmsCandidate> | null): boolean {
+  const acc = (cand?.accommodation || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+  if (!acc) return false;
+  if (
+    acc.includes("ppre") &&
+    !acc.includes("1/3") &&
+    !acc.includes("tiers") &&
+    !acc.includes("pap") &&
+    !acc.includes("pps") &&
+    !acc.includes("pai")
+  ) {
+    return false;
+  }
+  return (
+    acc.includes("1/3") ||
+    acc.includes("tiers") ||
+    acc.includes("pap") ||
+    acc.includes("pps") ||
+    acc.includes("pai") ||
+    acc.includes("amenag") ||
+    /\btt\b/.test(acc)
+  );
+}
+
+export interface CandidateExamAssignment {
+  roomName: string;
+  tableNumber: string;
+  anonymatNumber: string;
+}
+
+/**
+ * Resolves a candidate's room/table/anonymat strictly for a specific exam session,
+ * preserving legacy assignments stored directly on roomName/tableNumber when appropriate
+ * without leaking across unrelated exam sessions.
+ */
+export function getCandidateAssignmentForExam(
+  cand: CmsCandidate,
+  exam?: Pick<CmsExam, "id" | "title" | "mobilizedRoomIds"> | null,
+  examSlots: CmsExamSlot[] = [],
+  allRooms: CmsRoom[] = []
+): CandidateExamAssignment {
+  if (!exam) {
+    return {
+      roomName: cand.roomName || "",
+      tableNumber: cand.tableNumber || "",
+      anonymatNumber: cand.anonymatNumber || "",
+    };
+  }
+
+  const byExam = cand.assignmentsByExam;
+  if (byExam) {
+    if (byExam[exam.id]) {
+      return {
+        roomName: byExam[exam.id].roomName || "",
+        tableNumber: byExam[exam.id].tableNumber || "",
+        anonymatNumber: byExam[exam.id].anonymatNumber || "",
+      };
+    }
+    const normTitle = exam.title.trim().toLowerCase();
+    const matchedKey = Object.keys(byExam).find((k) => k.trim().toLowerCase() === normTitle);
+    if (matchedKey) {
+      return {
+        roomName: byExam[matchedKey].roomName || "",
+        tableNumber: byExam[matchedKey].tableNumber || "",
+        anonymatNumber: byExam[matchedKey].anonymatNumber || "",
+      };
+    }
+  }
+
+  // Legacy fallback: direct fields on candidate
+  if (!cand.roomName) {
+    return { roomName: "", tableNumber: "", anonymatNumber: "" };
+  }
+
+  const candExamNorm = (cand.examName || "").trim().toLowerCase();
+  const examTitleNorm = exam.title.trim().toLowerCase();
+  if (candExamNorm && candExamNorm === examTitleNorm) {
+    return {
+      roomName: cand.roomName,
+      tableNumber: cand.tableNumber || "",
+      anonymatNumber: cand.anonymatNumber || "",
+    };
+  }
+
+  // Check if candidate's legacy room belongs to this exam's slots or mobilizedRoomIds
+  const examSlotRooms = new Set(
+    examSlots
+      .filter((s) => s.examId === exam.id || s.examTitle.trim().toLowerCase() === examTitleNorm)
+      .flatMap((s) => s.roomNames || [])
+      .map((r) => r.trim().toLowerCase())
+  );
+  if (Array.isArray(exam.mobilizedRoomIds) && allRooms.length > 0) {
+    exam.mobilizedRoomIds.forEach((rid) => {
+      const rm = allRooms.find((r) => r.id === rid);
+      if (rm?.name) examSlotRooms.add(rm.name.trim().toLowerCase());
+    });
+  }
+
+  if (examSlotRooms.has(cand.roomName.trim().toLowerCase())) {
+    return {
+      roomName: cand.roomName,
+      tableNumber: cand.tableNumber || "",
+      anonymatNumber: cand.anonymatNumber || "",
+    };
+  }
+
+  return { roomName: "", tableNumber: "", anonymatNumber: "" };
+}
+
+/**
+ * Filters exam slots strictly for a given candidate's exam session, school level, and optional specialty.
+ */
+export function getCandidateMatchingSlots(
+  cand: CmsCandidate,
+  exam: Pick<CmsExam, "id" | "title" | "targetLevel" | "targetLevels"> | null | undefined,
+  allSlots: CmsExamSlot[]
+): CmsExamSlot[] {
+  const examTitleNorm = exam?.title?.trim().toLowerCase() || "";
+  const scopedSlots = exam
+    ? allSlots.filter(
+        (s) =>
+          s.examId === exam.id ||
+          (examTitleNorm && s.examTitle.trim().toLowerCase() === examTitleNorm)
+      )
+    : allSlots;
+
+  const parentFallbackLevels = exam ? getExamTargetLevels(exam) : [];
+
+  const candSpecs = [
+    cand.specialty || "",
+    ...(Array.isArray(cand.options) ? cand.options : []),
+  ]
+    .join(" ")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+  return scopedSlots.filter((slot) => {
+    const slotLevels = slot.targetLevel
+      ? slot.targetLevel
+      : parentFallbackLevels.length > 0
+        ? parentFallbackLevels
+        : "Tous niveaux";
+
+    if (!isCandidateMatchingLevel(cand.className, slotLevels)) {
+      return false;
+    }
+
+    const slotSpec = (slot.targetSpecialty || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+    if (slotSpec && candSpecs) {
+      const slotTokens = slotSpec.split(/[,/+]+/).map((t) => t.trim()).filter((t) => t.length >= 2);
+      if (slotTokens.length > 0 && !slotTokens.some((tok) => candSpecs.includes(tok))) {
+        return false;
+      }
+    }
+
+    return true;
+  });
 }
 
 export interface CmsCallout {
@@ -160,12 +425,18 @@ export interface CmsExam {
   title: string;
   examType: string;
   targetLevel: string;
+  targetLevels?: string[];
   period: string;
   startsAt: string;
   endsAt: string;
   description: string;
   status: "Prévu" | "En cours" | "Terminé" | "Archivé";
   isPublished?: boolean;
+  mobilizedRoomIds?: string[];
+  ttRoomIds?: string[];
+  customRoomQuotas?: Record<string, number>;
+  anonymatPrefix?: string;
+  dispatchMode?: "brassage" | "alphabetique" | "classe" | "specialite";
 }
 
 export interface CmsRoom {
@@ -197,6 +468,7 @@ export interface CmsExamSlot {
   tiersTempsEndTime?: string;
   tiersTempsDurationMinutes?: number;
   targetLevel?: string;
+  targetSpecialty?: string;
   roomNames?: string[];
   notes?: string;
 }
@@ -221,9 +493,61 @@ export interface CmsCandidate {
   roomName: string;
   convocationTime: string;
   accommodation: string;
+  specialty?: string;
+  options?: string[];
   tableNumber?: string;
   anonymatNumber?: string;
+  assignmentsByExam?: Record<string, CandidateExamAssignment>;
 }
+
+export interface CmsOfficialRule {
+  id: string;
+  title: string;
+  content: string;
+  icon?: "clock" | "book" | "shield" | "file" | "alert" | "check";
+  category?: string;
+  isPublished: boolean;
+  order?: number;
+}
+
+export const DEFAULT_OFFICIAL_RULES: CmsOfficialRule[] = [
+  {
+    id: "rule-ponctualite",
+    title: "Ponctualité & Appel",
+    content: "Appel obligatoire des candidats 15 min avant l'épreuve. Aucun accès en salle après distribution des sujets.",
+    icon: "clock",
+    category: "Horaires",
+    isPublished: true,
+    order: 1,
+  },
+  {
+    id: "rule-mode-examen",
+    title: "Mode Examen",
+    content: "Calculatrices avec mode examen activé (voyant clignotant). Tout téléphone doit être éteint dans le sac.",
+    icon: "book",
+    category: "Matériel",
+    isPublished: true,
+    order: 2,
+  },
+  {
+    id: "rule-tiers-temps",
+    title: "Tiers-Temps (+1/3)",
+    content: "Majoration horaire automatique et salles dédiées pour les élèves bénéficiant d'aménagements PAP / PPS validés.",
+    icon: "shield",
+    category: "Aménagements",
+    isPublished: true,
+    order: 3,
+  },
+  {
+    id: "rule-convocation",
+    title: "Pièce & Convocation",
+    content: "Convocation imprimée et pièce d'identité avec photo obligatoires pour émarger avant de débuter l'épreuve.",
+    icon: "file",
+    category: "Contrôle",
+    isPublished: true,
+    order: 4,
+  },
+];
 
 export interface CmsData {
   version: string;
@@ -231,6 +555,7 @@ export interface CmsData {
   siteInfo: SiteInfo;
   callouts: CmsCallout[];
   announcements: CmsAnnouncement[];
+  officialRules?: CmsOfficialRule[];
   exams: CmsExam[];
   examSlots: CmsExamSlot[];
   rooms: CmsRoom[];
@@ -314,31 +639,52 @@ export function getCmsData(): CmsData {
       announcements: Array.isArray(parsed.announcements)
         ? parsed.announcements
         : DEFAULT_CMS_DATA.announcements,
-      exams: Array.isArray(parsed.exams)
-        ? parsed.exams.map((e) => ({ ...e, isPublished: e.isPublished !== false }))
-        : DEFAULT_CMS_DATA.exams.map((e) => ({ ...e, isPublished: true })),
-      examSlots: Array.isArray(parsed.examSlots)
-        ? parsed.examSlots
-        : DEFAULT_CMS_DATA.examSlots,
-      rooms: Array.isArray(parsed.rooms) ? parsed.rooms : DEFAULT_CMS_DATA.rooms,
-      teachers: Array.isArray(parsed.teachers) ? parsed.teachers : DEFAULT_CMS_DATA.teachers,
+      officialRules: Array.isArray(parsed.officialRules)
+        ? parsed.officialRules
+        : DEFAULT_OFFICIAL_RULES,
+      exams:
+        Array.isArray(parsed.exams) && parsed.exams.length > 0
+          ? parsed.exams.map((e) => ({ ...e, isPublished: e.isPublished !== false }))
+          : DEFAULT_CMS_DATA.exams.map((e) => ({ ...e, isPublished: true })),
+      examSlots:
+        Array.isArray(parsed.examSlots) && parsed.examSlots.length > 0
+          ? parsed.examSlots
+          : DEFAULT_CMS_DATA.examSlots,
+      rooms:
+        Array.isArray(parsed.rooms) && parsed.rooms.length > 0
+          ? parsed.rooms
+          : DEFAULT_CMS_DATA.rooms,
+      teachers:
+        Array.isArray(parsed.teachers) && parsed.teachers.length > 0
+          ? parsed.teachers
+          : DEFAULT_CMS_DATA.teachers,
       surveillances: (() => {
-        const rawSurvs = Array.isArray(parsed.surveillances)
-          ? parsed.surveillances
-          : DEFAULT_CMS_DATA.surveillances;
-        const examsList = Array.isArray(parsed.exams) ? parsed.exams : DEFAULT_CMS_DATA.exams;
+        const rawSurvs =
+          Array.isArray(parsed.surveillances) && parsed.surveillances.length > 0
+            ? parsed.surveillances
+            : DEFAULT_CMS_DATA.surveillances;
+        const examsList =
+          Array.isArray(parsed.exams) && parsed.exams.length > 0
+            ? parsed.exams
+            : DEFAULT_CMS_DATA.exams;
         if (examsList.length === 0) return [];
         const validTitles = new Set(examsList.map((e) => e.title?.trim().toLowerCase()).filter(Boolean));
-        const validSlotIds = new Set((Array.isArray(parsed.examSlots) ? parsed.examSlots : []).map((s) => s.id));
+        const validSlotIds = new Set(
+          (Array.isArray(parsed.examSlots) && parsed.examSlots.length > 0
+            ? parsed.examSlots
+            : DEFAULT_CMS_DATA.examSlots
+          ).map((s) => s.id)
+        );
         return rawSurvs.filter((s) => {
           const hasSlot = s.slotId && validSlotIds.has(s.slotId);
           const hasExam = s.examTitle && validTitles.has(s.examTitle.trim().toLowerCase());
           return hasSlot || hasExam;
         });
       })(),
-      candidates: Array.isArray(parsed.candidates)
-        ? parsed.candidates
-        : DEFAULT_CMS_DATA.candidates,
+      candidates:
+        Array.isArray(parsed.candidates) && parsed.candidates.length > 0
+          ? parsed.candidates
+          : DEFAULT_CMS_DATA.candidates,
     };
   } catch (err) {
     console.error("Erreur lors de la lecture du CMS :", err);
@@ -349,7 +695,11 @@ export function getCmsData(): CmsData {
 /**
  * Saves CMS data to localStorage and dispatches a notification event.
  */
-export function saveCmsData(data: CmsData, preserveTimestamp = false): void {
+export function saveCmsData(
+  data: CmsData,
+  preserveTimestamp = false,
+  skipServerSync = false
+): void {
   if (typeof window === "undefined") return;
   const toSave: CmsData = {
     ...data,
@@ -357,6 +707,19 @@ export function saveCmsData(data: CmsData, preserveTimestamp = false): void {
   };
   localStorage.setItem(CMS_STORAGE_KEY, JSON.stringify(toSave));
   window.dispatchEvent(new Event(CMS_EVENT_NAME));
+
+  if (skipServerSync) return;
+
+  // Persist to server so other browsers and devices sync automatically in real time
+  try {
+    fetch("/api/save-cms-data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(toSave),
+    }).catch(() => {});
+  } catch {
+    // Ignore network errors
+  }
 }
 
 /**
@@ -560,18 +923,34 @@ export function useCmsData() {
     window.addEventListener(CMS_EVENT_NAME, handleUpdate);
     window.addEventListener("storage", handleUpdate);
 
-    // Automatic multi-browser synchronization from deployed /cms-data.json
+    // Automatic multi-browser synchronization from live /api/cms-data or deployed /cms-data.json
     const syncFromRemote = async () => {
       try {
-        const res = await fetch(`/cms-data.json?_t=${Date.now()}`, { cache: "no-store" });
-        if (!res.ok) return;
-        const remote = (await res.json()) as CmsData;
-        if (!remote || typeof remote !== "object" || !remote.siteInfo || !Array.isArray(remote.exams)) return;
+        let remote: CmsData | null = null;
+        try {
+          const apiRes = await fetch(`/api/cms-data?_t=${Date.now()}`, { cache: "no-store" });
+          if (apiRes.ok) {
+            const parsedApi = (await apiRes.json()) as CmsData;
+            if (parsedApi && typeof parsedApi === "object" && parsedApi.siteInfo && Array.isArray(parsedApi.exams)) {
+              remote = parsedApi;
+            }
+          }
+        } catch {
+          // Fallback to static /cms-data.json below
+        }
+
+        if (!remote) {
+          const res = await fetch(`/cms-data.json?_t=${Date.now()}`, { cache: "no-store" });
+          if (!res.ok) return;
+          const parsedStatic = (await res.json()) as CmsData;
+          if (!parsedStatic || typeof parsedStatic !== "object" || !parsedStatic.siteInfo || !Array.isArray(parsedStatic.exams)) return;
+          remote = parsedStatic;
+        }
 
         const rawLocal = localStorage.getItem(CMS_STORAGE_KEY);
         if (!rawLocal) {
-          saveCmsData(remote, true);
-          setData(remote);
+          saveCmsData(remote, true, true);
+          setData(getCmsData());
           return;
         }
 
@@ -579,35 +958,37 @@ export function useCmsData() {
         const remoteTime = remote.updatedAt ? new Date(remote.updatedAt).getTime() : 0;
         const localTime = local.updatedAt ? new Date(local.updatedAt).getTime() : 0;
 
-        // CRITICAL PROTECTION: If this browser has made any local changes (localTime >= remoteTime),
-        // or has local imported data (candidates, rooms, teachers, exams) or pending deployment,
-        // NEVER overwrite local data with remote!
         const hasLocalCandidates = Array.isArray(local.candidates) && local.candidates.length > 0;
         const hasLocalRooms = Array.isArray(local.rooms) && local.rooms.length > 0;
         const hasLocalTeachers = Array.isArray(local.teachers) && local.teachers.length > 0;
         const hasLocalExams = Array.isArray(local.exams) && local.exams.length > 0;
-        const hasPendingDeployment = Boolean(local.siteInfo?.pendingDeployment);
+        const localHasData = hasLocalCandidates || hasLocalRooms || hasLocalTeachers || hasLocalExams;
 
-        // If local has active changes or was modified after the remote deployment, strictly protect local work
-        if (localTime >= remoteTime || hasPendingDeployment) {
+        // If local is completely empty but remote has exams or candidates, adopt remote immediately
+        if (!localHasData && ((remote.exams && remote.exams.length > 0) || (remote.candidates && remote.candidates.length > 0))) {
+          saveCmsData(remote, true, true);
+          setData(getCmsData());
           return;
         }
 
-        // Only adopt remote if remote is strictly NEWER than local cache AND local has no unpushed data
-        if (remoteTime > localTime) {
-          const remoteIsEmpty = (!remote.candidates || remote.candidates.length === 0) &&
-                                (!remote.rooms || remote.rooms.length === 0) &&
-                                (!remote.teachers || remote.teachers.length === 0);
-          const localHasData = hasLocalCandidates || hasLocalRooms || hasLocalTeachers || hasLocalExams;
-
-          if (localHasData && remoteIsEmpty) {
-            // Protect local work from being wiped out by an empty remote
-            return;
-          }
-
-          saveCmsData(remote, true);
-          setData(getCmsData());
+        // If local is at least as recent as remote, keep local state untouched
+        if (localTime >= remoteTime) {
+          return;
         }
+
+        // Adopt remote when remoteTime > localTime, protecting against accidental empty remote overwrites
+        const remoteIsEmpty =
+          (!remote.candidates || remote.candidates.length === 0) &&
+          (!remote.rooms || remote.rooms.length === 0) &&
+          (!remote.teachers || remote.teachers.length === 0) &&
+          (!remote.exams || remote.exams.length === 0);
+
+        if (localHasData && remoteIsEmpty) {
+          return;
+        }
+
+        saveCmsData(remote, true, true);
+        setData(getCmsData());
       } catch (err) {
         console.warn("Could not sync remote cms-data.json", err);
       }
@@ -624,8 +1005,8 @@ export function useCmsData() {
     document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("focus", syncFromRemote);
 
-    // Periodic check every 20 seconds for multi-device harmony
-    const syncInterval = setInterval(syncFromRemote, 20000);
+    // Periodic check every 5 seconds for multi-device harmony
+    const syncInterval = setInterval(syncFromRemote, 5000);
 
     return () => {
       window.removeEventListener(CMS_EVENT_NAME, handleUpdate);
@@ -794,6 +1175,45 @@ export function useCmsData() {
     };
     saveCmsData(next);
     setData(next);
+  };
+
+  // Official Rules & Regulations
+  const addOfficialRule = (item: Omit<CmsOfficialRule, "id">) => {
+    const newItem: CmsOfficialRule = {
+      ...item,
+      id: `rule-${Date.now()}`,
+      order: (data.officialRules || DEFAULT_OFFICIAL_RULES).length + 1,
+    };
+    const next: CmsData = {
+      ...data,
+      officialRules: [...(data.officialRules || DEFAULT_OFFICIAL_RULES), newItem],
+    };
+    saveCmsData(next);
+    setData(next);
+  };
+
+  const updateOfficialRule = (id: string, updates: Partial<CmsOfficialRule>) => {
+    const current = data.officialRules || DEFAULT_OFFICIAL_RULES;
+    const next: CmsData = {
+      ...data,
+      officialRules: current.map((r) => (r.id === id ? { ...r, ...updates } : r)),
+    };
+    saveCmsData(next);
+    setData(next);
+  };
+
+  const deleteOfficialRule = (id: string) => {
+    const current = data.officialRules || DEFAULT_OFFICIAL_RULES;
+    const next: CmsData = {
+      ...data,
+      officialRules: current.filter((r) => r.id !== id),
+    };
+    saveCmsData(next);
+    setData(next);
+  };
+
+  const togglePublishOfficialRule = (id: string, isPublished: boolean) => {
+    updateOfficialRule(id, { isPublished });
   };
 
   // Exams
@@ -1155,6 +1575,10 @@ export function useCmsData() {
     addAnnouncement,
     updateAnnouncement,
     deleteAnnouncement,
+    addOfficialRule,
+    updateOfficialRule,
+    deleteOfficialRule,
+    togglePublishOfficialRule,
     addExam,
     updateExam,
     deleteExam,

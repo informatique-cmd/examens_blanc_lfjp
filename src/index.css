@@ -15,12 +15,29 @@ body {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 8mm 10mm;
+    margin: 9mm 10mm;
   }
 
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box !important;
+  }
+
+  html,
   body {
-    background: white !important;
-    color: black !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   header,
@@ -40,39 +57,80 @@ body {
   }
 
   /* Reset outer application wrappers to flow cleanly */
-  html,
-  body,
   #root,
   #root > div,
   main {
     display: block !important;
     width: 100% !important;
+    max-width: 100% !important;
     height: auto !important;
     min-height: auto !important;
     overflow: visible !important;
-    background: white !important;
+    background: #ffffff !important;
     margin: 0 !important;
     padding: 0 !important;
     border: none !important;
   }
 
   /* Isolated printable container */
-  .printable-content {
+  .printable-content,
+  #printable-convocation-sheet {
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
     padding: 0 !important;
-    background: white !important;
-    color: black !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
     border: none !important;
     box-shadow: none !important;
     page-break-after: always;
     break-after: page;
   }
 
-  .printable-content:last-child {
-    page-break-after: avoid;
-    break-after: avoid;
+  .printable-content:last-child,
+  #printable-convocation-sheet:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  /* Prevent horizontal overflow and mid-row cuts inside printable tables */
+  .printable-content .overflow-x-auto,
+  #printable-convocation-sheet .overflow-x-auto,
+  .print-table-wrap {
+    overflow: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .printable-content table,
+  #printable-convocation-sheet table,
+  .print-a4-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: auto !important;
+    font-size: 9pt !important;
+    line-height: 1.3 !important;
+  }
+
+  .printable-content th,
+  .printable-content td,
+  #printable-convocation-sheet th,
+  #printable-convocation-sheet td,
+  .print-a4-table th,
+  .print-a4-table td {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    padding: 5px 6px !important;
+  }
+
+  .printable-content tr,
+  #printable-convocation-sheet tr,
+  .print-avoid-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 }

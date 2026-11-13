@@ -28,7 +28,15 @@ import type {
   CmsExamSlot,
   CmsSurveillance,
 } from "../../../shared/services/cms-store";
-import { isCandidateMatchingLevel } from "../../../shared/services/cms-store";
+import {
+  isCandidateMatchingLevel,
+  getExamTargetLevels,
+  getShortLevelBadge,
+  isCandidateTiersTemps,
+  getCandidateAssignmentForExam,
+} from "../../../shared/services/cms-store";
+
+type DispatchMode = "brassage" | "alphabetique" | "classe" | "specialite";
 
 interface OrganizationSectionProps {
   candidates: CmsCandidate[];
@@ -39,6 +47,7 @@ interface OrganizationSectionProps {
   surveillances?: CmsSurveillance[];
   onSetCandidates: (candidates: CmsCandidate[]) => void;
   onSetSurveillances?: (surveillances: CmsSurveillance[]) => void;
+  onUpdateExam?: (id: string, updates: Partial<CmsExam>) => void;
   onShowNotification: (msg: string) => void;
 }
 
@@ -51,6 +60,7 @@ export default function OrganizationSection({
   surveillances = [],
   onSetCandidates,
   onSetSurveillances,
+  onUpdateExam,
   onShowNotification,
 }: OrganizationSectionProps) {
   // Main view tab: "eleves" or "surveillants"
@@ -66,14 +76,18 @@ export default function OrganizationSection({
     return exams.find((e) => e.id === selectedExamId) || exams[0];
   }, [exams, selectedExamId]);
 
-  // Candidates targeted for this exam (by level or by existing examName assignment)
+  // Candidates targeted strictly for this exam (by selected school level(s) or explicit per-exam assignment)
   const targetCandidates = useMemo(() => {
     if (!selectedExam) return candidates;
+    const levels = getExamTargetLevels(selectedExam);
     return candidates.filter((c) => {
+      if (c.assignmentsByExam?.[selectedExam.id]?.roomName) {
+        return true;
+      }
       if (c.examName && c.examName.trim().toLowerCase() === selectedExam.title.trim().toLowerCase()) {
         return true;
       }
-      return isCandidateMatchingLevel(c.className, selectedExam.targetLevel);
+      return isCandidateMatchingLevel(c.className, levels);
     });
   }, [candidates, selectedExam]);
 
@@ -83,92 +97,245 @@ export default function OrganizationSection({
     return candidates.filter((c) => !targetIds.has(c.id));
   }, [candidates, targetCandidates]);
 
-  // Exam slots belonging to the active exam
+  // Exam slots belonging strictly to the active exam
   const currentExamSlots = useMemo(() => {
     if (!selectedExam) return examSlots;
+    const titleNorm = selectedExam.title.trim().toLowerCase();
     return examSlots.filter(
-      (s) => s.examTitle.trim().toLowerCase() === selectedExam.title.trim().toLowerCase()
+      (s) => s.examId === selectedExam.id || s.examTitle.trim().toLowerCase() === titleNorm
     );
   }, [examSlots, selectedExam]);
 
-  // --- ELEVES BRASSAGE STATE ---
-  const [dispatchMode, setDispatchMode] = useState<"brassage" | "alphabetique">("brassage");
-  const [separateTT, setSeparateTT] = useState<boolean>(true);
-  const [anonymatPrefix, setAnonymatPrefix] = useState<string>(() => {
-    if (selectedExam) {
-      const clean = selectedExam.title.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-      return clean.length > 0 ? `${clean.slice(0, 4)}-` : "DNB-";
-    }
-    return "DNB-";
-  });
+  // --- ELEVES BRASSAGE STATE (persisted per exam with local state mirror) ---
+  const [dispatchModeMap, setDispatchModeMap] = useState<Record<string, DispatchMode>>({});
+  const dispatchMode: DispatchMode = useMemo(() => {
+    if (!selectedExam) return "brassage";
+    return dispatchModeMap[selectedExam.id] || selectedExam.dispatchMode || "brassage";
+  }, [selectedExam, dispatchModeMap]);
 
-  // Only mobilize the rooms chosen in the exam slots or previously assigned to candidates
-  const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>(() => {
+  const handleSetDispatchMode = (mode: DispatchMode) => {
+    if (!selectedExam) return;
+    setDispatchModeMap((prev) => ({ ...prev, [selectedExam.id]: mode }));
+    onUpdateExam?.(selectedExam.id, { dispatchMode: mode });
+  };
+
+  const [separateTT, setSeparateTT] = useState<boolean>(true);
+  const [anonymatPrefixMap, setAnonymatPrefixMap] = useState<Record<string, string>>({});
+  const defaultPrefixForExam = (exam: CmsExam | null) => {
+    if (!exam) return "DNB-";
+    if (exam.anonymatPrefix) return exam.anonymatPrefix;
+    const clean = exam.title.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    return clean.length > 0 ? `${clean.slice(0, 4)}-` : "DNB-";
+  };
+  const anonymatPrefix = useMemo(() => {
+    if (!selectedExam) return "DNB-";
+    return anonymatPrefixMap[selectedExam.id] ?? defaultPrefixForExam(selectedExam);
+  }, [selectedExam, anonymatPrefixMap]);
+
+  const setAnonymatPrefix = (val: string) => {
+    if (!selectedExam) return;
+    setAnonymatPrefixMap((prev) => ({ ...prev, [selectedExam.id]: val }));
+  };
+
+  // Per-exam room mobilization: examId -> roomIds[]
+  const [examRoomMap, setExamRoomMap] = useState<Record<string, string[]>>({});
+  // Per-exam TT room designation: examId -> roomIds[]
+  const [examTTRoomMap, setExamTTRoomMap] = useState<Record<string, string[]>>({});
+
+  const [showAllSchoolRooms, setShowAllSchoolRooms] = useState<boolean>(false);
+
+  // Helper to determine the mobilized room IDs strictly for a given exam
+  const getExamMobilizedRoomIds = useCallback((exam: CmsExam | null): string[] => {
+    if (!exam) return [];
+    if (examRoomMap[exam.id] !== undefined) {
+      return examRoomMap[exam.id];
+    }
+    if (Array.isArray(exam.mobilizedRoomIds) && exam.mobilizedRoomIds.length > 0) {
+      return exam.mobilizedRoomIds;
+    }
+
     const slotRooms = new Set<string>();
+    const titleNorm = exam.title.trim().toLowerCase();
     (examSlots || []).forEach((s) => {
-      if (s.roomNames && Array.isArray(s.roomNames)) {
+      if ((s.examId === exam.id || s.examTitle.trim().toLowerCase() === titleNorm) && s.roomNames) {
         s.roomNames.forEach((rn) => slotRooms.add(rn.trim().toLowerCase()));
       }
     });
 
-    const candidateRooms = new Set<string>();
+    // Rooms already assigned specifically to candidates of THIS exam
     (candidates || []).forEach((c) => {
-      if (c.roomName) candidateRooms.add(c.roomName.trim().toLowerCase());
+      const assigned = getCandidateAssignmentForExam(c, exam, examSlots, rooms);
+      if (assigned.roomName) {
+        slotRooms.add(assigned.roomName.trim().toLowerCase());
+      }
     });
 
-    const chosenFromSlots = rooms.filter(
-      (r) => slotRooms.has(r.name.trim().toLowerCase()) || candidateRooms.has(r.name.trim().toLowerCase())
-    );
+    const matched = rooms.filter((r) => slotRooms.has(r.name.trim().toLowerCase()));
+    return matched.map((r) => r.id);
+  }, [examRoomMap, examSlots, candidates, rooms]);
 
-    if (chosenFromSlots.length > 0) {
-      return chosenFromSlots.map((r) => r.id);
+  // Selected room IDs strictly for the CURRENT selected exam
+  const selectedRoomIds = useMemo(() => {
+    return getExamMobilizedRoomIds(selectedExam);
+  }, [selectedExam, getExamMobilizedRoomIds]);
+
+  // Helper to determine TT room IDs strictly for a given exam
+  const ttRoomIds = useMemo(() => {
+    if (!selectedExam) return [];
+    if (examTTRoomMap[selectedExam.id] !== undefined) {
+      return examTTRoomMap[selectedExam.id];
     }
-
-    return rooms.slice(0, Math.min(4, rooms.length)).map((r) => r.id);
-  });
-
-  const [showAllSchoolRooms, setShowAllSchoolRooms] = useState<boolean>(false);
-
-  const [ttRoomIds, setTtRoomIds] = useState<string[]>(() => {
+    if (Array.isArray(selectedExam.ttRoomIds)) {
+      return selectedExam.ttRoomIds;
+    }
     const defaultTT = rooms.filter(
-      (r) => r.name.toLowerCase().includes("tt") || r.notes?.toLowerCase().includes("tt")
+      (r) =>
+        selectedRoomIds.includes(r.id) &&
+        (r.name.toLowerCase().includes("tt") ||
+          r.notes?.toLowerCase().includes("tiers") ||
+          r.notes?.toLowerCase().includes("tt"))
     );
-    return defaultTT.length > 0 ? defaultTT.map((r) => r.id) : rooms.length > 0 ? [rooms[rooms.length - 1].id] : [];
-  });
+    return defaultTT.map((r) => r.id);
+  }, [selectedExam, examTTRoomMap, selectedRoomIds, rooms]);
 
   // Automatically select rooms mobilized for current exam slots if available
   const handleMobilizeExamRooms = () => {
-    if (currentExamSlots.length === 0) return;
+    if (!selectedExam) return;
     const names = new Set<string>();
     currentExamSlots.forEach((s) => {
       (s.roomNames || []).forEach((rn) => names.add(rn.trim().toLowerCase()));
     });
     const matchingRoomIds = rooms.filter((r) => names.has(r.name.trim().toLowerCase())).map((r) => r.id);
     if (matchingRoomIds.length > 0) {
-      setSelectedRoomIds(matchingRoomIds);
-      onShowNotification(`${matchingRoomIds.length} salle(s) mobilisée(s) selon les créneaux de ${selectedExam?.title || "l'examen"}.`);
+      setExamRoomMap((prev) => ({
+        ...prev,
+        [selectedExam.id]: matchingRoomIds,
+      }));
+      onUpdateExam?.(selectedExam.id, { mobilizedRoomIds: matchingRoomIds });
+      onShowNotification(`${matchingRoomIds.length} salle(s) mobilisée(s) pour "${selectedExam.title}".`);
     } else {
-      onShowNotification("Aucune salle spécifique n'a été rattachée aux créneaux de cet examen.");
+      onShowNotification(`Aucune salle spécifique n'a encore été cochée dans les créneaux de "${selectedExam.title}". Cliquez sur "+ Afficher toutes les salles" pour en mobiliser manuellement.`);
+    }
+  };
+
+  // Toggle room selection for candidate dispatch of the ACTIVE exam
+  const handleToggleRoomSelection = (roomId: string) => {
+    if (!selectedExam) return;
+    const current = selectedRoomIds;
+    const next = current.includes(roomId)
+      ? current.filter((id) => id !== roomId)
+      : [...current, roomId];
+    setExamRoomMap((prev) => ({
+      ...prev,
+      [selectedExam.id]: next,
+    }));
+    onUpdateExam?.(selectedExam.id, { mobilizedRoomIds: next });
+  };
+
+  // --- CUSTOM ROOM CAPACITY (QUOTAS PAR SALLE) ---
+  const [customRoomCapacities, setCustomRoomCapacities] = useState<Record<string, number>>({});
+
+  // Helper to determine the effective capacity / quota of a room for the active exam
+  const getRoomQuota = useCallback((room: CmsRoom): number => {
+    const key = selectedExam ? `${selectedExam.id}:${room.id}` : room.id;
+    if (customRoomCapacities[key] !== undefined && customRoomCapacities[key] > 0) {
+      return customRoomCapacities[key];
+    }
+    const persisted = selectedExam?.customRoomQuotas?.[room.id];
+    if (persisted !== undefined && persisted > 0) {
+      return persisted;
+    }
+    return room.capacity || 24;
+  }, [customRoomCapacities, selectedExam]);
+
+  // Toggle room as Tiers-Temps for the ACTIVE exam AND auto-assign TT/PAP/PPS students of that exam's level
+  const handleToggleTTRoom = (roomId: string) => {
+    if (!selectedExam) return;
+    const current = ttRoomIds;
+    const turningOn = !current.includes(roomId);
+    const nextTT = turningOn
+      ? [...current, roomId]
+      : current.filter((id) => id !== roomId);
+
+    setExamTTRoomMap((prev) => ({
+      ...prev,
+      [selectedExam.id]: nextTT,
+    }));
+    onUpdateExam?.(selectedExam.id, { ttRoomIds: nextTT });
+
+    const toggledRoom = rooms.find((r) => r.id === roomId);
+    if (turningOn && toggledRoom) {
+      const activeTtRooms = rooms.filter((r) => nextTT.includes(r.id));
+      const ttStudents = targetCandidates
+        .filter((c) => isCandidateTiersTemps(c))
+        .sort((a, b) => a.lastName.localeCompare(b.lastName));
+
+      if (ttStudents.length === 0) {
+        onShowNotification(
+          `♿ Salle "${toggledRoom.name}" définie en Salle Tiers-Temps. Aucun élève PAP/PPS/Tiers-Temps détecté sur le niveau ciblé pour l'instant.`
+        );
+        return;
+      }
+
+      // Automatically assign all TT students of this session's level directly into the TT room(s)
+      const ttRoomList = activeTtRooms.length > 0 ? activeTtRooms : [toggledRoom];
+      let roomIdx = 0;
+      let tableNum = 1;
+      const assignmentMap = new Map<string, { roomName: string; tableNumber: string; anonymatNumber: string }>();
+
+      ttStudents.forEach((st, idx) => {
+        const destRoom = ttRoomList[roomIdx] || toggledRoom;
+        const limit = getRoomQuota(destRoom);
+        const existingAssign = getCandidateAssignmentForExam(st, selectedExam, currentExamSlots, rooms);
+        const anon =
+          existingAssign.anonymatNumber ||
+          `${anonymatPrefix}TT${String(idx + 1).padStart(3, "0")}`;
+
+        assignmentMap.set(st.id, {
+          roomName: destRoom.name,
+          tableNumber: String(tableNum),
+          anonymatNumber: anon,
+        });
+
+        tableNum++;
+        if (tableNum > limit && roomIdx < ttRoomList.length - 1) {
+          roomIdx++;
+          tableNum = 1;
+        }
+      });
+
+      const updatedCandidates = candidates.map((c) => {
+        const assign = assignmentMap.get(c.id);
+        if (!assign) return c;
+        return {
+          ...c,
+          roomName: assign.roomName,
+          tableNumber: assign.tableNumber,
+          anonymatNumber: assign.anonymatNumber,
+          examName: selectedExam.title,
+          assignmentsByExam: {
+            ...(c.assignmentsByExam || {}),
+            [selectedExam.id]: assign,
+          },
+        };
+      });
+
+      onSetCandidates(updatedCandidates);
+      onShowNotification(
+        `♿ Salle "${toggledRoom.name}" définie en Tiers-Temps : ${ttStudents.length} élève(s) PAP / PPS / Tiers-Temps détecté(s) et affecté(s) automatiquement !`
+      );
+    } else if (toggledRoom) {
+      onShowNotification(`Salle "${toggledRoom.name}" repassée en salle Standard.`);
     }
   };
 
   // --- SURVEILLANTS ASSIGNMENT STATE ---
   const [selectedSlotId, setSelectedSlotId] = useState<string>("all");
 
-  // --- CUSTOM ROOM CAPACITY (QUOTAS PAR SALLE) ---
-  const [customRoomCapacities, setCustomRoomCapacities] = useState<Record<string, number>>({});
-
-  // Helper to determine the effective capacity / quota of a room
-  const getRoomQuota = useCallback((room: CmsRoom): number => {
-    if (customRoomCapacities[room.id] !== undefined && customRoomCapacities[room.id] > 0) {
-      return customRoomCapacities[room.id];
-    }
-    return room.capacity || 24;
-  }, [customRoomCapacities]);
-
-  // --- MANUAL ASSIGNMENT STATE ---
+  // --- MANUAL ASSIGNMENT STATE (Multi-selection) ---
   const [isManualAssignOpen, setIsManualAssignOpen] = useState(false);
-  const [manualCandidateId, setManualCandidateId] = useState<string>("");
+  const [manualSelectedIds, setManualSelectedIds] = useState<string[]>([]);
+  const [manualClassFilter, setManualClassFilter] = useState<string>("all");
   const [manualTargetRoomName, setManualTargetRoomName] = useState<string>("");
   const [manualTableNumber, setManualTableNumber] = useState<string>("");
   const [manualSearchTerm, setManualSearchTerm] = useState<string>("");
@@ -184,7 +351,7 @@ export default function OrganizationSection({
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [targetCandidates]);
 
-  // Selected mobilized rooms
+  // Selected mobilized rooms for this active exam
   const selectedRooms = useMemo(() => {
     return rooms.filter((r) => selectedRoomIds.includes(r.id));
   }, [rooms, selectedRoomIds]);
@@ -194,12 +361,7 @@ export default function OrganizationSection({
     return selectedRooms.reduce((acc, r) => acc + getRoomQuota(r), 0);
   }, [selectedRooms, getRoomQuota]);
 
-  // Total capacity of all rooms in school
-  const totalCapacity = useMemo(() => {
-    return rooms.reduce((acc, r) => acc + (r.capacity || 0), 0);
-  }, [rooms]);
-
-  // Breakdown by room for the target candidates
+  // Breakdown by room strictly for the target candidates and assignments of the SELECTED exam
   const roomBreakdown = useMemo(() => {
     const roomsToDisplay = showAllSchoolRooms
       ? rooms
@@ -208,8 +370,10 @@ export default function OrganizationSection({
     return roomsToDisplay.map((r) => {
       const isMobilized = selectedRoomIds.includes(r.id);
       const isTT = ttRoomIds.includes(r.id);
-      const assigned = targetCandidates.filter((c) => c.roomName === r.name);
-      const ttCount = assigned.filter((c) => c.accommodation?.includes("1/3")).length;
+      const assigned = targetCandidates.filter(
+        (c) => getCandidateAssignmentForExam(c, selectedExam, currentExamSlots, rooms).roomName === r.name
+      );
+      const ttCount = assigned.filter((c) => isCandidateTiersTemps(c)).length;
       const quota = getRoomQuota(r);
       return {
         room: r,
@@ -221,31 +385,9 @@ export default function OrganizationSection({
         fillRate: quota > 0 ? Math.round((assigned.length / quota) * 100) : 0,
       };
     });
-  }, [rooms, targetCandidates, selectedRoomIds, ttRoomIds, showAllSchoolRooms, getRoomQuota]);
+  }, [rooms, targetCandidates, selectedExam, currentExamSlots, selectedRoomIds, ttRoomIds, showAllSchoolRooms, getRoomQuota]);
 
-  // Toggle room selection for candidate dispatch
-  const handleToggleRoomSelection = (roomId: string) => {
-    if (selectedRoomIds.includes(roomId)) {
-      if (selectedRoomIds.length === 1) {
-        alert("Vous devez conserver au moins une salle mobilisée.");
-        return;
-      }
-      setSelectedRoomIds(selectedRoomIds.filter((id) => id !== roomId));
-    } else {
-      setSelectedRoomIds([...selectedRoomIds, roomId]);
-    }
-  };
-
-  // Toggle room as Tiers-Temps
-  const handleToggleTTRoom = (roomId: string) => {
-    if (ttRoomIds.includes(roomId)) {
-      setTtRoomIds(ttRoomIds.filter((id) => id !== roomId));
-    } else {
-      setTtRoomIds([...ttRoomIds, roomId]);
-    }
-  };
-
-  // Main algorithm to dispatch candidates into the SELECTED rooms
+  // Main algorithm to dispatch candidates strictly for the ACTIVE exam into its SELECTED rooms
   const handleRunDispatch = () => {
     if (targetCandidates.length === 0) {
       alert(
@@ -256,7 +398,7 @@ export default function OrganizationSection({
       return;
     }
     if (selectedRooms.length === 0) {
-      alert("Aucune salle sélectionnée. Veuillez cocher au moins une salle mobilisée.");
+      alert("Aucune salle sélectionnée pour cet examen. Veuillez cocher au moins une salle mobilisée.");
       return;
     }
 
@@ -273,60 +415,47 @@ export default function OrganizationSection({
 
     // Separate regular and tiers-temps students for this targeted exam
     targetCandidates.forEach((c) => {
-      const isTT =
-        Boolean(c.accommodation?.includes("1/3")) ||
-        Boolean(c.accommodation?.toLowerCase().includes("tiers")) ||
-        c.className.toLowerCase().includes("tt");
-      if (separateTT && isTT) {
+      if (separateTT && isCandidateTiersTemps(c)) {
         ttCandidates.push({ ...c });
       } else {
         regularCandidates.push({ ...c });
       }
     });
 
-    // Sort regular students according to mode
-    let sortedRegular: CmsCandidate[] = [];
-    if (dispatchMode === "brassage") {
-      const byClass: Record<string, CmsCandidate[]> = {};
-      regularCandidates.forEach((c) => {
-        const cls = c.className || "Standard";
-        if (!byClass[cls]) byClass[cls] = [];
-        byClass[cls].push(c);
-      });
-
-      Object.keys(byClass).forEach((k) => {
-        byClass[k].sort((a, b) => a.lastName.localeCompare(b.lastName));
-      });
-
-      const classKeys = Object.keys(byClass);
-      let hasMore = true;
-      let index = 0;
-      while (hasMore) {
-        hasMore = false;
-        classKeys.forEach((k) => {
-          if (byClass[k][index]) {
-            sortedRegular.push(byClass[k][index]);
-            hasMore = true;
-          }
-        });
-        index++;
-      }
-    } else {
-      sortedRegular = [...regularCandidates].sort((a, b) =>
-        a.lastName.localeCompare(b.lastName)
-      );
-    }
-
     // Partition selected rooms into TT and Standard
     const chosenTtRooms = selectedRooms.filter((r) => ttRoomIds.includes(r.id));
     const chosenStdRooms = selectedRooms.filter((r) => !ttRoomIds.includes(r.id));
 
-    // Fallbacks if user didn't specify TT room
-    const finalTtRooms = chosenTtRooms.length > 0 ? chosenTtRooms : [selectedRooms[selectedRooms.length - 1]];
+    const finalTtRooms =
+      chosenTtRooms.length > 0 ? chosenTtRooms : [selectedRooms[selectedRooms.length - 1]];
     const finalStdRooms = chosenStdRooms.length > 0 ? chosenStdRooms : selectedRooms;
 
     let globalAnonymatIndex = 101;
     const examTitle = selectedExam ? selectedExam.title : "Examen Blanc";
+
+    const applyStudentAssignment = (
+      student: CmsCandidate,
+      roomName: string,
+      tableNumber: string,
+      anonymatNumber: string
+    ): CmsCandidate => {
+      const assignment = { roomName, tableNumber, anonymatNumber };
+      return {
+        ...student,
+        roomName,
+        tableNumber,
+        anonymatNumber,
+        examName: examTitle,
+        ...(selectedExam
+          ? {
+              assignmentsByExam: {
+                ...(student.assignmentsByExam || {}),
+                [selectedExam.id]: assignment,
+              },
+            }
+          : {}),
+      };
+    };
 
     // 1. Assign TT students into chosen TT rooms
     if (ttCandidates.length > 0) {
@@ -337,11 +466,10 @@ export default function OrganizationSection({
       ttCandidates.forEach((student) => {
         const room = finalTtRooms[currentTTRoomIdx] || selectedRooms[0];
         const roomLimit = getRoomQuota(room);
-        student.roomName = room.name;
-        student.tableNumber = String(currentTTTable);
-        student.anonymatNumber = `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
-        student.examName = examTitle;
-        updatedCandidates.push(student);
+        const anon = `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
+        updatedCandidates.push(
+          applyStudentAssignment(student, room.name, String(currentTTTable), anon)
+        );
 
         currentTTTable++;
         globalAnonymatIndex++;
@@ -352,31 +480,142 @@ export default function OrganizationSection({
       });
     }
 
-    // 2. Assign Regular students into chosen Standard rooms
-    let currentStdRoomIdx = 0;
-    let currentStdTable = 1;
-
-    sortedRegular.forEach((student) => {
-      const room = finalStdRooms[currentStdRoomIdx] || selectedRooms[0];
-      const roomLimit = getRoomQuota(room);
-      student.roomName = room.name;
-      student.tableNumber = String(currentStdTable);
-      student.anonymatNumber = `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
-      student.examName = examTitle;
-      updatedCandidates.push(student);
-
-      currentStdTable++;
-      globalAnonymatIndex++;
-      if (currentStdTable > roomLimit && currentStdRoomIdx < finalStdRooms.length - 1) {
-        currentStdRoomIdx++;
-        currentStdTable = 1;
+    // 2. Assign Regular students according to selected dispatchMode
+    const assignGroupedBlocks = (groups: CmsCandidate[][]) => {
+      // If we have at least one dedicated room per group, give each group its own dedicated room(s)
+      if (finalStdRooms.length >= groups.length && groups.length > 1) {
+        let roomCursor = 0;
+        groups.forEach((group) => {
+          let tableNum = 1;
+          group.forEach((student) => {
+            const room = finalStdRooms[roomCursor] || finalStdRooms[finalStdRooms.length - 1];
+            const limit = getRoomQuota(room);
+            if (tableNum > limit && roomCursor < finalStdRooms.length - 1) {
+              roomCursor++;
+              tableNum = 1;
+            }
+            const activeRoom = finalStdRooms[roomCursor] || finalStdRooms[finalStdRooms.length - 1];
+            const anon = `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
+            updatedCandidates.push(
+              applyStudentAssignment(student, activeRoom.name, String(tableNum), anon)
+            );
+            tableNum++;
+            globalAnonymatIndex++;
+          });
+          if (roomCursor < finalStdRooms.length - 1) {
+            roomCursor++;
+          }
+        });
+      } else {
+        // Contiguous blocks across available standard rooms
+        const flat = groups.flat();
+        let roomIdx = 0;
+        let tableNum = 1;
+        flat.forEach((student) => {
+          const room = finalStdRooms[roomIdx] || selectedRooms[0];
+          const limit = getRoomQuota(room);
+          const anon = `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
+          updatedCandidates.push(
+            applyStudentAssignment(student, room.name, String(tableNum), anon)
+          );
+          tableNum++;
+          globalAnonymatIndex++;
+          if (tableNum > limit && roomIdx < finalStdRooms.length - 1) {
+            roomIdx++;
+            tableNum = 1;
+          }
+        });
       }
-    });
+    };
 
-    // Merge with non-target candidates so candidates from other exams are not deleted
+    if (dispatchMode === "classe") {
+      const byClass = new Map<string, CmsCandidate[]>();
+      regularCandidates.forEach((c) => {
+        const key = (c.className || "Sans classe").trim();
+        if (!byClass.has(key)) byClass.set(key, []);
+        byClass.get(key)!.push(c);
+      });
+      const groups = Array.from(byClass.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([, list]) => list.sort((a, b) => a.lastName.localeCompare(b.lastName)));
+      assignGroupedBlocks(groups);
+    } else if (dispatchMode === "specialite") {
+      const bySpec = new Map<string, CmsCandidate[]>();
+      regularCandidates.forEach((c) => {
+        const spec = (c.specialty || (Array.isArray(c.options) ? c.options.join(", ") : "") || "").trim() || "Tronc Commun / Générale";
+        if (!bySpec.has(spec)) bySpec.set(spec, []);
+        bySpec.get(spec)!.push(c);
+      });
+      const groups = Array.from(bySpec.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([, list]) => list.sort((a, b) => a.lastName.localeCompare(b.lastName)));
+      assignGroupedBlocks(groups);
+    } else {
+      let sortedRegular: CmsCandidate[] = [];
+      if (dispatchMode === "brassage") {
+        const byClass: Record<string, CmsCandidate[]> = {};
+        regularCandidates.forEach((c) => {
+          const cls = c.className || "Standard";
+          if (!byClass[cls]) byClass[cls] = [];
+          byClass[cls].push(c);
+        });
+
+        Object.keys(byClass).forEach((k) => {
+          byClass[k].sort((a, b) => a.lastName.localeCompare(b.lastName));
+        });
+
+        const classKeys = Object.keys(byClass);
+        let hasMore = true;
+        let index = 0;
+        while (hasMore) {
+          hasMore = false;
+          classKeys.forEach((k) => {
+            if (byClass[k][index]) {
+              sortedRegular.push(byClass[k][index]);
+              hasMore = true;
+            }
+          });
+          index++;
+        }
+      } else {
+        sortedRegular = [...regularCandidates].sort((a, b) =>
+          a.lastName.localeCompare(b.lastName)
+        );
+      }
+
+      let currentStdRoomIdx = 0;
+      let currentStdTable = 1;
+
+      sortedRegular.forEach((student) => {
+        const room = finalStdRooms[currentStdRoomIdx] || selectedRooms[0];
+        const roomLimit = getRoomQuota(room);
+        const anon = `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
+        updatedCandidates.push(
+          applyStudentAssignment(student, room.name, String(currentStdTable), anon)
+        );
+
+        currentStdTable++;
+        globalAnonymatIndex++;
+        if (currentStdTable > roomLimit && currentStdRoomIdx < finalStdRooms.length - 1) {
+          currentStdRoomIdx++;
+          currentStdTable = 1;
+        }
+      });
+    }
+
+    if (selectedExam) {
+      onUpdateExam?.(selectedExam.id, {
+        mobilizedRoomIds: selectedRoomIds,
+        ttRoomIds,
+        anonymatPrefix,
+        dispatchMode,
+      });
+    }
+
+    // Merge with non-target candidates so candidates from other exams are untouched
     onSetCandidates([...nonTargetCandidates, ...updatedCandidates]);
     onShowNotification(
-      `🎉 Répartition réussie pour "${examTitle}" ! ${updatedCandidates.length} élève(s) (${ttCandidates.length} TT) répartis dans les ${selectedRooms.length} salles selon vos quotas personnalisés.`
+      `🎉 Répartition réussie pour "${examTitle}" ! ${updatedCandidates.length} élève(s) (${ttCandidates.length} Tiers-Temps) répartis dans ${selectedRooms.length} salle(s).`
     );
   };
 
@@ -387,49 +626,74 @@ export default function OrganizationSection({
     }
     const confirmed = confirm(
       selectedExam
-        ? `Voulez-vous réinitialiser l'affectation des élèves de la session "${selectedExam.title}" (${targetCandidates.length} élèves) ?\n\nCela effacera les salles attribuées, les numéros de table et les numéros d'anonymat pour cette session, sans toucher aux autres sessions ni supprimer les fiches.`
+        ? `Voulez-vous réinitialiser l'affectation des élèves de la session "${selectedExam.title}" (${targetCandidates.length} élèves) ?\n\nCela effacera uniquement les salles attribuées pour cette session, sans toucher aux autres sessions ni supprimer les fiches élèves.`
         : "Voulez-vous réinitialiser l'affectation des élèves ?"
     );
     if (!confirmed) return;
 
     const targetIds = new Set(targetCandidates.map((c) => c.id));
     const resetCandidates = candidates.map((c) => {
-      if (targetIds.has(c.id)) {
-        return {
-          ...c,
-          roomName: "",
-          tableNumber: "",
-          anonymatNumber: "",
-        };
+      if (!targetIds.has(c.id)) return c;
+      const nextByExam = { ...(c.assignmentsByExam || {}) };
+      if (selectedExam) {
+        delete nextByExam[selectedExam.id];
       }
-      return c;
+      const fallbackKeys = Object.keys(nextByExam);
+      const fallbackAssign = fallbackKeys.length > 0 ? nextByExam[fallbackKeys[0]] : null;
+      return {
+        ...c,
+        assignmentsByExam: nextByExam,
+        roomName: fallbackAssign ? fallbackAssign.roomName : "",
+        tableNumber: fallbackAssign ? fallbackAssign.tableNumber : "",
+        anonymatNumber: fallbackAssign ? fallbackAssign.anonymatNumber : "",
+      };
     });
     onSetCandidates(resetCandidates);
     onShowNotification(
-      `Le brassage a été réinitialisé pour "${selectedExam?.title || "la session"}". Tous les élèves ciblés sont désormais en attente d'affectation.`
+      `Le brassage a été réinitialisé pour "${selectedExam?.title || "la session"}".`
     );
   };
 
-  // --- MANUAL ASSIGNMENT HELPERS ---
+  // --- MANUAL ASSIGNMENT HELPERS (MULTI-SELECT BATCH ADD) ---
   const handleOpenManualAssign = (preselectedRoomName?: string) => {
     if (preselectedRoomName) {
       setManualTargetRoomName(preselectedRoomName);
     } else if (selectedRooms.length > 0) {
       setManualTargetRoomName(selectedRooms[0].name);
+    } else if (rooms.length > 0) {
+      setManualTargetRoomName(rooms[0].name);
     }
-    // Default to first unassigned candidate if available
-    const unassigned = candidates.find((c) => !c.roomName);
-    if (unassigned) {
-      setManualCandidateId(unassigned.id);
-    } else if (candidates.length > 0) {
-      setManualCandidateId(candidates[0].id);
-    }
+    setManualSelectedIds([]);
+    setManualClassFilter("all");
+    setManualSearchTerm("");
+    setManualTableNumber("");
     setIsManualAssignOpen(true);
   };
 
+  const filteredManualCandidates = useMemo(() => {
+    return targetCandidates.filter((c) => {
+      const matchClass = manualClassFilter === "all" || c.className === manualClassFilter;
+      if (!matchClass) return false;
+      if (!manualSearchTerm.trim()) return true;
+      const term = manualSearchTerm.toLowerCase();
+      return (
+        c.lastName.toLowerCase().includes(term) ||
+        c.firstName.toLowerCase().includes(term) ||
+        c.className.toLowerCase().includes(term) ||
+        (c.specialty && c.specialty.toLowerCase().includes(term))
+      );
+    });
+  }, [targetCandidates, manualClassFilter, manualSearchTerm]);
+
+  const handleToggleManualCandidate = (id: string) => {
+    setManualSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
   const handleSaveManualAssignment = () => {
-    if (!manualCandidateId) {
-      alert("Veuillez sélectionner un élève.");
+    if (manualSelectedIds.length === 0) {
+      alert("Veuillez cocher au moins un élève à affecter.");
       return;
     }
     if (!manualTargetRoomName) {
@@ -437,50 +701,94 @@ export default function OrganizationSection({
       return;
     }
 
-    const targetCandidate = candidates.find((c) => c.id === manualCandidateId);
-    if (!targetCandidate) return;
+    const inRoom = targetCandidates.filter(
+      (c) => getCandidateAssignmentForExam(c, selectedExam, currentExamSlots, rooms).roomName === manualTargetRoomName
+    );
+    const currentMaxTable = inRoom.reduce((max, c) => {
+      const assign = getCandidateAssignmentForExam(c, selectedExam, currentExamSlots, rooms);
+      const n = parseInt(assign.tableNumber || "0", 10);
+      return !isNaN(n) && n > max ? n : max;
+    }, 0);
 
-    // Auto-calculate table number if empty
-    let finalTable = manualTableNumber.trim();
-    if (!finalTable) {
-      const inRoom = candidates.filter((c) => c.roomName === manualTargetRoomName);
-      const maxTable = inRoom.reduce((max, c) => {
-        const n = parseInt(c.tableNumber || "0", 10);
-        return !isNaN(n) && n > max ? n : max;
-      }, 0);
-      finalTable = String(maxTable + 1);
-    }
+    const parsedStart = parseInt(manualTableNumber.trim(), 10);
+    let nextTable = !isNaN(parsedStart) && parsedStart > 0 ? parsedStart : currentMaxTable + 1;
 
-    const updated = candidates.map((c) => {
-      if (c.id === manualCandidateId) {
-        return {
-          ...c,
-          roomName: manualTargetRoomName,
-          tableNumber: finalTable,
-          anonymatNumber: c.anonymatNumber || `${anonymatPrefix}${String(100 + candidates.indexOf(c) + 1).padStart(4, "0")}`,
-        };
-      }
-      return c;
+    const selectedOrderMap = new Map<string, string>();
+    const selectedObjects = candidates
+      .filter((c) => manualSelectedIds.includes(c.id))
+      .sort((a, b) => a.lastName.localeCompare(b.lastName));
+
+    selectedObjects.forEach((c) => {
+      selectedOrderMap.set(c.id, String(nextTable));
+      nextTable++;
     });
+
+    const examTitle = selectedExam?.title || "Examen Blanc";
+    const updated = candidates.map((c, idx) => {
+      const assignedTable = selectedOrderMap.get(c.id);
+      if (!assignedTable) return c;
+      const anon =
+        getCandidateAssignmentForExam(c, selectedExam, currentExamSlots, rooms).anonymatNumber ||
+        `${anonymatPrefix}${String(100 + idx + 1).padStart(4, "0")}`;
+      const assignment = {
+        roomName: manualTargetRoomName,
+        tableNumber: assignedTable,
+        anonymatNumber: anon,
+      };
+      return {
+        ...c,
+        roomName: manualTargetRoomName,
+        tableNumber: assignedTable,
+        anonymatNumber: anon,
+        examName: examTitle,
+        ...(selectedExam
+          ? {
+              assignmentsByExam: {
+                ...(c.assignmentsByExam || {}),
+                [selectedExam.id]: assignment,
+              },
+            }
+          : {}),
+      };
+    });
+
+    // Ensure target room is marked mobilized for this exam
+    const destRoomObj = rooms.find((r) => r.name === manualTargetRoomName);
+    if (selectedExam && destRoomObj && !selectedRoomIds.includes(destRoomObj.id)) {
+      const nextMobilized = [...selectedRoomIds, destRoomObj.id];
+      setExamRoomMap((prev) => ({ ...prev, [selectedExam.id]: nextMobilized }));
+      onUpdateExam?.(selectedExam.id, { mobilizedRoomIds: nextMobilized });
+    }
 
     onSetCandidates(updated);
     onShowNotification(
-      `✅ Élève ${targetCandidate.lastName} ${targetCandidate.firstName} affecté(e) en ${manualTargetRoomName} (Table ${finalTable})`
+      `✅ ${selectedObjects.length} élève(s) affecté(s) dans ${manualTargetRoomName} pour "${examTitle}".`
     );
     setIsManualAssignOpen(false);
+    setManualSelectedIds([]);
     setManualTableNumber("");
   };
 
   const handleRemoveCandidateFromRoom = (candidateId: string) => {
     const targetCandidate = candidates.find((c) => c.id === candidateId);
     const updated = candidates.map((c) => {
-      if (c.id === candidateId) {
-        return { ...c, roomName: "", tableNumber: "", anonymatNumber: "" };
+      if (c.id !== candidateId) return c;
+      const nextByExam = { ...(c.assignmentsByExam || {}) };
+      if (selectedExam) {
+        delete nextByExam[selectedExam.id];
       }
-      return c;
+      const remainingKeys = Object.keys(nextByExam);
+      const fallbackAssign = remainingKeys.length > 0 ? nextByExam[remainingKeys[0]] : null;
+      return {
+        ...c,
+        assignmentsByExam: nextByExam,
+        roomName: fallbackAssign ? fallbackAssign.roomName : "",
+        tableNumber: fallbackAssign ? fallbackAssign.tableNumber : "",
+        anonymatNumber: fallbackAssign ? fallbackAssign.anonymatNumber : "",
+      };
     });
     onSetCandidates(updated);
-    onShowNotification(`Élève ${targetCandidate?.lastName} retiré(e) de la salle.`);
+    onShowNotification(`Élève ${targetCandidate?.lastName} retiré(e) de la salle pour cette session.`);
   };
 
   // --- AUTOMATIC SUPERVISOR DISPATCH ALGORITHM ---
@@ -687,13 +995,14 @@ export default function OrganizationSection({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {exams.map((exam) => {
                   const isSelected = selectedExam?.id === exam.id;
+                  const examLevels = getExamTargetLevels(exam);
                   const matchingCount = candidates.filter(
                     (c) =>
-                      (c.examName && c.examName.trim().toLowerCase() === exam.title.trim().toLowerCase()) ||
-                      isCandidateMatchingLevel(c.className, exam.targetLevel)
+                      Boolean(c.assignmentsByExam?.[exam.id]?.roomName) ||
+                      isCandidateMatchingLevel(c.className, examLevels)
                   ).length;
                   const slotsCount = examSlots.filter(
-                    (s) => s.examTitle.trim().toLowerCase() === exam.title.trim().toLowerCase()
+                    (s) => s.examId === exam.id || s.examTitle.trim().toLowerCase() === exam.title.trim().toLowerCase()
                   ).length;
 
                   return (
@@ -702,8 +1011,8 @@ export default function OrganizationSection({
                       type="button"
                       onClick={() => {
                         setSelectedExamId(exam.id);
-                        const clean = exam.title.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
-                        setAnonymatPrefix(clean.length > 0 ? `${clean.slice(0, 4)}-` : "DNB-");
+                        setShowAllSchoolRooms(false);
+                        setInspectingRoomName(null);
                       }}
                       className={`text-left p-3.5 rounded-xl border-2 transition-all relative ${
                         isSelected
@@ -716,7 +1025,7 @@ export default function OrganizationSection({
                           {exam.title}
                         </span>
                         <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 ${
                             isSelected ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600"
                           }`}
                         >
@@ -724,9 +1033,14 @@ export default function OrganizationSection({
                         </span>
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-                        <span className="px-2 py-0.5 rounded bg-white/80 border border-slate-200 font-semibold text-slate-700">
-                          {exam.targetLevel || "Tous niveaux"}
-                        </span>
+                        {examLevels.map((lvl) => (
+                          <span
+                            key={lvl}
+                            className="px-2 py-0.5 rounded bg-white/80 border border-slate-200 font-semibold text-slate-700"
+                          >
+                            {getShortLevelBadge(lvl) || lvl}
+                          </span>
+                        ))}
                         <span className="px-2 py-0.5 rounded bg-white/80 border border-slate-200 font-bold text-emerald-700">
                           {matchingCount} élève(s)
                         </span>
@@ -749,14 +1063,14 @@ export default function OrganizationSection({
           {/* Action Buttons: Reset & Dispatch */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200">
             <div className="text-xs text-slate-600">
-              Session sélectionnée : <strong className="text-slate-900">{selectedExam?.title || "Examen général"}</strong> • Niveau : <span className="px-2 py-0.5 rounded bg-slate-100 font-semibold text-slate-800">{selectedExam?.targetLevel || "Tous niveaux"}</span> • Candidats ciblés : <strong className="text-emerald-700">{targetCandidates.length} élèves</strong>
+              Session sélectionnée : <strong className="text-slate-900">{selectedExam?.title || "Examen général"}</strong> • Niveau(x) : <span className="px-2 py-0.5 rounded bg-slate-100 font-semibold text-slate-800">{selectedExam ? getExamTargetLevels(selectedExam).map((l) => getShortLevelBadge(l) || l).join(", ") : "Tous niveaux"}</span> • Candidats ciblés : <strong className="text-emerald-700">{targetCandidates.length} élèves</strong>
             </div>
             <div className="flex items-center gap-2 self-end sm:self-auto">
               <button
                 type="button"
                 onClick={handleResetDispatch}
                 className="px-3.5 py-2 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-700 font-semibold text-xs transition shadow-2xs flex items-center gap-1.5"
-                title="Efface les attributions pour cet examen"
+                title="Efface les attributions pour cet examen uniquement"
               >
                 <RotateCcw className="h-4 w-4 text-rose-600" />
                 <span>Réinitialiser cet examen</span>
@@ -775,7 +1089,7 @@ export default function OrganizationSection({
           {/* Options de répartition */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Card Mode */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-5 space-y-4">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-5 space-y-3">
               <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                 <Shuffle className="h-4 w-4 text-[#3498db]" />
                 <span>Mode d'agencement des candidats</span>
@@ -793,7 +1107,7 @@ export default function OrganizationSection({
                     type="radio"
                     name="dispatchMode"
                     checked={dispatchMode === "brassage"}
-                    onChange={() => setDispatchMode("brassage")}
+                    onChange={() => handleSetDispatchMode("brassage")}
                     className="mt-0.5 text-[#3498db] focus:ring-[#3498db]"
                   />
                   <div>
@@ -817,7 +1131,7 @@ export default function OrganizationSection({
                     type="radio"
                     name="dispatchMode"
                     checked={dispatchMode === "alphabetique"}
-                    onChange={() => setDispatchMode("alphabetique")}
+                    onChange={() => handleSetDispatchMode("alphabetique")}
                     className="mt-0.5 text-[#3498db] focus:ring-[#3498db]"
                   />
                   <div>
@@ -826,6 +1140,54 @@ export default function OrganizationSection({
                     </p>
                     <p className="text-[11px] text-slate-500 mt-0.5">
                       Répartition séquentielle de A à Z sur l'ensemble de la cohorte.
+                    </p>
+                  </div>
+                </label>
+
+                <label
+                  className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${
+                    dispatchMode === "classe"
+                      ? "border-[#3498db] bg-sky-50/60 ring-1 ring-[#3498db]"
+                      : "border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="dispatchMode"
+                    checked={dispatchMode === "classe"}
+                    onChange={() => handleSetDispatchMode("classe")}
+                    className="mt-0.5 text-[#3498db] focus:ring-[#3498db]"
+                  />
+                  <div>
+                    <p className="font-bold text-xs text-slate-900">
+                      🏫 Regroupement par Classe d'origine (Suivi pédagogique)
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Regroupe les élèves d'une même classe dans des salles dédiées ou par blocs continus pour faciliter l'appel et la remise des copies.
+                    </p>
+                  </div>
+                </label>
+
+                <label
+                  className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${
+                    dispatchMode === "specialite"
+                      ? "border-[#3498db] bg-sky-50/60 ring-1 ring-[#3498db]"
+                      : "border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="dispatchMode"
+                    checked={dispatchMode === "specialite"}
+                    onChange={() => handleSetDispatchMode("specialite")}
+                    className="mt-0.5 text-[#3498db] focus:ring-[#3498db]"
+                  />
+                  <div>
+                    <p className="font-bold text-xs text-slate-900">
+                      📚 Regroupement par Spécialité / Série / Option
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Regroupe les candidats passant la même épreuve de spécialité ou option (ex: Maths, Physique, SES) pour simplifier la distribution des sujets.
                     </p>
                   </div>
                 </label>
@@ -925,7 +1287,25 @@ export default function OrganizationSection({
             </div>
 
             {/* Room Cards with Mobilization & TT toggles */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {roomBreakdown.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl space-y-3">
+                <School className="h-8 w-8 text-slate-400 mx-auto" />
+                <p className="text-sm font-bold text-slate-800">
+                  Aucune salle n'est actuellement mobilisée pour "{selectedExam?.title || "cet examen"}".
+                </p>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Les salles se mobilisent automatiquement à partir des épreuves programmées, ou vous pouvez choisir parmi toutes les salles du lycée.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowAllSchoolRooms(true)}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs"
+                >
+                  + Afficher toutes les salles ({rooms.length}) et choisir
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {roomBreakdown.map(({ room, isMobilized, isTT, assignedCount, ttCount, fillRate, quota }) => (
                 <div
                   key={room.id}
@@ -987,11 +1367,11 @@ export default function OrganizationSection({
 
                       {isTT ? (
                         <p className="text-[10px] text-purple-800 font-semibold flex items-center gap-1">
-                          <span>♿ Réservée exclusivement aux élèves Tiers-Temps (+1/3).</span>
+                          <span>♿ Salle Tiers-Temps : les élèves PAP/PPS/Tiers-Temps du niveau y sont automatiquement affectés.</span>
                         </p>
                       ) : (
                         <p className="text-[10px] text-slate-500 flex items-center gap-1">
-                          <span>🏫 Accueil des élèves standards (brassage anti-fraude).</span>
+                          <span>🏫 Accueil des élèves standards.</span>
                         </p>
                       )}
                     </div>
@@ -1014,10 +1394,20 @@ export default function OrganizationSection({
                               value={quota}
                               onChange={(e) => {
                                 const val = parseInt(e.target.value, 10);
+                                const safeVal = isNaN(val) || val <= 0 ? 1 : val;
+                                const key = selectedExam ? `${selectedExam.id}:${room.id}` : room.id;
                                 setCustomRoomCapacities((prev) => ({
                                   ...prev,
-                                  [room.id]: isNaN(val) || val <= 0 ? 1 : val,
+                                  [key]: safeVal,
                                 }));
+                                if (selectedExam) {
+                                  onUpdateExam?.(selectedExam.id, {
+                                    customRoomQuotas: {
+                                      ...(selectedExam.customRoomQuotas || {}),
+                                      [room.id]: safeVal,
+                                    },
+                                  });
+                                }
                               }}
                               className="w-16 px-2 py-0.5 text-xs font-bold text-center border border-slate-300 rounded bg-white text-slate-900 focus:ring-1 focus:ring-blue-500"
                             />
@@ -1053,7 +1443,7 @@ export default function OrganizationSection({
                         <span>Remplissage quota : {fillRate}%</span>
                         {ttCount > 0 && (
                           <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[10px]">
-                            {ttCount} Tiers-temps
+                            {ttCount} Tiers-temps / PAP
                           </span>
                         )}
                       </div>
@@ -1066,7 +1456,7 @@ export default function OrganizationSection({
                           className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold transition flex items-center gap-1 border border-blue-200"
                         >
                           <UserPlus className="h-3 w-3" />
-                          <span>+ Ajouter élève</span>
+                          <span>+ Ajouter élève(s)</span>
                         </button>
 
                         <button
@@ -1083,41 +1473,58 @@ export default function OrganizationSection({
                         </button>
                       </div>
 
-                      {/* Expandable list of students in this room */}
+                      {/* Expandable list of students strictly assigned to this room for THIS exam */}
                       {inspectingRoomName === room.name && (
                         <div className="mt-2 pt-2 border-t border-slate-200 space-y-1.5 max-h-48 overflow-y-auto pr-1">
                           {assignedCount === 0 ? (
                             <p className="text-[11px] text-slate-400 italic text-center py-2">
-                              Aucun élève affecté à cette salle.
+                              Aucun élève affecté à cette salle pour cet examen.
                             </p>
                           ) : (
                             targetCandidates
-                              .filter((c) => c.roomName === room.name)
-                              .sort((a, b) => (parseInt(a.tableNumber || "0", 10) - parseInt(b.tableNumber || "0", 10)))
-                              .map((c) => (
-                                <div
-                                  key={c.id}
-                                  className="flex items-center justify-between p-1.5 rounded bg-white border border-slate-200 text-[11px]"
-                                >
-                                  <div className="flex items-center gap-1.5 overflow-hidden">
-                                    <span className="font-bold text-blue-700 w-6 text-center shrink-0">
-                                      T.{c.tableNumber || "?"}
-                                    </span>
-                                    <span className="font-semibold text-slate-900 truncate">
-                                      {c.lastName} {c.firstName}
-                                    </span>
-                                    <span className="text-[10px] text-slate-400 shrink-0">({c.className})</span>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveCandidateFromRoom(c.id)}
-                                    title="Retirer de la salle"
-                                    className="p-1 text-slate-400 hover:text-rose-600 transition shrink-0"
+                              .filter(
+                                (c) =>
+                                  getCandidateAssignmentForExam(c, selectedExam, currentExamSlots, rooms).roomName ===
+                                  room.name
+                              )
+                              .sort((a, b) => {
+                                const tA = parseInt(
+                                  getCandidateAssignmentForExam(a, selectedExam, currentExamSlots, rooms).tableNumber || "0",
+                                  10
+                                );
+                                const tB = parseInt(
+                                  getCandidateAssignmentForExam(b, selectedExam, currentExamSlots, rooms).tableNumber || "0",
+                                  10
+                                );
+                                return tA - tB;
+                              })
+                              .map((c) => {
+                                const assign = getCandidateAssignmentForExam(c, selectedExam, currentExamSlots, rooms);
+                                return (
+                                  <div
+                                    key={c.id}
+                                    className="flex items-center justify-between p-1.5 rounded bg-white border border-slate-200 text-[11px]"
                                   >
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
-                                </div>
-                              ))
+                                    <div className="flex items-center gap-1.5 overflow-hidden">
+                                      <span className="font-bold text-blue-700 w-6 text-center shrink-0">
+                                        T.{assign.tableNumber || "?"}
+                                      </span>
+                                      <span className="font-semibold text-slate-900 truncate">
+                                        {c.lastName} {c.firstName}
+                                      </span>
+                                      <span className="text-[10px] text-slate-400 shrink-0">({c.className})</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveCandidateFromRoom(c.id)}
+                                      title="Retirer de la salle"
+                                      className="p-1 text-slate-400 hover:text-rose-600 transition shrink-0"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                );
+                              })
                           )}
                         </div>
                       )}
@@ -1130,20 +1537,26 @@ export default function OrganizationSection({
                 </div>
               ))}
             </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* MODAL: MANUAL CANDIDATE ASSIGNMENT */}
+      {/* MODAL: MULTI-SELECT MANUAL CANDIDATE ASSIGNMENT */}
       {isManualAssignOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
+          <div className="bg-white rounded-2xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-6 shadow-2xl space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2 text-blue-700">
                 <UserPlus className="h-5 w-5" />
-                <h4 className="font-bold text-slate-900 text-sm">
-                  Affecter Manuellement un Élève à une Salle
-                </h4>
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm">
+                    Affecter un lot d'élèves à une salle
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Session : {selectedExam?.title || "Général"} • Filtré strictement par niveau ciblé ({targetCandidates.length} éligible(s))
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
@@ -1155,79 +1568,157 @@ export default function OrganizationSection({
             </div>
 
             <div className="space-y-3 text-xs">
-              {/* Search candidate filter */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  1. Rechercher et sélectionner l'élève :
-                </label>
-                <div className="relative mb-2">
-                  <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-2.5" />
-                  <input
-                    type="text"
-                    value={manualSearchTerm}
-                    onChange={(e) => setManualSearchTerm(e.target.value)}
-                    placeholder="Filtrer par nom, prénom ou classe..."
-                    className="w-full pl-8 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs"
-                  />
+              {/* Search + Class filter + Select All */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="font-bold text-slate-700">
+                    1. Cocher les élèves ({manualSelectedIds.length} sélectionné(s)) :
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setManualSelectedIds(filteredManualCandidates.map((c) => c.id))}
+                      className="text-[11px] font-bold text-blue-700 hover:underline"
+                    >
+                      Tout cocher ({filteredManualCandidates.length})
+                    </button>
+                    <span className="text-slate-300">|</span>
+                    <button
+                      type="button"
+                      onClick={() => setManualSelectedIds([])}
+                      className="text-[11px] font-semibold text-slate-500 hover:underline"
+                    >
+                      Tout décocher
+                    </button>
+                  </div>
                 </div>
-                <select
-                  value={manualCandidateId}
-                  onChange={(e) => setManualCandidateId(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg font-medium text-slate-800 bg-white"
-                  size={5}
-                >
-                  {candidates
-                    .filter((c) => {
-                      if (!manualSearchTerm.trim()) return true;
-                      const term = manualSearchTerm.toLowerCase();
-                      return (
-                        c.lastName.toLowerCase().includes(term) ||
-                        c.firstName.toLowerCase().includes(term) ||
-                        c.className.toLowerCase().includes(term)
-                      );
-                    })
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.lastName} {c.firstName} ({c.className}) — {c.roomName ? `Actuellement en ${c.roomName} (T.${c.tableNumber || "?"})` : "⚠️ Non affecté"} {c.accommodation ? `[${c.accommodation}]` : ""}
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="relative sm:col-span-2">
+                    <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                    <input
+                      type="text"
+                      value={manualSearchTerm}
+                      onChange={(e) => setManualSearchTerm(e.target.value)}
+                      placeholder="Rechercher par nom, prénom, spécialité..."
+                      className="w-full pl-8 pr-3 py-1.5 border border-slate-300 rounded-lg text-xs"
+                    />
+                  </div>
+                  <select
+                    value={manualClassFilter}
+                    onChange={(e) => setManualClassFilter(e.target.value)}
+                    className="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white font-semibold"
+                  >
+                    <option value="all">Toutes classes ({targetCandidates.length})</option>
+                    {classBreakdown.map(([cls, count]) => (
+                      <option key={cls} value={cls}>
+                        {cls} ({count})
                       </option>
                     ))}
-                </select>
+                  </select>
+                </div>
+
+                <div className="max-h-56 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-slate-50/40">
+                  {filteredManualCandidates.length === 0 ? (
+                    <p className="p-4 text-center text-slate-400 text-xs italic">
+                      Aucun élève éligible ne correspond à ce filtre.
+                    </p>
+                  ) : (
+                    filteredManualCandidates.map((c) => {
+                      const checked = manualSelectedIds.includes(c.id);
+                      const assign = getCandidateAssignmentForExam(c, selectedExam, currentExamSlots, rooms);
+                      const isTT = isCandidateTiersTemps(c);
+                      return (
+                        <label
+                          key={c.id}
+                          className={`flex items-center justify-between gap-2 px-3 py-2 cursor-pointer transition ${
+                            checked ? "bg-blue-50/80" : "hover:bg-white"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => handleToggleManualCandidate(c.id)}
+                              className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <div className="font-bold text-slate-900 truncate">
+                                {c.lastName} {c.firstName}{" "}
+                                <span className="font-normal text-slate-500">({c.className})</span>
+                              </div>
+                              {(c.specialty || isTT) && (
+                                <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                  {isTT && (
+                                    <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 text-[10px] font-bold">
+                                      ♿ {c.accommodation}
+                                    </span>
+                                  )}
+                                  {c.specialty && (
+                                    <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[10px] font-semibold">
+                                      {c.specialty}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <span
+                            className={`text-[10px] px-2 py-0.5 rounded font-semibold shrink-0 ${
+                              assign.roomName
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : "bg-amber-50 text-amber-700 border border-amber-200"
+                            }`}
+                          >
+                            {assign.roomName ? `${assign.roomName} (T.${assign.tableNumber || "?"})` : "Non affecté"}
+                          </span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
               </div>
 
               {/* Target Room */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  2. Salle de destination :
-                </label>
-                <select
-                  value={manualTargetRoomName}
-                  onChange={(e) => setManualTargetRoomName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-slate-800 bg-white"
-                >
-                  {rooms.map((r) => {
-                    const assignedInRoom = candidates.filter((c) => c.roomName === r.name).length;
-                    const quota = getRoomQuota(r);
-                    return (
-                      <option key={r.id} value={r.name}>
-                        {r.name} ({assignedInRoom} / {quota} places prévues - max {r.capacity})
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    2. Salle de destination :
+                  </label>
+                  <select
+                    value={manualTargetRoomName}
+                    onChange={(e) => setManualTargetRoomName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-slate-800 bg-white"
+                  >
+                    {rooms.map((r) => {
+                      const assignedInRoom = targetCandidates.filter(
+                        (c) =>
+                          getCandidateAssignmentForExam(c, selectedExam, currentExamSlots, rooms).roomName === r.name
+                      ).length;
+                      const quota = getRoomQuota(r);
+                      return (
+                        <option key={r.id} value={r.name}>
+                          {r.name} ({assignedInRoom} / {quota} places)
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
 
-              {/* Table Number */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  3. N° de table (optionnel - auto-calculé si vide) :
-                </label>
-                <input
-                  type="text"
-                  value={manualTableNumber}
-                  onChange={(e) => setManualTableNumber(e.target.value)}
-                  placeholder="Laisser vide pour affecter automatiquement le prochain numéro"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                />
+                {/* Starting Table Number */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    3. Table de départ (auto si vide) :
+                  </label>
+                  <input
+                    type="text"
+                    value={manualTableNumber}
+                    onChange={(e) => setManualTableNumber(e.target.value)}
+                    placeholder="Auto-incrémenté à la suite"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1241,11 +1732,12 @@ export default function OrganizationSection({
               </button>
               <button
                 type="button"
+                disabled={manualSelectedIds.length === 0}
                 onClick={handleSaveManualAssignment}
-                className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition shadow-xs flex items-center gap-1.5"
+                className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition shadow-xs flex items-center gap-1.5"
               >
                 <UserCheck className="h-4 w-4" />
-                <span>Confirmer l'affectation</span>
+                <span>Affecter {manualSelectedIds.length} élève(s)</span>
               </button>
             </div>
           </div>

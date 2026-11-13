@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Printer,
   Mail,
@@ -22,7 +22,14 @@ import type {
   CmsRoom,
   SiteInfo,
 } from "../../../shared/services/cms-store";
-import { isCandidateMatchingLevel } from "../../../shared/services/cms-store";
+import {
+  isCandidateMatchingLevel,
+  getExamTargetLevels,
+  formatTargetLevelsSummary,
+  isCandidateTiersTemps,
+  getCandidateAssignmentForExam,
+  getCandidateMatchingSlots,
+} from "../../../shared/services/cms-store";
 
 // Helper to compute call time (-15 minutes)
 function getCallTime(startTime: string): string {
@@ -86,25 +93,54 @@ export function ConvocElevesSection({
     );
   }, [exams, selectedExamTitle]);
 
-  // Candidates filtered by selected exam
+  const resolveExamForCandidate = useCallback(
+    (candidate: CmsCandidate): CmsExam | null => {
+      if (activeExam) return activeExam;
+      if (candidate.examName) {
+        const match = exams.find(
+          (e) => e.title.trim().toLowerCase() === candidate.examName?.trim().toLowerCase()
+        );
+        if (match) return match;
+      }
+      const byClass = exams.find((e) =>
+        isCandidateMatchingLevel(candidate.className, getExamTargetLevels(e))
+      );
+      return byClass || exams[0] || null;
+    },
+    [activeExam, exams]
+  );
+
+  // Candidates filtered by selected exam (multi-level & per-exam aware)
   const candidatesFilteredByExam = useMemo(() => {
     if (!activeExam) return candidates;
+    const targetLevels = getExamTargetLevels(activeExam);
     return candidates.filter((c) => {
+      if (c.assignmentsByExam?.[activeExam.id]) return true;
       if (c.examName && c.examName.trim().toLowerCase() === activeExam.title.trim().toLowerCase()) {
         return true;
       }
-      return isCandidateMatchingLevel(c.className, activeExam.targetLevel);
+      return isCandidateMatchingLevel(c.className, targetLevels);
     });
   }, [candidates, activeExam]);
 
-  // Distinct rooms from candidates
+  // Helper to get effective room for a candidate in the active/resolved exam
+  const getCandidateRoomInScope = useCallback(
+    (candidate: CmsCandidate): string => {
+      const exam = resolveExamForCandidate(candidate);
+      return getCandidateAssignmentForExam(candidate, exam, examSlots, rooms).roomName;
+    },
+    [resolveExamForCandidate, examSlots, rooms]
+  );
+
+  // Distinct rooms from candidates (for selected exam)
   const distinctRooms = useMemo(() => {
     const set = new Set<string>();
     candidatesFilteredByExam.forEach((c) => {
-      if (c.roomName) set.add(c.roomName);
+      const rm = getCandidateRoomInScope(c);
+      if (rm) set.add(rm);
     });
     return Array.from(set).sort();
-  }, [candidatesFilteredByExam]);
+  }, [candidatesFilteredByExam, getCandidateRoomInScope]);
 
   // Distinct classes from candidates
   const distinctClasses = useMemo(() => {
@@ -124,14 +160,14 @@ export function ConvocElevesSection({
     }
     if (filterScope === "room") {
       if (selectedRoomFilter === "all") return base;
-      return base.filter((c) => c.roomName === selectedRoomFilter);
+      return base.filter((c) => getCandidateRoomInScope(c) === selectedRoomFilter);
     }
     if (filterScope === "class") {
       if (selectedClassFilter === "all") return base;
       return base.filter((c) => c.className === selectedClassFilter);
     }
     return base;
-  }, [candidatesFilteredByExam, filterScope, selectedCandidateId, selectedRoomFilter, selectedClassFilter]);
+  }, [candidatesFilteredByExam, filterScope, selectedCandidateId, selectedRoomFilter, selectedClassFilter, getCandidateRoomInScope]);
 
   const handlePrint = (singleCand?: CmsCandidate) => {
     const cand = singleCand || candidatesToPrint[0];
@@ -194,14 +230,16 @@ export function ConvocElevesSection({
             >
               <option value="all">Tous les examens ({candidates.length} élèves)</option>
               {exams.map((ex) => {
+                const levels = getExamTargetLevels(ex);
                 const count = candidates.filter(
                   (c) =>
+                    Boolean(c.assignmentsByExam?.[ex.id]) ||
                     (c.examName && c.examName.trim().toLowerCase() === ex.title.trim().toLowerCase()) ||
-                    isCandidateMatchingLevel(c.className, ex.targetLevel)
+                    isCandidateMatchingLevel(c.className, levels)
                 ).length;
                 return (
                   <option key={ex.id} value={ex.title}>
-                    {ex.title} ({ex.targetLevel || "Tous"} • {count} élèves)
+                    {ex.title} ({formatTargetLevelsSummary(levels)} • {count} élèves)
                   </option>
                 );
               })}
@@ -276,11 +314,14 @@ export function ConvocElevesSection({
                 onChange={(e) => setSelectedCandidateId(e.target.value)}
                 className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white max-w-sm font-medium"
               >
-                {candidatesFilteredByExam.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.lastName.toUpperCase()} {c.firstName} ({c.className} • {c.roomName || "Sans salle"})
-                  </option>
-                ))}
+                {candidatesFilteredByExam.map((c) => {
+                  const rm = getCandidateRoomInScope(c);
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {c.lastName.toUpperCase()} {c.firstName} ({c.className} • {rm || "Sans salle"})
+                    </option>
+                  );
+                })}
               </select>
             </div>
           )}
@@ -296,7 +337,7 @@ export function ConvocElevesSection({
                 <option value="all">Toutes les salles</option>
                 {distinctRooms.map((r) => (
                   <option key={r} value={r}>
-                    {r} ({candidatesFilteredByExam.filter((c) => c.roomName === r).length} élèves)
+                    {r} ({candidatesFilteredByExam.filter((c) => getCandidateRoomInScope(c) === r).length} élèves)
                   </option>
                 ))}
               </select>
@@ -334,31 +375,25 @@ export function ConvocElevesSection({
             </div>
           ) : (
             candidatesToPrint.map((candidate, idx) => {
-              // Find the candidate's exam
-              const candExamName = candidate.examName || activeExam?.title || "Examen Blanc";
-
-              // Find slots belonging to this candidate's exam
-              const matchingSlots = examSlots
-                .filter((s) => {
-                  if (candExamName && s.examTitle.trim().toLowerCase() === candExamName.trim().toLowerCase()) {
-                    return true;
-                  }
-                  if (activeExam && s.examTitle.trim().toLowerCase() === activeExam.title.trim().toLowerCase()) {
-                    return true;
-                  }
-                  return false;
-                })
-                .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
-
-              const isTT =
-                Boolean(candidate.accommodation?.includes("1/3")) ||
-                Boolean(candidate.accommodation?.toLowerCase().includes("tiers")) ||
-                candidate.className.toLowerCase().includes("tt");
+              const candResolvedExam = resolveExamForCandidate(candidate);
+              const candExamName = candResolvedExam?.title || "Examen Blanc";
+              const candAssignment = getCandidateAssignmentForExam(
+                candidate,
+                candResolvedExam,
+                examSlots,
+                rooms
+              );
+              const matchingSlots = getCandidateMatchingSlots(
+                candidate,
+                candResolvedExam,
+                examSlots
+              );
+              const isTT = isCandidateTiersTemps(candidate);
 
               return (
                 <div
                   key={candidate.id}
-                  className="bg-white rounded-2xl border border-slate-300 shadow-md p-8 max-w-3xl mx-auto printable-content space-y-6 print:border-none print:shadow-none print:p-0 print:my-0"
+                  className="bg-white rounded-2xl border border-slate-300 shadow-md p-6 sm:p-8 max-w-3xl mx-auto printable-content space-y-5 print:border-none print:shadow-none print:p-0 print:my-0 print:max-w-none print:w-full"
                   style={{ pageBreakAfter: idx < candidatesToPrint.length - 1 ? "always" : "auto" }}
                 >
                   {/* Individual Action Bar (Hidden on print) */}
@@ -369,7 +404,7 @@ export function ConvocElevesSection({
                     <button
                       type="button"
                       onClick={() => handlePrint(candidate)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold transition border border-indigo-200"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold transition border border-indigo-200 cursor-pointer"
                       title={`Imprimer uniquement la convocation de ${candidate.firstName} ${candidate.lastName}`}
                     >
                       <Printer className="h-3.5 w-3.5" />
@@ -378,7 +413,7 @@ export function ConvocElevesSection({
                   </div>
 
                   {/* Official Header */}
-                  <div className="flex items-center justify-between border-b-2 border-slate-800 pb-4">
+                  <div className="flex items-center justify-between border-b-2 border-slate-800 pb-4 gap-3 print-avoid-break">
                     <div className="flex items-center gap-3">
                       <img
                         src="/assets/aistudio/logo-lfjp_62451311.png"
@@ -400,18 +435,23 @@ export function ConvocElevesSection({
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <span className="px-3 py-1 rounded bg-[#002060] text-white font-bold text-xs uppercase shadow-xs">
                         CONVOCATION OFFICIELLE
                       </span>
-                      <p className="text-[11px] font-bold text-slate-700 mt-1">
+                      <p className="text-[11px] font-bold text-slate-800 mt-1">
                         {candExamName}
                       </p>
+                      {candResolvedExam?.period && (
+                        <p className="text-[10px] text-slate-500 font-medium">
+                          Période : {candResolvedExam.period}
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   {/* Student Info Card */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-2 gap-4 text-xs">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-2 gap-4 text-xs print-avoid-break">
                     <div>
                       <p className="text-[11px] text-slate-500 font-semibold">Candidat(e) :</p>
                       <p className="text-sm font-black text-slate-900">
@@ -419,110 +459,121 @@ export function ConvocElevesSection({
                       </p>
                       <p className="text-xs text-slate-600 mt-1">
                         Classe : <strong>{candidate.className}</strong>
+                        {candidate.specialty ? (
+                          <span className="ml-2 text-indigo-700 font-semibold">• {candidate.specialty}</span>
+                        ) : null}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[11px] text-slate-500 font-semibold">Salle d'Examen :</p>
+                      <p className="text-[11px] text-slate-500 font-semibold">Salle d&apos;Examen :</p>
                       <p className="text-sm font-black text-[#002060]">
-                        {candidate.roomName || "Salle Principale"}
+                        {candAssignment.roomName || "En cours d'attribution"}
                       </p>
                       <p className="text-xs font-mono font-bold text-slate-800 mt-1">
-                        Table N° {candidate.tableNumber || "1"} • Anonymat : {candidate.anonymatNumber || `DNB-${String(idx + 101).padStart(4, "0")}`}
+                        Table N° {candAssignment.tableNumber || "1"} • Anonymat : {candAssignment.anonymatNumber || `LFJP-${String(idx + 101).padStart(4, "0")}`}
                       </p>
                     </div>
                   </div>
 
                   {/* Accommodation Banner */}
                   {isTT && (
-                    <div className="p-3 rounded-lg bg-purple-50 border border-purple-200 text-xs text-purple-900 flex items-center justify-between">
+                    <div className="p-3 rounded-lg bg-purple-50 border border-purple-200 text-xs text-purple-900 flex flex-wrap items-center justify-between gap-2 print-avoid-break">
                       <span className="font-bold flex items-center gap-1.5">
                         <span>♿ Aménagement Réglementaire Accordé :</span>
                         <span>{candidate.accommodation || "Tiers-Temps Accordé"}</span>
                       </span>
                       <span className="font-mono font-bold bg-white px-2 py-0.5 rounded border border-purple-300">
-                        Majoration de +1/3 temps incluse dans le calendrier ci-dessous
+                        Majoration réglementaire (+1/3 temps) incluse
                       </span>
                     </div>
                   )}
 
-                  {/* Schedule Table: All épreuves and créneaux for this exam */}
+                  {/* Schedule Table: Strictly filtered by candidate level & specialty */}
                   <div className="space-y-2 text-xs">
-                    <p className="font-bold text-slate-900 flex items-center justify-between">
-                      <span>Calendrier Officiel des Épreuves & Créneaux :</span>
+                    <p className="font-bold text-slate-900 flex flex-wrap items-center justify-between gap-2">
+                      <span>Calendrier Officiel des Épreuves &amp; Créneaux :</span>
                       <span className="font-normal text-slate-500">
                         Session : <strong>{candExamName}</strong>
+                        {candResolvedExam?.period ? ` (${candResolvedExam.period})` : ""}
                       </span>
                     </p>
-                    <table className="w-full text-left border-collapse border border-slate-300 text-xs">
-                      <thead>
-                        <tr className="bg-slate-100 text-slate-700 font-bold">
-                          <th className="p-2 border border-slate-300">Épreuve / Discipline</th>
-                          <th className="p-2 border border-slate-300">Date</th>
-                          <th className="p-2 border border-slate-300">Heure d'Appel</th>
-                          <th className="p-2 border border-slate-300">Horaires Épreuve</th>
-                          <th className="p-2 border border-slate-300">Salle & N° Table</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {matchingSlots.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="p-3 border border-slate-300 text-center text-slate-500 italic">
-                              Aucune épreuve spécifique n'a encore été programmée dans l'Étape 3 pour la session "{candExamName}".
-                            </td>
+                    <div className="print-table-wrap">
+                      <table className="print-a4-table w-full text-left border-collapse border border-slate-300 text-xs">
+                        <thead>
+                          <tr className="bg-slate-100 text-slate-700 font-bold">
+                            <th className="p-2 border border-slate-300">Épreuve / Discipline</th>
+                            <th className="p-2 border border-slate-300">Date</th>
+                            <th className="p-2 border border-slate-300">Appel</th>
+                            <th className="p-2 border border-slate-300">Horaires</th>
+                            <th className="p-2 border border-slate-300">Salle &amp; Table</th>
                           </tr>
-                        ) : (
-                          matchingSlots.map((slot) => {
-                            const callTime = getCallTime(slot.startTime);
-                            const endTimeDisplay = isTT
-                              ? slot.tiersTempsEndTime || calcTTEndTime(slot.startTime, slot.durationMinutes)
-                              : slot.endTime;
-                            return (
-                              <tr key={slot.id} className="hover:bg-slate-50">
-                                <td className="p-2 border border-slate-300 font-bold text-slate-900">
-                                  {slot.subject}
-                                </td>
-                                <td className="p-2 border border-slate-300 whitespace-nowrap">
-                                  {slot.date}
-                                </td>
-                                <td className="p-2 border border-slate-300 font-mono text-emerald-700 font-bold whitespace-nowrap">
-                                  {callTime}
-                                </td>
-                                <td className="p-2 border border-slate-300 font-mono font-semibold whitespace-nowrap">
-                                  {slot.startTime} - {endTimeDisplay}
-                                  {isTT && (
-                                    <span className="ml-1 text-[10px] font-bold text-purple-700 bg-purple-100 px-1 py-0.5 rounded">
-                                      +1/3 TT
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="p-2 border border-slate-300 font-bold text-[#002060]">
-                                  {candidate.roomName || (slot.roomNames && slot.roomNames[0]) || "Salle d'examen"}
-                                  {candidate.tableNumber && (
-                                    <span className="ml-1 font-normal text-slate-600">
-                                      (Table {candidate.tableNumber})
-                                    </span>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {matchingSlots.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="p-3 border border-slate-300 text-center text-slate-500 italic">
+                                Aucune épreuve correspondant à votre niveau ({candidate.className}) n&apos;est encore programmée pour &quot;{candExamName}&quot;.
+                              </td>
+                            </tr>
+                          ) : (
+                            matchingSlots.map((slot) => {
+                              const callTime = getCallTime(slot.startTime);
+                              const endTimeDisplay = isTT
+                                ? slot.tiersTempsEndTime || calcTTEndTime(slot.startTime, slot.durationMinutes)
+                                : slot.endTime;
+                              return (
+                                <tr key={slot.id} className="hover:bg-slate-50">
+                                  <td className="p-2 border border-slate-300 font-bold text-slate-900">
+                                    <div>{slot.subject}</div>
+                                    {slot.targetSpecialty && (
+                                      <span className="text-[10px] font-semibold text-indigo-700">
+                                        {slot.targetSpecialty}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="p-2 border border-slate-300 whitespace-nowrap">
+                                    {slot.date}
+                                  </td>
+                                  <td className="p-2 border border-slate-300 font-mono text-emerald-700 font-bold whitespace-nowrap">
+                                    {callTime}
+                                  </td>
+                                  <td className="p-2 border border-slate-300 font-mono font-semibold whitespace-nowrap">
+                                    {slot.startTime} - {endTimeDisplay}
+                                    {isTT && (
+                                      <span className="ml-1 text-[10px] font-bold text-purple-700 bg-purple-100 px-1 py-0.5 rounded">
+                                        +1/3 TT
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="p-2 border border-slate-300 font-bold text-[#002060]">
+                                    {candAssignment.roomName || (slot.roomNames && slot.roomNames[0]) || "Salle d'examen"}
+                                    {candAssignment.tableNumber && (
+                                      <span className="ml-1 font-normal text-slate-600">
+                                        (T.{candAssignment.tableNumber})
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
 
                   {/* Official Instructions */}
-                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1">
+                  <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1 print-avoid-break">
                     <p className="font-bold text-slate-900">Consignes Impératives aux Candidats :</p>
                     <ul className="list-disc pl-4 space-y-0.5">
-                      <li>Se présenter 15 minutes avant le début de chaque épreuve avec sa convocation et sa pièce d'identité officielle.</li>
+                      <li>Se présenter 15 minutes avant le début de chaque épreuve avec sa convocation et sa pièce d&apos;identité officielle.</li>
                       <li>Les téléphones portables et montres connectées doivent être impérativement éteints et déposés dans les sacs.</li>
-                      <li>L'usage de la calculatrice est soumis aux consignes du sujet (mode examen clignotant obligatoire).</li>
+                      <li>L&apos;usage de la calculatrice est soumis aux consignes du sujet (mode examen clignotant obligatoire).</li>
                     </ul>
                   </div>
 
                   {/* Signature Block */}
-                  <div className="pt-6 flex justify-between items-end text-xs border-t border-slate-200">
+                  <div className="pt-5 flex justify-between items-end text-xs border-t border-slate-200 print-avoid-break">
                     <div className="text-center">
                       <p className="text-[11px] text-slate-400">Signature du Candidat</p>
                       <div className="w-40 h-10 border-b border-dashed border-slate-400 mt-2" />
@@ -544,10 +595,11 @@ export function ConvocElevesSection({
       {/* 2. PRINTABLE TABLE LABELS (ÉTIQUETTES)                   */}
       {/* ======================================================== */}
       {printMode === "etiquettes" && (
-        <div className="bg-white rounded-2xl border border-slate-300 shadow-md p-6 max-w-4xl mx-auto printable-content">
+        <div className="bg-white rounded-2xl border border-slate-300 shadow-md p-6 max-w-4xl mx-auto printable-content print:border-none print:shadow-none print:p-0 print:max-w-none print:w-full">
           <div className="border-b pb-3 mb-4 flex items-center justify-between">
             <span className="font-bold text-sm text-slate-900">
-              🏷️ Planche d'Étiquettes de Table ({candidatesToPrint.length} étiquettes)
+              🏷️ Planche d&apos;Étiquettes de Table ({candidatesToPrint.length} étiquettes)
+              {activeExam ? ` • ${activeExam.title}` : ""}
             </span>
             <span className="text-xs text-slate-500">
               Découpe centrale : Anonymat / Identité candidat
@@ -555,46 +607,56 @@ export function ConvocElevesSection({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {candidatesToPrint.map((cand, idx) => (
-              <div
-                key={cand.id}
-                className="border-2 border-dashed border-slate-400 rounded-xl p-3 flex divide-x-2 divide-dashed divide-slate-400 text-xs bg-slate-50/50"
-              >
-                {/* Left side: Anonymat */}
-                <div className="w-1/2 pr-3 flex flex-col justify-between">
-                  <div>
-                    <span className="text-[9px] font-bold uppercase text-slate-400 tracking-wider">
-                      ANONYMAT EXAMEN
-                    </span>
-                    <p className="font-black text-sm text-slate-900 font-mono mt-0.5">
-                      {cand.anonymatNumber || `DNB-${String(idx + 101).padStart(4, "0")}`}
-                    </p>
+            {candidatesToPrint.map((cand, idx) => {
+              const candResolvedExam = resolveExamForCandidate(cand);
+              const candAssignment = getCandidateAssignmentForExam(
+                cand,
+                candResolvedExam,
+                examSlots,
+                rooms
+              );
+              const isTT = isCandidateTiersTemps(cand);
+              return (
+                <div
+                  key={cand.id}
+                  className="border-2 border-dashed border-slate-400 rounded-xl p-3 flex divide-x-2 divide-dashed divide-slate-400 text-xs bg-slate-50/50 print-avoid-break"
+                >
+                  {/* Left side: Anonymat */}
+                  <div className="w-1/2 pr-3 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[9px] font-bold uppercase text-slate-400 tracking-wider">
+                        ANONYMAT EXAMEN
+                      </span>
+                      <p className="font-black text-sm text-slate-900 font-mono mt-0.5">
+                        {candAssignment.anonymatNumber || `LFJP-${String(idx + 101).padStart(4, "0")}`}
+                      </p>
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      <p>Table : <span className="font-bold text-slate-800">{candAssignment.tableNumber || idx + 1}</span></p>
+                      <p>Salle : <span className="font-bold text-slate-800">{candAssignment.roomName || "Salle 1"}</span></p>
+                    </div>
                   </div>
-                  <div className="text-[10px] text-slate-500">
-                    <p>Table : <span className="font-bold text-slate-800">{cand.tableNumber || idx + 1}</span></p>
-                    <p>Salle : <span className="font-bold text-slate-800">{cand.roomName || "Salle 1"}</span></p>
-                  </div>
-                </div>
 
-                {/* Right side: Identity */}
-                <div className="w-1/2 pl-3 flex flex-col justify-between">
-                  <div>
-                    <span className="text-[9px] font-bold uppercase text-indigo-600 tracking-wider">
-                      IDENTITÉ CANDIDAT
-                    </span>
-                    <p className="font-bold text-xs text-slate-900 mt-0.5">
-                      {cand.lastName.toUpperCase()} {cand.firstName}
-                    </p>
-                    <p className="text-[10px] text-slate-500 font-mono">Classe : {cand.className}</p>
+                  {/* Right side: Identity */}
+                  <div className="w-1/2 pl-3 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[9px] font-bold uppercase text-indigo-600 tracking-wider">
+                        IDENTITÉ CANDIDAT
+                      </span>
+                      <p className="font-bold text-xs text-slate-900 mt-0.5">
+                        {cand.lastName.toUpperCase()} {cand.firstName}
+                      </p>
+                      <p className="text-[10px] text-slate-500 font-mono">Classe : {cand.className}</p>
+                    </div>
+                    {isTT && (
+                      <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[9px] self-start">
+                        ♿ Tiers-Temps
+                      </span>
+                    )}
                   </div>
-                  {cand.accommodation?.includes("1/3") && (
-                    <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[9px] self-start">
-                      1/3 Temps
-                    </span>
-                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -774,23 +836,25 @@ export function ConvocProfsSection({
       {/* Render Mission Orders */}
       <div className="space-y-8">
         {teachersToPrint.map((teacher, idx) => {
-          const teacherSurvs = surveillances.filter((s) => {
-            const matchesTeacher =
-              s.teacherName.toLowerCase().includes(teacher.lastName.toLowerCase()) ||
-              (teacher.firstName &&
-                teacher.firstName !== "(Renfort)" &&
-                s.teacherName.toLowerCase().includes(teacher.firstName.toLowerCase()));
-            if (!matchesTeacher) return false;
-            if (selectedExamTitle !== "all" && s.examTitle) {
-              return s.examTitle.trim().toLowerCase() === selectedExamTitle.trim().toLowerCase();
-            }
-            return true;
-          });
+          const teacherSurvs = surveillances
+            .filter((s) => {
+              const matchesTeacher =
+                s.teacherName.toLowerCase().includes(teacher.lastName.toLowerCase()) ||
+                (teacher.firstName &&
+                  teacher.firstName !== "(Renfort)" &&
+                  s.teacherName.toLowerCase().includes(teacher.firstName.toLowerCase()));
+              if (!matchesTeacher) return false;
+              if (selectedExamTitle !== "all") {
+                return (s.examTitle || "").trim().toLowerCase() === selectedExamTitle.trim().toLowerCase();
+              }
+              return true;
+            })
+            .sort((a, b) => a.date.localeCompare(b.date) || a.timeSlot.localeCompare(b.timeSlot));
 
           return (
             <div
               key={teacher.id}
-              className="bg-white rounded-2xl border border-slate-300 shadow-md p-8 max-w-3xl mx-auto printable-content space-y-6 print:border-none print:shadow-none print:p-0 print:my-0"
+              className="bg-white rounded-2xl border border-slate-300 shadow-md p-6 sm:p-8 max-w-3xl mx-auto printable-content space-y-5 print:border-none print:shadow-none print:p-0 print:my-0 print:max-w-none print:w-full"
               style={{ pageBreakAfter: idx < teachersToPrint.length - 1 ? "always" : "auto" }}
             >
               {/* Individual Print Button (Hidden on print) */}
@@ -801,7 +865,7 @@ export function ConvocProfsSection({
                 <button
                   type="button"
                   onClick={() => handlePrint(teacher)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold transition border border-amber-200"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold transition border border-amber-200 cursor-pointer"
                   title={`Imprimer uniquement l'ordre de mission de ${teacher.firstName} ${teacher.lastName}`}
                 >
                   <Printer className="h-3.5 w-3.5 text-amber-700" />
@@ -810,7 +874,7 @@ export function ConvocProfsSection({
               </div>
 
               {/* Official Header */}
-              <div className="flex items-center justify-between border-b-2 border-slate-800 pb-4">
+              <div className="flex items-center justify-between border-b-2 border-slate-800 pb-4 gap-3 print-avoid-break">
                 <div className="flex items-center gap-3">
                   <img
                     src="/assets/aistudio/logo-lfjp_62451311.png"
@@ -830,15 +894,20 @@ export function ConvocProfsSection({
                     <p className="text-xs text-slate-600">Direction des Examens et Concours • Session {siteInfo.schoolYear || "2026-2027"}</p>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <span className="px-3 py-1 rounded bg-[#002060] text-white font-bold text-xs uppercase shadow-xs">
                     ORDRE DE MISSION • SURVEILLANCE
                   </span>
+                  {selectedExamTitle !== "all" && (
+                    <p className="text-[11px] font-bold text-slate-800 mt-1">
+                      {selectedExamTitle}
+                    </p>
+                  )}
                 </div>
               </div>
 
               {/* Teacher Info */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between text-xs">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between text-xs print-avoid-break">
                 <div>
                   <p className="text-[11px] text-slate-500 font-semibold">Personnel Convoqué :</p>
                   <p className="text-sm font-black text-slate-900">
@@ -855,73 +924,75 @@ export function ConvocProfsSection({
 
               {/* Assigned slots */}
               <div className="space-y-2 text-xs">
-                <p className="font-bold text-slate-900">Détail des Créneaux & Surveillances Assignées :</p>
+                <p className="font-bold text-slate-900">Détail des Créneaux &amp; Surveillances Assignées :</p>
                 {teacherSurvs.length === 0 ? (
                   <p className="text-xs text-slate-400 italic p-4 bg-slate-50 rounded-lg">
-                    Aucun créneau de surveillance n'est actuellement affecté à cet enseignant pour la sélection.
+                    Aucun créneau de surveillance n&apos;est actuellement affecté à cet enseignant pour la sélection.
                   </p>
                 ) : (
-                  <table className="w-full text-left border-collapse border border-slate-300 text-xs">
-                    <thead>
-                      <tr className="bg-slate-100 text-slate-700 font-bold">
-                        <th className="p-2 border border-slate-300">Session d'Examen</th>
-                        <th className="p-2 border border-slate-300">Épreuve / Discipline</th>
-                        <th className="p-2 border border-slate-300">Date</th>
-                        <th className="p-2 border border-slate-300">Horaire</th>
-                        <th className="p-2 border border-slate-300">Salle</th>
-                        <th className="p-2 border border-slate-300">Mission</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {teacherSurvs.map((s) => {
-                        const matchingSlot = examSlots.find(
-                          (sl) =>
-                            sl.id === s.slotId ||
-                            (sl.date === s.date &&
-                              sl.examTitle.trim().toLowerCase() === s.examTitle.trim().toLowerCase())
-                        );
-                        return (
-                          <tr key={s.id} className="hover:bg-slate-50">
-                            <td className="p-2 border border-slate-300 font-bold">{s.examTitle}</td>
-                            <td className="p-2 border border-slate-300 font-semibold text-slate-900">
-                              {matchingSlot?.subject || "Épreuve écrite"}
-                            </td>
-                            <td className="p-2 border border-slate-300 whitespace-nowrap">{s.date}</td>
-                            <td className="p-2 border border-slate-300 font-mono font-bold text-[#002060] whitespace-nowrap">
-                              {s.timeSlot}
-                            </td>
-                            <td className="p-2 border border-slate-300 font-bold">{s.roomName}</td>
-                            <td className="p-2 border border-slate-300">
-                              <span
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  s.mission?.toLowerCase().includes("renfort")
-                                    ? "bg-purple-100 text-purple-800"
-                                    : "bg-emerald-100 text-emerald-800"
-                                }`}
-                              >
-                                {s.mission || "Surveillant titulaire"}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  <div className="print-table-wrap">
+                    <table className="print-a4-table w-full text-left border-collapse border border-slate-300 text-xs">
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-700 font-bold">
+                          <th className="p-2 border border-slate-300">Session d&apos;Examen</th>
+                          <th className="p-2 border border-slate-300">Épreuve / Discipline</th>
+                          <th className="p-2 border border-slate-300">Date</th>
+                          <th className="p-2 border border-slate-300">Horaire</th>
+                          <th className="p-2 border border-slate-300">Salle</th>
+                          <th className="p-2 border border-slate-300">Mission</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {teacherSurvs.map((s) => {
+                          const matchingSlot = examSlots.find(
+                            (sl) =>
+                              sl.id === s.slotId ||
+                              (sl.date === s.date &&
+                                sl.examTitle.trim().toLowerCase() === s.examTitle.trim().toLowerCase())
+                          );
+                          return (
+                            <tr key={s.id} className="hover:bg-slate-50">
+                              <td className="p-2 border border-slate-300 font-bold">{s.examTitle}</td>
+                              <td className="p-2 border border-slate-300 font-semibold text-slate-900">
+                                {matchingSlot?.subject || "Épreuve écrite"}
+                              </td>
+                              <td className="p-2 border border-slate-300 whitespace-nowrap">{s.date}</td>
+                              <td className="p-2 border border-slate-300 font-mono font-bold text-[#002060] whitespace-nowrap">
+                                {s.timeSlot}
+                              </td>
+                              <td className="p-2 border border-slate-300 font-bold">{s.roomName}</td>
+                              <td className="p-2 border border-slate-300">
+                                <span
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    s.mission?.toLowerCase().includes("renfort")
+                                      ? "bg-purple-100 text-purple-800"
+                                      : "bg-emerald-100 text-emerald-800"
+                                  }`}
+                                >
+                                  {s.mission || "Surveillant titulaire"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
 
               {/* Instructions */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1">
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1 print-avoid-break">
                 <p className="font-bold text-slate-900">Rappels Réglementaires aux Surveillants :</p>
                 <ul className="list-disc pl-4 space-y-0.5">
-                  <li>Se présenter au secrétariat des examens 20 minutes avant le début de l'épreuve pour retirer la pochette.</li>
-                  <li>Vérifier scrupuleusement l'identité de chaque candidat lors de l'émargement.</li>
-                  <li>Ne pas utiliser de téléphone portable durant la surveillance dans la salle d'examen.</li>
+                  <li>Se présenter au secrétariat des examens 20 minutes avant le début de l&apos;épreuve pour retirer la pochette.</li>
+                  <li>Vérifier scrupuleusement l&apos;identité de chaque candidat lors de l&apos;émargement.</li>
+                  <li>Ne pas utiliser de téléphone portable durant la surveillance dans la salle d&apos;examen.</li>
                 </ul>
               </div>
 
               {/* Signatures */}
-              <div className="pt-6 flex justify-between items-end text-xs border-t border-slate-200">
+              <div className="pt-5 flex justify-between items-end text-xs border-t border-slate-200 print-avoid-break">
                 <div className="text-center">
                   <p className="text-[11px] text-slate-400">Émargement du surveillant</p>
                   <div className="w-40 h-10 border-b border-dashed border-slate-400 mt-2" />

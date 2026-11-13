@@ -12,7 +12,12 @@ import {
   Layers,
 } from "lucide-react";
 import type { CmsExam, CmsExamSlot, SiteInfo } from "../../../shared/services/cms-store";
-import { DEFAULT_SCHOOL_LEVELS } from "../../../shared/services/cms-store";
+import {
+  DEFAULT_SCHOOL_LEVELS,
+  getExamTargetLevels,
+  formatTargetLevelsSummary,
+  getShortLevelBadge,
+} from "../../../shared/services/cms-store";
 
 interface SessionsExamensSectionProps {
   exams: CmsExam[];
@@ -43,10 +48,16 @@ export default function SessionsExamensSection({
       ? siteInfo.schoolLevels
       : DEFAULT_SCHOOL_LEVELS;
 
+  const selectableLevels = availableLevels.filter(
+    (l) => !l.toLowerCase().includes("tous")
+  );
+
   // Form state
   const [formTitle, setFormTitle] = useState("");
   const [formExamType, setFormExamType] = useState("Examen Blanc");
-  const [formTargetLevel, setFormTargetLevel] = useState(availableLevels[0] || "3ème");
+  const [formTargetLevels, setFormTargetLevels] = useState<string[]>([
+    selectableLevels[0] || "3ème (DNB Collège)",
+  ]);
   const [formPeriod, setFormPeriod] = useState("");
   const [formStartsAt, setFormStartsAt] = useState("");
   const [formEndsAt, setFormEndsAt] = useState("");
@@ -54,11 +65,29 @@ export default function SessionsExamensSection({
   const [formStatus, setFormStatus] = useState<"Prévu" | "En cours" | "Terminé" | "Archivé">("Prévu");
   const [formIsPublished, setFormIsPublished] = useState(true);
 
+  const toggleTargetLevel = (lvl: string) => {
+    setFormTargetLevels((prev) => {
+      if (prev.includes(lvl)) {
+        const next = prev.filter((item) => item !== lvl);
+        return next;
+      }
+      return [...prev, lvl];
+    });
+  };
+
+  const handleSelectAllLevels = () => {
+    if (formTargetLevels.length === selectableLevels.length) {
+      setFormTargetLevels([selectableLevels[0] || "Terminale (Baccalauréat)"]);
+    } else {
+      setFormTargetLevels([...selectableLevels]);
+    }
+  };
+
   const handleOpenNewModal = () => {
     setEditingExamId(null);
     setFormTitle("");
     setFormExamType("Examen Blanc");
-    setFormTargetLevel("3ème");
+    setFormTargetLevels([selectableLevels[0] || "3ème (DNB Collège)"]);
     setFormPeriod("Avril 2026");
     setFormStartsAt(new Date().toISOString().split("T")[0]);
     setFormEndsAt(new Date().toISOString().split("T")[0]);
@@ -72,7 +101,12 @@ export default function SessionsExamensSection({
     setEditingExamId(exam.id);
     setFormTitle(exam.title);
     setFormExamType(exam.examType || "Examen Blanc");
-    setFormTargetLevel(exam.targetLevel || "3ème");
+    const existingLevels = getExamTargetLevels(exam);
+    if (existingLevels.some((l) => l.toLowerCase().includes("tous"))) {
+      setFormTargetLevels([...selectableLevels]);
+    } else {
+      setFormTargetLevels(existingLevels);
+    }
     setFormPeriod(exam.period || "");
     setFormStartsAt(exam.startsAt || "");
     setFormEndsAt(exam.endsAt || "");
@@ -89,10 +123,15 @@ export default function SessionsExamensSection({
       return;
     }
 
+    const effectiveLevels =
+      formTargetLevels.length > 0 ? formTargetLevels : ["Tous niveaux"];
+    const summaryLabel = formatTargetLevelsSummary(effectiveLevels);
+
     const payload: Omit<CmsExam, "id"> = {
       title: formTitle.trim(),
       examType: formExamType,
-      targetLevel: formTargetLevel,
+      targetLevel: summaryLabel,
+      targetLevels: effectiveLevels,
       period: formPeriod.trim() || "Période à définir",
       startsAt: formStartsAt,
       endsAt: formEndsAt,
@@ -130,7 +169,7 @@ export default function SessionsExamensSection({
             <span>📋 Sessions d'Examens & Périodes</span>
           </h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            Créez d'abord la session d'examen (ex: DNB blanc, Baccalauréat blanc 1ère) avant de programmer les épreuves et créneaux associés.
+            Créez d'abord la session d'examen (ex: DNB blanc, Baccalauréat blanc 1ère & Terminale) avant de programmer les épreuves et créneaux associés.
           </p>
         </div>
 
@@ -151,7 +190,7 @@ export default function SessionsExamensSection({
             <span>Workflow Recommandé :</span>
           </p>
           <p className="text-blue-800/90 text-[11px]">
-            1. Créez la session ci-dessous ➔ 2. Cliquez sur "Programmer les épreuves" ➔ 3. Lancez la répartition des candidats & surveillants ➔ 4. Diffusez sur la vitrine.
+            1. Créez la session ci-dessous (1 ou plusieurs niveaux) ➔ 2. Cliquez sur "Programmer les épreuves" ➔ 3. Lancez la répartition des candidats & surveillants ➔ 4. Diffusez sur la vitrine.
           </p>
         </div>
       </div>
@@ -171,6 +210,7 @@ export default function SessionsExamensSection({
             const tiedSlots = examSlots.filter(
               (s) => s.examId === exam.id || s.examTitle.toLowerCase() === exam.title.toLowerCase()
             );
+            const examLevels = getExamTargetLevels(exam);
 
             return (
               <div
@@ -178,11 +218,18 @@ export default function SessionsExamensSection({
                 className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs hover:border-blue-300 transition flex flex-col justify-between space-y-4"
               >
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                      Niveau {exam.targetLevel}
-                    </span>
-                    <span className="text-[11px] font-semibold text-slate-500">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {examLevels.map((lvl) => (
+                        <span
+                          key={lvl}
+                          className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200"
+                        >
+                          {getShortLevelBadge(lvl) || lvl}
+                        </span>
+                      ))}
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-500 shrink-0">
                       Statut : <strong className="text-slate-800">{exam.status || "Prévu"}</strong>
                     </span>
                   </div>
@@ -258,7 +305,7 @@ export default function SessionsExamensSection({
       {/* Modal: Create or Edit Exam Session */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95">
+          <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-bold text-slate-900 text-sm">
                 {editingExamId ? "Modifier la Session d'Examen" : "Créer une Nouvelle Session d'Examen"}
@@ -282,42 +329,68 @@ export default function SessionsExamensSection({
                   required
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
-                  placeholder="Ex: DNB blanc 2026, Baccalauréat blanc 1ère..."
+                  placeholder="Ex: DNB blanc 2026, Baccalauréat blanc 1ère & Terminale..."
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 font-medium"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Niveau scolaire ciblé
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block font-semibold text-slate-700">
+                    Niveaux scolaires ciblés (sélection multiple : 1, 2, 3...) *
                   </label>
-                  <select
-                    value={formTargetLevel}
-                    onChange={(e) => setFormTargetLevel(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+                  <button
+                    type="button"
+                    onClick={handleSelectAllLevels}
+                    className="text-[11px] font-bold text-blue-700 hover:underline"
                   >
-                    {availableLevels.map((lvl) => (
-                      <option key={lvl} value={lvl}>
-                        {lvl}
-                      </option>
-                    ))}
-                  </select>
+                    {formTargetLevels.length === selectableLevels.length
+                      ? "Restreindre"
+                      : "Tout sélectionner"}
+                  </button>
                 </div>
+                <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 max-h-44 overflow-y-auto">
+                  {selectableLevels.map((lvl) => {
+                    const checked = formTargetLevels.includes(lvl);
+                    return (
+                      <label
+                        key={lvl}
+                        className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition text-[11px] font-semibold ${
+                          checked
+                            ? "bg-blue-50 border-blue-400 text-blue-900"
+                            : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleTargetLevel(lvl)}
+                          className="rounded text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="truncate">{lvl}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {formTargetLevels.length === 0 && (
+                  <p className="text-[11px] text-amber-700 mt-1">
+                    Aucun niveau spécifique coché : la session s'appliquera à « Tous niveaux ».
+                  </p>
+                )}
+              </div>
 
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Période d'organisation
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formPeriod}
-                    onChange={(e) => setFormPeriod(e.target.value)}
-                    placeholder="Ex: 24 et 25 Mars 2026"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  />
-                </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Période d'organisation *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formPeriod}
+                  onChange={(e) => setFormPeriod(e.target.value)}
+                  placeholder="Ex: 24 et 25 Mars 2026"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                />
               </div>
 
               <div>
@@ -340,7 +413,7 @@ export default function SessionsExamensSection({
                   </label>
                   <select
                     value={formStatus}
-                    onChange={(e) => setFormStatus(e.target.value as any)}
+                    onChange={(e) => setFormStatus(e.target.value as CmsExam["status"])}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
                   >
                     <option value="Prévu">Prévu</option>

@@ -115,6 +115,10 @@ export default function AdminPage() {
     deleteSurveillance,
     duplicateSurveillance,
     setSurveillances,
+    addOfficialRule,
+    updateOfficialRule,
+    deleteOfficialRule,
+    togglePublishOfficialRule,
     addCandidate,
     updateCandidate,
     deleteCandidate,
@@ -124,6 +128,8 @@ export default function AdminPage() {
     markProviseurSaved,
     clearPendingDeployment,
   } = useCmsData();
+
+  const [selectedExamForSlots, setSelectedExamForSlots] = useState<string>("");
 
   // Active role-based session: 'proviseur' | 'superadmin' (stored in both localStorage and sessionStorage)
   const getStoredAdminSession = () => {
@@ -252,7 +258,7 @@ export default function AdminPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const setCurrentSection = useCallback((section: AdminSection) => {
+  const setCurrentSection = useCallback((section: AdminSection, keepExamParam = false) => {
     setLocalCurrentSection(section);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -260,6 +266,9 @@ export default function AdminPage() {
         next.delete("section");
       } else {
         next.set("section", section);
+      }
+      if (!keepExamParam) {
+        next.delete("exam");
       }
       return next;
     });
@@ -484,7 +493,11 @@ export default function AdminPage() {
 
   // Unified Direct Save & Push to GitHub & Vercel in 1 single click with live evolution progress
   // Proviseur AND SuperAdmin both deploy directly without waiting or sending pending alerts!
-  const handleUnifiedSaveAndDeploy = async () => {
+  const handleUnifiedSaveAndDeploy = async (overrideTokenParam?: unknown) => {
+    const customToken =
+      typeof overrideTokenParam === "string" && overrideTokenParam.trim()
+        ? overrideTokenParam.trim()
+        : undefined;
     setIsDeployProgressModalOpen(true);
     setIsSyncing(true);
     setDeployProgress(15);
@@ -523,7 +536,13 @@ export default function AdminPage() {
       setDeployActiveStepIndex(2);
       setDeployStepText("2/4. Transmission sécurisée vers le dépôt GitHub...");
 
-      const tokenToPass = (dashboardTokenInput || githubToken || DEFAULT_GITHUB_TOKEN).trim();
+      const tokenToPass = (
+        customToken ||
+        dashboardTokenInput ||
+        modalNewToken ||
+        githubToken ||
+        DEFAULT_GITHUB_TOKEN
+      ).trim();
       const now = new Date();
       const authorLabel = adminSession?.role === "proviseur" ? "Direction / Proviseur" : "Super-Administrateur";
       const commitMsg = `Mise à jour par ${authorLabel} (${now.toLocaleDateString("fr-FR")} à ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })})`;
@@ -1372,15 +1391,100 @@ export default function AdminPage() {
                 <div className="rounded-2xl border border-rose-300 bg-rose-50 p-4 space-y-3 animate-in fade-in">
                   <div className="flex items-start gap-3">
                     <AlertTriangle className="h-6 w-6 text-rose-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-bold text-sm text-rose-950">Échec du déploiement</p>
-                      <p className="text-xs text-rose-800 mt-0.5">{deployResult.error}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-sm text-rose-950">Échec du déploiement GitHub</p>
+                      <p className="text-xs text-rose-800 mt-0.5 break-words">{deployResult.error}</p>
+                      <p className="text-[11px] text-emerald-800 bg-emerald-100/80 border border-emerald-200 rounded-lg px-2.5 py-1.5 mt-2 font-medium">
+                        ✓ Vos données sont bien sauvegardées localement et sur le serveur de l&apos;établissement. Seule la synchronisation distante GitHub/Vercel nécessite un jeton valide.
+                      </p>
                     </div>
+                  </div>
+
+                  {/* Inline GitHub PAT update when 401 / credentials / permission issue */}
+                  <div className="rounded-xl border border-rose-200 bg-white p-3.5 space-y-2.5 text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                        <Key className="h-3.5 w-3.5 text-blue-600" />
+                        <span>Mettre à jour le Jeton GitHub (PAT) et réessayer :</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleOpenGitHubTokenPage}
+                        className="text-[11px] font-bold text-blue-700 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        <span>Créer un jeton (repo)</span>
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type={showModalPassword ? "text" : "password"}
+                        value={modalNewToken}
+                        onChange={(e) => {
+                          setModalNewToken(e.target.value);
+                          setTokenUpdateError(null);
+                        }}
+                        placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                        className="flex-1 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-mono text-slate-900 focus:border-blue-600 focus:bg-white focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowModalPassword((p) => !p)}
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                      >
+                        {showModalPassword ? "Masquer" : "Voir"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handlePasteModalToken}
+                        className="inline-flex items-center justify-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                      >
+                        <ClipboardPaste className="h-3.5 w-3.5" />
+                        <span>Coller</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isUpdatingTokenInModal || !modalNewToken.trim()}
+                        onClick={async () => {
+                          const tokenToUse = modalNewToken.trim();
+                          if (!tokenToUse) return;
+                          setIsUpdatingTokenInModal(true);
+                          setTokenUpdateError(null);
+                          const loginRes = await loginGitHub(tokenToUse, githubConfig);
+                          setIsUpdatingTokenInModal(false);
+                          if (!loginRes.success) {
+                            setTokenUpdateError(
+                              loginRes.error || "Jeton GitHub invalide ou droits insuffisants."
+                            );
+                            return;
+                          }
+                          setDashboardTokenInput(tokenToUse);
+                          setModalNewToken(tokenToUse);
+                          showNotification("Jeton GitHub validé ! Relance du déploiement...");
+                          await handleUnifiedSaveAndDeploy(tokenToUse);
+                        }}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-700 px-4 py-2 text-xs font-bold text-white shadow hover:bg-blue-800 disabled:opacity-50 cursor-pointer"
+                      >
+                        {isUpdatingTokenInModal ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Check className="h-3.5 w-3.5" />
+                        )}
+                        <span>Valider &amp; Réessayer</span>
+                      </button>
+                    </div>
+
+                    {tokenUpdateError && (
+                      <p className="text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5">
+                        {tokenUpdateError}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-rose-200">
                     <button
-                      onClick={handleUnifiedSaveAndDeploy}
+                      onClick={() => handleUnifiedSaveAndDeploy()}
                       className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow hover:bg-rose-700 transition active:scale-95 cursor-pointer"
                     >
                       <RefreshCw className="h-3.5 w-3.5" />
@@ -1715,7 +1819,10 @@ export default function AdminPage() {
         {/* Authentic Sidebar matching target site */}
         <AdminSidebar
           currentSection={currentSection}
-          onSelectSection={(sec) => setCurrentSection(sec)}
+          onSelectSection={(sec) => {
+            setSelectedExamForSlots("");
+            setCurrentSection(sec);
+          }}
           openSubmenus={openSubmenus}
           onToggleSubmenu={toggleSubmenu}
           onSaveProject={handleDownloadJson}
@@ -1741,7 +1848,7 @@ export default function AdminPage() {
         />
 
         {/* Main Content Area */}
-        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full">
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto w-full print:p-0 print:overflow-visible">
 
           {/* 0. TABLEAU DE BORD CENTRAL */}
           {currentSection === "dashboard" && (
@@ -1839,8 +1946,19 @@ export default function AdminPage() {
               onAddExam={addExam}
               onUpdateExam={updateExam}
               onDeleteExam={deleteExam}
-              onNavigateToSlots={() => {
-                setCurrentSection("creneaux-epreuves");
+              onNavigateToSlots={(targetExamTitle?: string) => {
+                if (targetExamTitle) {
+                  setSelectedExamForSlots(targetExamTitle);
+                  setSearchParams((prev) => {
+                    const next = new URLSearchParams(prev);
+                    next.set("section", "creneaux-epreuves");
+                    next.set("exam", targetExamTitle);
+                    return next;
+                  });
+                  setLocalCurrentSection("creneaux-epreuves");
+                } else {
+                  setCurrentSection("creneaux-epreuves");
+                }
               }}
               onShowNotification={showNotification}
             />
@@ -1849,6 +1967,7 @@ export default function AdminPage() {
           {/* 4. CRÉNEAUX DES ÉPREUVES */}
           {currentSection === "creneaux-epreuves" && (
             <CreneauxSection
+              initialExamFilter={selectedExamForSlots || searchParams.get("exam") || ""}
               examSlots={cmsData.examSlots || []}
               exams={cmsData.exams}
               rooms={cmsData.rooms}
@@ -1876,6 +1995,7 @@ export default function AdminPage() {
               surveillances={cmsData.surveillances}
               onSetCandidates={setCandidates}
               onSetSurveillances={setSurveillances}
+              onUpdateExam={updateExam}
               onShowNotification={showNotification}
             />
           )}
@@ -1941,7 +2061,7 @@ export default function AdminPage() {
           {["convoc-eleves", "convoc-profs"].includes(currentSection) && (
             <div className="space-y-6">
               {/* Institutional Sub-Navigation for Step 9 */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs print:hidden">
                 <div>
                   <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                     <Printer className="h-5 w-5 text-emerald-700" />
@@ -2051,14 +2171,19 @@ export default function AdminPage() {
                   siteInfo={cmsData.siteInfo}
                   exams={cmsData.exams}
                   announcements={cmsData.announcements}
+                  officialRules={cmsData.officialRules || []}
                   surveillances={cmsData.surveillances}
                   examSlots={cmsData.examSlots || []}
                   callouts={cmsData.callouts}
                   onTogglePublishExam={(id, pub) => updateExam(id, { isPublished: pub })}
                   onTogglePublishAnnouncement={(id, pub) => updateAnnouncement(id, { isPublished: pub })}
+                  onTogglePublishOfficialRule={(id, pub) => togglePublishOfficialRule(id, pub)}
                   onAddAnnouncement={addAnnouncement}
                   onUpdateAnnouncement={updateAnnouncement}
                   onDeleteAnnouncement={deleteAnnouncement}
+                  onAddOfficialRule={addOfficialRule}
+                  onUpdateOfficialRule={updateOfficialRule}
+                  onDeleteOfficialRule={deleteOfficialRule}
                   onAddExam={addExam}
                   onUpdateExam={updateExam}
                   onDeleteExam={deleteExam}

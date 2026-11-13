@@ -18,6 +18,9 @@ import {
   AlertCircle,
   School,
   Layers,
+  ShieldCheck,
+  BookOpen,
+  FileText,
 } from "lucide-react";
 import type {
   CmsExam,
@@ -25,21 +28,28 @@ import type {
   CmsSurveillance,
   CmsExamSlot,
   CmsCallout,
+  CmsOfficialRule,
   SiteInfo,
 } from "../../../shared/services/cms-store";
+import { DEFAULT_OFFICIAL_RULES } from "../../../shared/services/cms-store";
 
 interface VitrinePublishSectionProps {
   siteInfo: SiteInfo;
   exams: CmsExam[];
   announcements: CmsAnnouncement[];
+  officialRules?: CmsOfficialRule[];
   surveillances: CmsSurveillance[];
   examSlots?: CmsExamSlot[];
   callouts?: CmsCallout[];
   onTogglePublishExam: (id: string, isPublished: boolean) => void;
   onTogglePublishAnnouncement: (id: string, isPublished: boolean) => void;
+  onTogglePublishOfficialRule?: (id: string, isPublished: boolean) => void;
   onAddAnnouncement?: (item: Omit<CmsAnnouncement, "id">) => void;
   onUpdateAnnouncement?: (id: string, updates: Partial<CmsAnnouncement>) => void;
   onDeleteAnnouncement?: (id: string) => void;
+  onAddOfficialRule?: (item: Omit<CmsOfficialRule, "id">) => void;
+  onUpdateOfficialRule?: (id: string, updates: Partial<CmsOfficialRule>) => void;
+  onDeleteOfficialRule?: (id: string) => void;
   onAddExam?: (item: Omit<CmsExam, "id">) => void;
   onUpdateExam?: (id: string, updates: Partial<CmsExam>) => void;
   onDeleteExam?: (id: string) => void;
@@ -50,24 +60,40 @@ export default function VitrinePublishSection({
   siteInfo,
   exams,
   announcements,
+  officialRules = [],
   surveillances,
   examSlots = [],
   callouts = [],
   onTogglePublishExam,
   onTogglePublishAnnouncement,
+  onTogglePublishOfficialRule,
   onAddAnnouncement,
   onUpdateAnnouncement,
   onDeleteAnnouncement,
+  onAddOfficialRule,
+  onUpdateOfficialRule,
+  onDeleteOfficialRule,
   onAddExam,
   onUpdateExam,
   onDeleteExam,
   onShowNotification,
 }: VitrinePublishSectionProps) {
+  const effectiveRules = officialRules && officialRules.length > 0 ? officialRules : DEFAULT_OFFICIAL_RULES;
   const publishedExamsCount = exams.filter((e) => e.isPublished !== false).length;
   const publishedAnnouncementsCount = announcements.filter((a) => a.isPublished).length;
+  const publishedRulesCount = effectiveRules.filter((r) => r.isPublished !== false).length;
 
-  // Active sub-tab in publication: "exams" | "announcements" | "callouts"
-  const [activeTab, setActiveTab] = useState<"exams" | "announcements">("exams");
+  // Active sub-tab in publication: "exams" | "announcements" | "official-rules"
+  const [activeTab, setActiveTab] = useState<"exams" | "announcements" | "official-rules">("exams");
+
+  // Official Rule Modal State
+  const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [ruleTitle, setRuleTitle] = useState("");
+  const [ruleCategory, setRuleCategory] = useState("ponctualite");
+  const [ruleIcon, setRuleIcon] = useState<"clock" | "book" | "shield" | "file" | "alert" | "check">("clock");
+  const [ruleContent, setRuleContent] = useState("");
+  const [ruleIsPublished, setRuleIsPublished] = useState(true);
 
   // Announcement Modal State
   const [isAnnModalOpen, setIsAnnModalOpen] = useState(false);
@@ -206,6 +232,78 @@ export default function VitrinePublishSection({
     setIsExamModalOpen(false);
   };
 
+  // Handlers for Official Rules
+  const handleOpenNewRule = () => {
+    setEditingRuleId(null);
+    setRuleTitle("");
+    setRuleCategory("ponctualite");
+    setRuleIcon("clock");
+    setRuleContent("");
+    setRuleIsPublished(true);
+    setIsRuleModalOpen(true);
+  };
+
+  const handleOpenEditRule = (rule: CmsOfficialRule) => {
+    setEditingRuleId(rule.id);
+    setRuleTitle(rule.title);
+    setRuleCategory(rule.category || "ponctualite");
+    setRuleIcon(rule.icon || "clock");
+    setRuleContent(rule.content || "");
+    setRuleIsPublished(rule.isPublished !== false);
+    setIsRuleModalOpen(true);
+  };
+
+  const handleSaveRule = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ruleTitle.trim() || !ruleContent.trim()) {
+      alert("Veuillez renseigner un intitulé et les détails de la consigne.");
+      return;
+    }
+
+    const payload: Omit<CmsOfficialRule, "id"> = {
+      title: ruleTitle.trim(),
+      category: ruleCategory,
+      icon: ruleIcon,
+      content: ruleContent.trim(),
+      isPublished: ruleIsPublished,
+      order: editingRuleId
+        ? effectiveRules.find((r) => r.id === editingRuleId)?.order || 1
+        : effectiveRules.length + 1,
+    };
+
+    if (editingRuleId) {
+      if (onUpdateOfficialRule) {
+        onUpdateOfficialRule(editingRuleId, payload);
+        onShowNotification(`Règlement "${ruleTitle}" mis à jour avec succès !`);
+      }
+    } else {
+      if (onAddOfficialRule) {
+        onAddOfficialRule(payload);
+        onShowNotification(`Nouveau règlement officiel "${ruleTitle}" ajouté !`);
+      }
+    }
+
+    setIsRuleModalOpen(false);
+  };
+
+  const renderRuleIcon = (iconName?: string) => {
+    switch (iconName) {
+      case "BookOpen":
+        return <BookOpen className="h-4 w-4 text-amber-600" />;
+      case "ShieldCheck":
+        return <ShieldCheck className="h-4 w-4 text-purple-600" />;
+      case "FileText":
+        return <FileText className="h-4 w-4 text-emerald-600" />;
+      case "AlertCircle":
+        return <AlertCircle className="h-4 w-4 text-rose-600" />;
+      case "CheckCircle2":
+        return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
+      case "Clock":
+      default:
+        return <Clock className="h-4 w-4 text-indigo-600" />;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header with Live Link */}
@@ -238,7 +336,7 @@ export default function VitrinePublishSection({
       </div>
 
       {/* Overview Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
             <Users className="h-5 w-5" />
@@ -268,12 +366,26 @@ export default function VitrinePublishSection({
         </div>
 
         <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Règlements & Consignes
+            </p>
+            <p className="text-base font-bold text-slate-900">
+              {publishedRulesCount} / {effectiveRules.length} en ligne
+            </p>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
             <Sparkles className="h-5 w-5" />
           </div>
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Consignes & Communiqués
+              Annonces Direction
             </p>
             <p className="text-base font-bold text-slate-900">
               {publishedAnnouncementsCount} / {announcements.length} diffusé(s)
@@ -283,7 +395,7 @@ export default function VitrinePublishSection({
       </div>
 
       {/* Navigation sub-tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
         <button
           type="button"
           onClick={() => setActiveTab("exams")}
@@ -299,6 +411,19 @@ export default function VitrinePublishSection({
 
         <button
           type="button"
+          onClick={() => setActiveTab("official-rules")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+            activeTab === "official-rules"
+              ? "bg-slate-900 text-white shadow-xs"
+              : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+          }`}
+        >
+          <ShieldCheck className="h-3.5 w-3.5 text-purple-600" />
+          <span>Consignes & Règlements Officiels ({effectiveRules.length})</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab("announcements")}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
             activeTab === "announcements"
@@ -306,8 +431,8 @@ export default function VitrinePublishSection({
               : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
           }`}
         >
-          <Sparkles className="h-3.5 w-3.5" />
-          <span>Consignes & Annonces Direction ({announcements.length})</span>
+          <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+          <span>Communiqués & Annonces ({announcements.length})</span>
         </button>
       </div>
 
@@ -605,6 +730,256 @@ export default function VitrinePublishSection({
                 </div>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB 3: CONSIGNES & RÈGLEMENTS OFFICIELS                   */}
+      {/* ======================================================== */}
+      {activeTab === "official-rules" && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-purple-600" />
+                <span>Règlements & Consignes Officielles des Examens ({effectiveRules.length})</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Directives institutionnelles affichées sur la vitrine publique du lycée (ponctualité, mode examen, tiers-temps, pièces d'identité).
+                Vous pouvez modifier les textes officiels, ajouter de nouvelles consignes, ou basculer leur statut publié/masqué.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleOpenNewRule}
+              className="px-4 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs transition shadow-xs flex items-center gap-1.5 self-start sm:self-auto"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Nouveau Règlement / Consigne</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            {effectiveRules.map((rule) => {
+              const isPub = rule.isPublished !== false;
+              return (
+                <div
+                  key={rule.id}
+                  className={`p-4 rounded-xl border transition space-y-3 ${
+                    isPub
+                      ? "bg-white border-slate-200 shadow-2xs hover:border-purple-300"
+                      : "bg-slate-50/70 border-dashed border-slate-300 opacity-75"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                        {renderRuleIcon(rule.icon)}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-slate-900 leading-snug">
+                          {rule.title}
+                        </h4>
+                        <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600">
+                          {rule.category || "Directive"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Status badge */}
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                        isPub
+                          ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                          : "bg-slate-200 text-slate-700"
+                      }`}
+                    >
+                      {isPub ? "En ligne" : "Masqué"}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-700 leading-relaxed bg-slate-50/80 p-3 rounded-lg border border-slate-100">
+                    {rule.content}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onTogglePublishOfficialRule) {
+                          onTogglePublishOfficialRule(rule.id, !isPub);
+                          onShowNotification(
+                            isPub
+                              ? `Règlement "${rule.title}" masqué de la vitrine.`
+                              : `Règlement "${rule.title}" publié sur la vitrine !`
+                          );
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5 ${
+                        isPub
+                          ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-300"
+                      }`}
+                    >
+                      {isPub ? (
+                        <>
+                          <Eye className="h-3 w-3" />
+                          <span>Publié sur vitrine</span>
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="h-3 w-3" />
+                          <span>Masqué</span>
+                        </>
+                      )}
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditRule(rule)}
+                        className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition"
+                        title="Modifier ce règlement"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Supprimer le règlement officiel "${rule.title}" ?`)) {
+                            if (onDeleteOfficialRule) {
+                              onDeleteOfficialRule(rule.id);
+                              onShowNotification(`Règlement "${rule.title}" supprimé.`);
+                            }
+                          }
+                        }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                        title="Supprimer ce règlement"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Add / Edit Official Rule */}
+      {isRuleModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-purple-600" />
+                <span>{editingRuleId ? "Modifier le Règlement Officiel" : "Nouveau Règlement Officiel"}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsRuleModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveRule} className="space-y-4 pt-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Intitulé du règlement ou consigne *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={ruleTitle}
+                  onChange={(e) => setRuleTitle(e.target.value)}
+                  placeholder="Ex: Ponctualité & Appel, Mode Examen, Tiers-Temps..."
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Catégorie
+                  </label>
+                  <select
+                    value={ruleCategory}
+                    onChange={(e) => setRuleCategory(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
+                  >
+                    <option value="ponctualite">Ponctualité & Horaires</option>
+                    <option value="materiel">Matériel & Équipements</option>
+                    <option value="amenagements">Aménagements & Tiers-Temps</option>
+                    <option value="identite">Pièce d'Identité & Convocations</option>
+                    <option value="general">Directive Générale</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Icône représentative
+                  </label>
+                  <select
+                    value={ruleIcon}
+                    onChange={(e) => setRuleIcon(e.target.value as any)}
+                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
+                  >
+                    <option value="clock">Horloge (Ponctualité & Horaires)</option>
+                    <option value="book">Manuel (Mode Examen & Matériel)</option>
+                    <option value="shield">Bouclier (Aménagements & Tiers-Temps)</option>
+                    <option value="file">Document (Pièce d'Identité & Convocations)</option>
+                    <option value="alert">Alerte / Vigilance</option>
+                    <option value="check">Validation & Régularité</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Texte officiel de la consigne (affiché aux familles et candidats) *
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  value={ruleContent}
+                  onChange={(e) => setRuleContent(e.target.value)}
+                  placeholder="Détaillez la règle officielle (ex: Appel obligatoire des candidats 15 min avant l'épreuve...)"
+                  className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 leading-relaxed"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-800 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  checked={ruleIsPublished}
+                  onChange={(e) => setRuleIsPublished(e.target.checked)}
+                  className="rounded text-purple-600 focus:ring-purple-500"
+                />
+                <span>Publier immédiatement sur la vitrine publique</span>
+              </label>
+
+              <div className="flex justify-end gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setIsRuleModalOpen(false)}
+                  className="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-lg bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition shadow-xs"
+                >
+                  {editingRuleId ? "Enregistrer" : "Créer le règlement"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

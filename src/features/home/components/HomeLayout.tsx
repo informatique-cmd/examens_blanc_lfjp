@@ -7,6 +7,7 @@ interface HomeLayoutProps {
   schoolYear?: string;
   schoolName?: string;
   schoolCity?: string;
+  hideChromeOnPrint?: boolean;
 }
 
 export default function HomeLayout({
@@ -14,11 +15,12 @@ export default function HomeLayout({
   schoolYear = "2026-2027",
   schoolName = "Lycée Français Jacques Prévert",
   schoolCity = "Saly, Sénégal",
+  hideChromeOnPrint = false,
 }: HomeLayoutProps) {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans selection:bg-blue-100 selection:text-blue-900">
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans selection:bg-blue-100 selection:text-blue-900 print:bg-white">
       {/* Top Institutional Header */}
-      <header className="bg-white border-b border-slate-200 shadow-2xs relative">
+      <header className={`bg-white border-b border-slate-200 shadow-2xs relative ${hideChromeOnPrint ? "print:hidden" : ""}`}>
         {/* Subtle institutional tricolor top hairline */}
         <div className="h-1 w-full bg-gradient-to-r from-[#002060] via-[#002060] to-[#c92a2a]" />
         
@@ -59,12 +61,12 @@ export default function HomeLayout({
       </header>
 
       {/* Main Page Body */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col items-center gap-8">
+      <main className={`flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col items-center gap-8 ${hideChromeOnPrint ? "print:p-0 print:max-w-none print:gap-0" : ""}`}>
         {children}
       </main>
 
       {/* Institutional Footer (discreet admin access at the bottom) */}
-      <footer className="bg-white border-t border-slate-200 mt-auto py-8">
+      <footer className={`bg-white border-t border-slate-200 mt-auto py-8 ${hideChromeOnPrint ? "print:hidden" : ""}`}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500 text-center sm:text-left">
           <div className="space-y-1">
             <p className="font-bold text-slate-800">

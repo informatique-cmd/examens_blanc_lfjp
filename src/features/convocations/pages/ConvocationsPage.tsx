@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   Printer,
@@ -12,7 +12,41 @@ import {
   FileSpreadsheet,
   Info,
 } from "lucide-react";
-import { useCmsData, type CmsCandidate } from "../../../shared/services/cms-store";
+import {
+  useCmsData,
+  type CmsCandidate,
+  type CmsExam,
+  getExamTargetLevels,
+  isCandidateMatchingLevel,
+  isCandidateTiersTemps,
+  getCandidateAssignmentForExam,
+  getCandidateMatchingSlots,
+} from "../../../shared/services/cms-store";
+
+function computeCallTime15(startTime: string): string {
+  if (!startTime || !startTime.includes(":")) return startTime || "07h45";
+  const [hStr, mStr] = startTime.split(":");
+  let h = parseInt(hStr, 10);
+  let m = parseInt(mStr, 10);
+  if (isNaN(h) || isNaN(m)) return startTime;
+  m -= 15;
+  if (m < 0) {
+    m += 60;
+    h -= 1;
+  }
+  return `${String(h).padStart(2, "0")}h${String(m).padStart(2, "0")}`;
+}
+
+function computeTTEndTime(startTime: string, durationMinutes: number): string {
+  if (!startTime || !startTime.includes(":")) return "";
+  const [hStr, mStr] = startTime.split(":");
+  const h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  if (isNaN(h) || isNaN(m)) return "";
+  const dur = durationMinutes > 0 ? durationMinutes : 60;
+  const ttTotal = h * 60 + m + Math.round(dur * (4 / 3));
+  return `${String(Math.floor(ttTotal / 60) % 24).padStart(2, "0")}h${String(ttTotal % 60).padStart(2, "0")}`;
+}
 
 type ViewMode = "candidat" | "classe_lot" | "enseignant" | "emargement";
 
@@ -26,6 +60,8 @@ export default function ConvocationsPage() {
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>("");
   const [selectedTeacherName, setSelectedTeacherName] = useState<string>("all");
   const [selectedRoomName, setSelectedRoomName] = useState<string>("all");
+
+
 
   // Distinct classes
   const classesList = useMemo(() => {
@@ -52,38 +88,95 @@ export default function ConvocationsPage() {
     return Array.from(new Set(list));
   }, [cmsData.rooms]);
 
-  // Filtered candidates
+  const activeExamObj = useMemo<CmsExam | null>(() => {
+    if (selectedExam === "all") return null;
+    return (
+      cmsData.exams.find((e) => e.title.trim().toLowerCase() === selectedExam.trim().toLowerCase()) ||
+      null
+    );
+  }, [cmsData.exams, selectedExam]);
+
+  const resolveExamForCandidate = useCallback(
+    (cand: CmsCandidate): CmsExam | null => {
+      if (activeExamObj) return activeExamObj;
+      if (cand.examName) {
+        const byName = cmsData.exams.find(
+          (e) => e.title.trim().toLowerCase() === cand.examName?.trim().toLowerCase()
+        );
+        if (byName) return byName;
+      }
+      const byClass = cmsData.exams.find((e) =>
+        isCandidateMatchingLevel(cand.className, getExamTargetLevels(e))
+      );
+      return byClass || cmsData.exams[0] || null;
+    },
+    [activeExamObj, cmsData.exams]
+  );
+
+  // Filtered candidates (respects exam, class, room when emargement, and search query)
   const filteredCandidates = useMemo(() => {
     return cmsData.candidates.filter((cand) => {
       const matchClass = selectedClass === "all" || cand.className === selectedClass;
-      const matchExam = selectedExam === "all" || cand.examName.toLowerCase().includes(selectedExam.toLowerCase()) || cand.examName === selectedExam;
+      let matchExam = true;
+      if (activeExamObj) {
+        matchExam =
+          Boolean(cand.assignmentsByExam?.[activeExamObj.id]) ||
+          cand.examName?.trim().toLowerCase() === activeExamObj.title.trim().toLowerCase() ||
+          isCandidateMatchingLevel(cand.className, getExamTargetLevels(activeExamObj));
+      } else if (selectedExam !== "all") {
+        matchExam =
+          cand.examName?.toLowerCase().includes(selectedExam.toLowerCase()) ||
+          cand.examName === selectedExam;
+      }
+
+      const resolvedExam = resolveExamForCandidate(cand);
+      const assignment = getCandidateAssignmentForExam(
+        cand,
+        resolvedExam,
+        cmsData.examSlots || [],
+        cmsData.rooms
+      );
+
+      const matchRoom =
+        viewMode !== "emargement" ||
+        selectedRoomName === "all" ||
+        assignment.roomName === selectedRoomName;
+
       const q = searchQuery.toLowerCase().trim();
       const matchQuery =
         !q ||
         cand.firstName.toLowerCase().includes(q) ||
         cand.lastName.toLowerCase().includes(q) ||
-        cand.roomName.toLowerCase().includes(q) ||
+        assignment.roomName.toLowerCase().includes(q) ||
         cand.className.toLowerCase().includes(q);
-      return matchClass && matchExam && matchQuery;
+
+      return matchClass && matchExam && matchRoom && matchQuery;
     });
-  }, [cmsData.candidates, selectedClass, selectedExam, searchQuery]);
+  }, [cmsData.candidates, cmsData.examSlots, cmsData.rooms, selectedClass, selectedExam, activeExamObj, resolveExamForCandidate, selectedRoomName, viewMode, searchQuery]);
 
   // Selected candidate object (default to first matching)
   const currentCandidate = useMemo(() => {
     if (selectedCandidateId) {
-      const found = cmsData.candidates.find((c) => c.id === selectedCandidateId);
+      const found = filteredCandidates.find((c) => c.id === selectedCandidateId);
       if (found) return found;
     }
     return filteredCandidates[0] || null;
-  }, [selectedCandidateId, cmsData.candidates, filteredCandidates]);
+  }, [selectedCandidateId, filteredCandidates]);
 
-  // Teacher surveillances
+  // Teacher surveillances (filtered by teacher and exam when selected)
   const teacherSurveillances = useMemo(() => {
-    if (selectedTeacherName === "all") return cmsData.surveillances;
-    return cmsData.surveillances.filter((s) =>
-      s.teacherName.toLowerCase().includes(selectedTeacherName.toLowerCase())
-    );
-  }, [cmsData.surveillances, selectedTeacherName]);
+    return cmsData.surveillances
+      .filter((s) => {
+        const matchTeacher =
+          selectedTeacherName === "all" ||
+          s.teacherName.toLowerCase().includes(selectedTeacherName.toLowerCase());
+        const matchExam =
+          selectedExam === "all" ||
+          (s.examTitle || "").trim().toLowerCase() === selectedExam.trim().toLowerCase();
+        return matchTeacher && matchExam;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date) || a.timeSlot.localeCompare(b.timeSlot));
+  }, [cmsData.surveillances, selectedTeacherName, selectedExam]);
 
   // Print triggered with personalized file naming for PDF download
   const handlePrint = () => {
@@ -103,118 +196,37 @@ export default function ConvocationsPage() {
     }, 2000);
   };
 
-  // Helper to build simulated timetable for candidate's exam
+  // Real exam timetable strictly matching candidate's session, school level and optional specialty
   const getExamScheduleForCandidate = (cand: CmsCandidate) => {
-    const isTiersTemps =
-      cand.accommodation &&
-      (cand.accommodation.toLowerCase().includes("tiers") ||
-        cand.accommodation.toLowerCase().includes("aménag"));
+    const isTT = isCandidateTiersTemps(cand);
+    const resolvedExam = resolveExamForCandidate(cand);
+    const assignment = getCandidateAssignmentForExam(
+      cand,
+      resolvedExam,
+      cmsData.examSlots || [],
+      cmsData.rooms
+    );
+    const matchingSlots = getCandidateMatchingSlots(
+      cand,
+      resolvedExam,
+      cmsData.examSlots || []
+    );
 
-    const isBac = cand.className.includes("1ère") || cand.className.includes("Terminale") || cand.examName.toLowerCase().includes("bac");
-    const is3eme = cand.className.includes("3ème") || cand.examName.toLowerCase().includes("dnb");
-
-    if (isBac) {
-      return [
-        {
-          discipline: "Épreuve écrite de Spécialité 1 / Français",
-          date: "Mercredi 08 Avril 2026",
-          appel: isTiersTemps ? "07h30" : "07h45",
-          debut: "08h00",
-          fin: isTiersTemps ? "13h20 (+1/3)" : "12h00",
-          salle: cand.roomName || "Salle S12",
-          table: `Table N° ${(cand.id.replace(/\D/g, "") || "12").slice(-2)}`,
-          materiel: "Calculatrice mode examen autorisée",
-        },
-        {
-          discipline: "Épreuve écrite de Spécialité 2 / Philosophie",
-          date: "Jeudi 09 Avril 2026",
-          appel: isTiersTemps ? "07h30" : "07h45",
-          debut: "08h00",
-          fin: isTiersTemps ? "13h20 (+1/3)" : "12h00",
-          salle: cand.roomName || "Salle S12",
-          table: `Table N° ${(cand.id.replace(/\D/g, "") || "12").slice(-2)}`,
-          materiel: "Matériel d'écriture usuel, calculatrice interdite",
-        },
-        {
-          discipline: "Épreuve d'Histoire-Géographie & Langues Vivantes",
-          date: "Vendredi 10 Avril 2026",
-          appel: isTiersTemps ? "13h15" : "13h30",
-          debut: "13h45",
-          fin: isTiersTemps ? "17h00 (+1/3)" : "16h00",
-          salle: cand.roomName || "Salle S12",
-          table: `Table N° ${(cand.id.replace(/\D/g, "") || "12").slice(-2)}`,
-          materiel: "Crayons de couleur pour croquis autorisés",
-        },
-      ];
-    }
-
-    if (is3eme) {
-      return [
-        {
-          discipline: "Français 1ère partie (Grammaire, Compréhension, Dictée)",
-          date: "Mardi 03 Février 2026",
-          appel: isTiersTemps ? "07h30" : "07h45",
-          debut: "08h00",
-          fin: isTiersTemps ? "10h10 (+1/3)" : "09h30",
-          salle: cand.roomName || "Salle S14",
-          table: `Table N° ${(cand.id.replace(/\D/g, "") || "05").slice(-2)}`,
-          materiel: "Dictionnaire interdit pour la dictée",
-        },
-        {
-          discipline: "Français 2ème partie (Rédaction / Expression écrite)",
-          date: "Mardi 03 Février 2026",
-          appel: "09h45",
-          debut: "10h00",
-          fin: isTiersTemps ? "12h00 (+1/3)" : "11h30",
-          salle: cand.roomName || "Salle S14",
-          table: `Table N° ${(cand.id.replace(/\D/g, "") || "05").slice(-2)}`,
-          materiel: "Dictionnaire unilingue français autorisé",
-        },
-        {
-          discipline: "Mathématiques",
-          date: "Mardi 03 Février 2026",
-          appel: isTiersTemps ? "13h15" : "13h30",
-          debut: "13h45",
-          fin: isTiersTemps ? "16h25 (+1/3)" : "15h45",
-          salle: cand.roomName || "Salle S14",
-          table: `Table N° ${(cand.id.replace(/\D/g, "") || "05").slice(-2)}`,
-          materiel: "Calculatrice mode examen, instruments de géométrie",
-        },
-        {
-          discipline: "Histoire-Géographie & Enseignement Moral et Civique",
-          date: "Mercredi 04 Février 2026",
-          appel: isTiersTemps ? "07h30" : "07h45",
-          debut: "08h00",
-          fin: isTiersTemps ? "10h40 (+1/3)" : "10h00",
-          salle: cand.roomName || "Salle S14",
-          table: `Table N° ${(cand.id.replace(/\D/g, "") || "05").slice(-2)}`,
-          materiel: "Matériel d'écriture, crayons de couleur",
-        },
-        {
-          discipline: "Sciences (Physique-Chimie / SVT / Technologie)",
-          date: "Mercredi 04 Février 2026",
-          appel: "10h15",
-          debut: "10h30",
-          fin: isTiersTemps ? "11h50 (+1/3)" : "11h30",
-          salle: cand.roomName || "Salle S14",
-          table: `Table N° ${(cand.id.replace(/\D/g, "") || "05").slice(-2)}`,
-          materiel: "Calculatrice autorisée",
-        },
-      ];
-    }
-
-    return [
-      {
-        discipline: cand.examName || "Épreuve principale",
-        date: "Session officielle 2026",
-        appel: cand.convocationTime || "07h45",
-        debut: "08h00",
-        fin: isTiersTemps ? "12h40 (+1/3)" : "12h00",
-        salle: cand.roomName || "Salle d'examen",
-        table: `Table N° ${(cand.id.replace(/\D/g, "") || "01").slice(-2)}`,
-        materiel: "Réglementaire selon discipline",
-      },
-    ];
+    return matchingSlots.map((slot) => {
+      const endTimeDisplay = isTT
+        ? slot.tiersTempsEndTime || computeTTEndTime(slot.startTime, slot.durationMinutes)
+        : slot.endTime;
+      return {
+        discipline: slot.targetSpecialty ? `${slot.subject} (${slot.targetSpecialty})` : slot.subject,
+        date: slot.date,
+        appel: computeCallTime15(slot.startTime),
+        debut: slot.startTime,
+        fin: isTT ? `${endTimeDisplay} (+1/3)` : endTimeDisplay,
+        salle: assignment.roomName || (slot.roomNames && slot.roomNames[0]) || "Salle d'examen",
+        table: assignment.tableNumber ? `Table N° ${assignment.tableNumber}` : "Libre",
+        materiel: slot.notes || "Matériel réglementaire",
+      };
+    });
   };
 
   return (
@@ -316,9 +328,26 @@ export default function ConvocationsPage() {
       {/* Filter Bar for Active Mode - Hidden on Print */}
       <div className="print:hidden max-w-7xl mx-auto px-4 py-4">
         <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-xs flex flex-wrap items-center gap-3">
+          {/* Session filter available across all views */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 font-medium">Session :</span>
+            <select
+              value={selectedExam}
+              onChange={(e) => setSelectedExam(e.target.value)}
+              className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[240px]"
+            >
+              <option value="all">Toutes les sessions</option>
+              {examsList.map((ex) => (
+                <option key={ex} value={ex}>
+                  {ex}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {viewMode === "candidat" || viewMode === "classe_lot" ? (
             <>
-              <div className="flex-1 min-w-[200px]">
+              <div className="flex-1 min-w-[180px]">
                 <div className="relative">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
@@ -338,7 +367,7 @@ export default function ConvocationsPage() {
                   onChange={(e) => setSelectedClass(e.target.value)}
                   className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="all">Toutes les classes ({cmsData.candidates.length} élèves)</option>
+                  <option value="all">Toutes ({cmsData.candidates.length} élèves)</option>
                   {classesList.map((cl) => (
                     <option key={cl} value={cl}>
                       {cl}
@@ -399,21 +428,6 @@ export default function ConvocationsPage() {
                   ))}
                 </select>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500 font-medium">Session d'examen :</span>
-                <select
-                  value={selectedExam}
-                  onChange={(e) => setSelectedExam(e.target.value)}
-                  className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="all">Toutes les sessions</option>
-                  {examsList.map((ex) => (
-                    <option key={ex} value={ex}>
-                      {ex}
-                    </option>
-                  ))}
-                </select>
-              </div>
             </>
           )}
 
@@ -430,17 +444,28 @@ export default function ConvocationsPage() {
       </div>
 
       {/* Main Content Area */}
-      <main className="max-w-4xl mx-auto px-4 pb-16 print:p-0 print:max-w-none">
+      <main className="max-w-4xl mx-auto px-4 pb-16 print:p-0 print:max-w-none print:w-full">
         {/* VIEW MODE 1: SINGLE CANDIDATE OFFICIAL CONVOCATION */}
         {viewMode === "candidat" && (
           <div>
-            {currentCandidate ? (
-              <CandidateConvocationSheet
-                candidate={currentCandidate}
-                schedule={getExamScheduleForCandidate(currentCandidate)}
-                schoolYear={cmsData.siteInfo.schoolYear || "2025-2026"}
-              />
-            ) : (
+            {currentCandidate ? (() => {
+              const resolvedExam = resolveExamForCandidate(currentCandidate);
+              const candAssign = getCandidateAssignmentForExam(
+                currentCandidate,
+                resolvedExam,
+                cmsData.examSlots || [],
+                cmsData.rooms
+              );
+              return (
+                <CandidateConvocationSheet
+                  candidate={currentCandidate}
+                  resolvedExam={resolvedExam}
+                  assignment={candAssign}
+                  schedule={getExamScheduleForCandidate(currentCandidate)}
+                  schoolYear={cmsData.siteInfo.schoolYear || "2026-2027"}
+                />
+              );
+            })() : (
               <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-500">
                 <GraduationCap className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                 <p className="font-semibold text-slate-700">Aucun candidat correspondant</p>
@@ -460,43 +485,57 @@ export default function ConvocationsPage() {
               <div>
                 <p className="font-bold">Mode Impression par Lot (Format A4)</p>
                 <p className="mt-0.5">
-                  Chaque convocation est automatiquement mise en page pour remplir exactement une page A4 avec saut de page automatique lors de l'impression. Cliquez sur le bouton "Imprimer (A4)" en haut pour lancer l'impression de tout le paquet de la classe.
+                  Chaque convocation est automatiquement mise en page pour remplir exactement une page A4 avec saut de page automatique lors de l&apos;impression. Cliquez sur le bouton &quot;Imprimer (A4)&quot; en haut pour lancer l&apos;impression de tout le paquet.
                 </p>
               </div>
             </div>
 
-            {filteredCandidates.map((cand, idx) => (
-              <div key={cand.id} className="print:break-after-page mb-8 print:mb-0">
-                <CandidateConvocationSheet
-                  candidate={cand}
-                  schedule={getExamScheduleForCandidate(cand)}
-                  schoolYear={cmsData.siteInfo.schoolYear || "2025-2026"}
-                  batchIndex={idx + 1}
-                  batchTotal={filteredCandidates.length}
-                />
-              </div>
-            ))}
+            {filteredCandidates.map((cand, idx) => {
+              const resolvedExam = resolveExamForCandidate(cand);
+              const candAssign = getCandidateAssignmentForExam(
+                cand,
+                resolvedExam,
+                cmsData.examSlots || [],
+                cmsData.rooms
+              );
+              return (
+                <div key={cand.id} className="print:break-after-page mb-8 print:mb-0">
+                  <CandidateConvocationSheet
+                    candidate={cand}
+                    resolvedExam={resolvedExam}
+                    assignment={candAssign}
+                    schedule={getExamScheduleForCandidate(cand)}
+                    schoolYear={cmsData.siteInfo.schoolYear || "2026-2027"}
+                    batchIndex={idx + 1}
+                    batchTotal={filteredCandidates.length}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
 
         {/* VIEW MODE 3: TEACHER SURVEILLANCES & MISSION ORDERS */}
         {viewMode === "enseignant" && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-xs print:shadow-none print:border-none print:p-0">
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-xs print:shadow-none print:border-none print:p-0 print:w-full">
             {/* Header */}
-            <div className="border-b-2 border-slate-900 pb-4 mb-6 flex items-start justify-between">
+            <div className="border-b-2 border-slate-900 pb-4 mb-5 flex items-start justify-between gap-3 print-avoid-break">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                  RÉPUBLIQUE FRANÇAISE • MINISTÈRE DE L'ÉDUCATION NATIONALE
+                  RÉPUBLIQUE FRANÇAISE • MINISTÈRE DE L&apos;ÉDUCATION NATIONALE
                 </p>
                 <p className="text-xs font-semibold text-slate-700">
                   LYCÉE FRANÇAIS JACQUES PRÉVERT — SALY (SÉNÉGAL)
                 </p>
                 <h2 className="text-lg font-bold text-slate-900 mt-1">
-                  ORDRE DE MISSION & PLANNING DE SURVEILLANCE DES EXAMENS BLANCS
+                  ORDRE DE MISSION &amp; PLANNING DE SURVEILLANCE
                 </h2>
-                <p className="text-xs text-slate-500">Année scolaire {cmsData.siteInfo.schoolYear || "2025-2026"}</p>
+                <p className="text-xs text-slate-500">
+                  Année scolaire {cmsData.siteInfo.schoolYear || "2026-2027"}
+                  {selectedExam !== "all" ? ` • Session : ${selectedExam}` : ""}
+                </p>
               </div>
-              <div className="text-right">
+              <div className="text-right shrink-0">
                 <span className="inline-block px-3 py-1 rounded bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-300">
                   DOCUMENT OFFICIEL
                 </span>
@@ -504,7 +543,7 @@ export default function ConvocationsPage() {
             </div>
 
             {/* Teacher Details */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4 text-xs">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-5 flex flex-wrap items-center justify-between gap-4 text-xs print-avoid-break">
               <div>
                 <p className="text-slate-500 uppercase font-semibold text-[10px]">Enseignant concerné</p>
                 <p className="text-sm font-bold text-slate-900">
@@ -516,37 +555,50 @@ export default function ConvocationsPage() {
                 <p className="text-sm font-bold text-indigo-600">{teacherSurveillances.length} surveillance(s)</p>
               </div>
               <div>
-                <p className="text-slate-500 uppercase font-semibold text-[10px]">Période</p>
-                <p className="text-sm font-bold text-slate-800">Sessions 2025-2026</p>
+                <p className="text-slate-500 uppercase font-semibold text-[10px]">Session</p>
+                <p className="text-sm font-bold text-slate-800">
+                  {selectedExam === "all" ? `Année ${cmsData.siteInfo.schoolYear || "2026-2027"}` : selectedExam}
+                </p>
               </div>
             </div>
 
             {/* Surveillances Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border border-slate-300">
+            <div className="print-table-wrap">
+              <table className="print-a4-table w-full text-left text-xs border border-slate-300">
                 <thead>
                   <tr className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-300">
-                    <th className="p-2.5 border-r border-slate-300">Date</th>
-                    <th className="p-2.5 border-r border-slate-300">Horaire</th>
-                    <th className="p-2.5 border-r border-slate-300">Examen</th>
-                    <th className="p-2.5 border-r border-slate-300">Professeur</th>
-                    <th className="p-2.5 border-r border-slate-300">Salle</th>
-                    <th className="p-2.5">Rôle / Mission</th>
+                    <th className="p-2 border-r border-slate-300">Date</th>
+                    <th className="p-2 border-r border-slate-300">Horaire</th>
+                    <th className="p-2 border-r border-slate-300">Examen &amp; Épreuve</th>
+                    <th className="p-2 border-r border-slate-300">Professeur</th>
+                    <th className="p-2 border-r border-slate-300">Salle</th>
+                    <th className="p-2">Rôle / Mission</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {teacherSurveillances.map((s) => (
-                    <tr key={s.id} className="hover:bg-slate-50/50">
-                      <td className="p-2.5 font-medium border-r border-slate-200 whitespace-nowrap">{s.date}</td>
-                      <td className="p-2.5 font-semibold text-indigo-700 border-r border-slate-200 whitespace-nowrap">
-                        {s.timeSlot}
-                      </td>
-                      <td className="p-2.5 border-r border-slate-200">{s.examTitle}</td>
-                      <td className="p-2.5 font-medium border-r border-slate-200">{s.teacherName}</td>
-                      <td className="p-2.5 font-semibold text-slate-900 border-r border-slate-200">{s.roomName}</td>
-                      <td className="p-2.5 text-slate-600">{s.mission || "Surveillance principale"}</td>
-                    </tr>
-                  ))}
+                  {teacherSurveillances.map((s) => {
+                    const matchingSlot = (cmsData.examSlots || []).find(
+                      (sl) =>
+                        sl.id === s.slotId ||
+                        (sl.date === s.date &&
+                          sl.examTitle.trim().toLowerCase() === s.examTitle.trim().toLowerCase())
+                    );
+                    return (
+                      <tr key={s.id} className="hover:bg-slate-50/50">
+                        <td className="p-2 font-medium border-r border-slate-200 whitespace-nowrap">{s.date}</td>
+                        <td className="p-2 font-semibold text-indigo-700 border-r border-slate-200 whitespace-nowrap">
+                          {s.timeSlot}
+                        </td>
+                        <td className="p-2 border-r border-slate-200">
+                          <div className="font-semibold text-slate-900">{matchingSlot?.subject || "Épreuve écrite"}</div>
+                          <div className="text-[10px] text-slate-500">{s.examTitle}</div>
+                        </td>
+                        <td className="p-2 font-medium border-r border-slate-200">{s.teacherName}</td>
+                        <td className="p-2 font-semibold text-slate-900 border-r border-slate-200">{s.roomName}</td>
+                        <td className="p-2 text-slate-600">{s.mission || "Surveillance principale"}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -578,68 +630,76 @@ export default function ConvocationsPage() {
 
         {/* VIEW MODE 4: ROOM ATTENDANCE / ÉMARGEMENT SHEET */}
         {viewMode === "emargement" && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-xs print:shadow-none print:border-none print:p-0">
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-xs print:shadow-none print:border-none print:p-0 print:w-full">
             {/* Header */}
-            <div className="border-b-2 border-slate-900 pb-4 mb-6 flex items-start justify-between">
+            <div className="border-b-2 border-slate-900 pb-4 mb-5 flex items-start justify-between gap-3 print-avoid-break">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                   RÉPUBLIQUE FRANÇAISE • AEFE • LYCÉE FRANÇAIS JACQUES PRÉVERT
                 </p>
                 <h2 className="text-xl font-bold text-slate-900 mt-1">
-                  FEUILLE D'ÉMARGEMENT ET DE PRÉSENCE DES CANDIDATS
+                  FEUILLE D&apos;ÉMARGEMENT ET DE PRÉSENCE DES CANDIDATS
                 </h2>
                 <p className="text-xs text-slate-500">
                   Examen : {selectedExam === "all" ? "Toutes épreuves" : selectedExam} • Salle :{" "}
-                  <span className="font-bold text-slate-900">{selectedRoomName}</span>
+                  <span className="font-bold text-slate-900">{selectedRoomName === "all" ? "Toutes" : selectedRoomName}</span>
                 </p>
               </div>
-              <div className="text-right text-xs">
+              <div className="text-right text-xs shrink-0">
                 <p className="font-bold text-slate-900">Total inscrits : {filteredCandidates.length}</p>
-                <p className="text-slate-500">Session 2025-2026</p>
+                <p className="text-slate-500">Session {cmsData.siteInfo.schoolYear || "2026-2027"}</p>
               </div>
             </div>
 
             {/* Candidates attendance table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border border-slate-300">
+            <div className="print-table-wrap">
+              <table className="print-a4-table w-full text-left text-xs border border-slate-300">
                 <thead>
                   <tr className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-300">
-                    <th className="p-2 border-r border-slate-300 w-12 text-center">N° Place</th>
+                    <th className="p-2 border-r border-slate-300 w-12 text-center">Place</th>
                     <th className="p-2 border-r border-slate-300">Nom du Candidat</th>
                     <th className="p-2 border-r border-slate-300">Prénom</th>
                     <th className="p-2 border-r border-slate-300 w-24">Classe</th>
-                    <th className="p-2 border-r border-slate-300 w-28">Aménagement</th>
-                    <th className="p-2 border-r border-slate-300 w-24 text-center">Identité vérifiée</th>
-                    <th className="p-2 w-44 text-center">Signature du candidat</th>
+                    <th className="p-2 border-r border-slate-300 w-24">Aménag.</th>
+                    <th className="p-2 border-r border-slate-300 w-16 text-center">Identité</th>
+                    <th className="p-2 w-36 text-center">Signature</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {filteredCandidates.map((cand, idx) => (
-                    <tr key={cand.id} className="h-10">
-                      <td className="p-2 text-center font-bold text-slate-700 border-r border-slate-200">
-                        {String(idx + 1).padStart(2, "0")}
-                      </td>
-                      <td className="p-2 font-bold text-slate-900 border-r border-slate-200 uppercase">
-                        {cand.lastName}
-                      </td>
-                      <td className="p-2 font-medium text-slate-700 border-r border-slate-200">
-                        {cand.firstName}
-                      </td>
-                      <td className="p-2 font-semibold text-indigo-700 border-r border-slate-200">
-                        {cand.className}
-                      </td>
-                      <td className="p-2 text-[10px] text-slate-600 border-r border-slate-200">
-                        {cand.accommodation || "Standard"}
-                      </td>
-                      <td className="p-2 text-center border-r border-slate-200">
-                        <div className="w-4 h-4 border border-slate-400 mx-auto rounded-xs" />
-                      </td>
-                      <td className="p-2 text-center border-slate-200">
-                        {/* Space for signature */}
-                        <div className="h-6" />
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredCandidates.map((cand, idx) => {
+                    const resolvedExam = resolveExamForCandidate(cand);
+                    const assign = getCandidateAssignmentForExam(
+                      cand,
+                      resolvedExam,
+                      cmsData.examSlots || [],
+                      cmsData.rooms
+                    );
+                    return (
+                      <tr key={cand.id} className="h-10">
+                        <td className="p-2 text-center font-bold text-slate-700 border-r border-slate-200">
+                          {assign.tableNumber || String(idx + 1).padStart(2, "0")}
+                        </td>
+                        <td className="p-2 font-bold text-slate-900 border-r border-slate-200 uppercase">
+                          {cand.lastName}
+                        </td>
+                        <td className="p-2 font-medium text-slate-700 border-r border-slate-200">
+                          {cand.firstName}
+                        </td>
+                        <td className="p-2 font-semibold text-indigo-700 border-r border-slate-200">
+                          {cand.className}
+                        </td>
+                        <td className="p-2 text-[10px] text-slate-600 border-r border-slate-200">
+                          {cand.accommodation || "Standard"}
+                        </td>
+                        <td className="p-2 text-center border-r border-slate-200">
+                          <div className="w-4 h-4 border border-slate-400 mx-auto rounded-xs" />
+                        </td>
+                        <td className="p-2 text-center border-slate-200">
+                          <div className="h-6" />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -681,6 +741,8 @@ export default function ConvocationsPage() {
 // Subcomponent: Individual Official Candidate Convocation Sheet (A4 layout)
 interface CandidateConvocationSheetProps {
   candidate: CmsCandidate;
+  resolvedExam?: CmsExam | null;
+  assignment: { roomName: string; tableNumber: string; anonymatNumber: string };
   schedule: Array<{
     discipline: string;
     date: string;
@@ -698,29 +760,28 @@ interface CandidateConvocationSheetProps {
 
 function CandidateConvocationSheet({
   candidate,
+  resolvedExam,
+  assignment,
   schedule,
   schoolYear,
   batchIndex,
   batchTotal,
 }: CandidateConvocationSheetProps) {
-  const isTiersTemps =
-    candidate.accommodation &&
-    (candidate.accommodation.toLowerCase().includes("tiers") ||
-      candidate.accommodation.toLowerCase().includes("aménag"));
+  const isTiersTemps = isCandidateTiersTemps(candidate);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-300 p-8 shadow-xs print:shadow-none print:border-none print:p-0 print:m-0 text-slate-900 text-xs font-sans">
+    <div className="bg-white rounded-2xl border border-slate-300 p-6 sm:p-8 shadow-xs print:shadow-none print:border-none print:p-0 print:m-0 print:w-full text-slate-900 text-xs font-sans">
       {/* Official Header */}
-      <div className="border-b-2 border-slate-900 pb-3 flex items-start justify-between">
+      <div className="border-b-2 border-slate-900 pb-3 flex items-start justify-between gap-3 print-avoid-break">
         <div>
           <p className="text-[10px] font-bold tracking-wider uppercase text-slate-600">
             RÉPUBLIQUE FRANÇAISE
           </p>
           <p className="text-[10px] font-semibold tracking-wide text-slate-500">
-            MINISTÈRE DE L'ÉDUCATION NATIONALE
+            MINISTÈRE DE L&apos;ÉDUCATION NATIONALE
           </p>
           <p className="text-[10px] font-semibold text-indigo-900">
-            AGENCE POUR L'ENSEIGNEMENT FRANÇAIS À L'ÉTRANGER (AEFE)
+            AGENCE POUR L&apos;ENSEIGNEMENT FRANÇAIS À L&apos;ÉTRANGER (AEFE)
           </p>
           <h2 className="text-sm font-extrabold text-slate-900 mt-0.5">
             LYCÉE FRANÇAIS JACQUES PRÉVERT — SALY (SÉNÉGAL)
@@ -728,7 +789,7 @@ function CandidateConvocationSheet({
           <p className="text-[10px] text-slate-500">Code Établissement AEFE : 332001A</p>
         </div>
 
-        <div className="text-right flex flex-col items-end">
+        <div className="text-right flex flex-col items-end shrink-0">
           <div className="border border-slate-800 px-3 py-1 rounded bg-slate-50 text-center">
             <p className="text-[10px] uppercase font-bold text-slate-500">Document Officiel</p>
             <p className="text-xs font-black text-slate-900">CONVOCATION AUX ÉPREUVES</p>
@@ -743,10 +804,10 @@ function CandidateConvocationSheet({
       </div>
 
       {/* Candidate Identification Box */}
-      <div className="my-5 border border-slate-300 rounded-xl p-4 bg-slate-50/60">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="my-4 border border-slate-300 rounded-xl p-4 bg-slate-50/60 print-avoid-break">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div>
-            <p className="text-[10px] uppercase font-bold text-slate-500">Nom & Prénom</p>
+            <p className="text-[10px] uppercase font-bold text-slate-500">Nom &amp; Prénom</p>
             <p className="text-sm font-extrabold text-slate-900 uppercase">
               {candidate.lastName} {candidate.firstName}
             </p>
@@ -754,11 +815,14 @@ function CandidateConvocationSheet({
           <div>
             <p className="text-[10px] uppercase font-bold text-slate-500">Classe</p>
             <p className="text-sm font-bold text-indigo-700">{candidate.className}</p>
+            {candidate.specialty && (
+              <p className="text-[10px] text-slate-600 font-medium">{candidate.specialty}</p>
+            )}
           </div>
           <div>
             <p className="text-[10px] uppercase font-bold text-slate-500">N° Candidat / Anonymat</p>
             <p className="text-sm font-mono font-bold text-slate-900">
-              LFJP-{(candidate.id.replace(/\D/g, "") || "101").padStart(4, "0")}
+              {assignment.anonymatNumber || `LFJP-${(candidate.id.replace(/\D/g, "") || "101").padStart(4, "0")}`}
             </p>
           </div>
           <div>
@@ -775,92 +839,106 @@ function CandidateConvocationSheet({
           </div>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-600">
+        <div className="mt-3 pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-600">
           <div>
             <span className="font-semibold">Examen : </span>
-            <span>{candidate.examName || "Baccalauréat / DNB Blanc"}</span>
+            <span className="font-bold text-slate-900">
+              {resolvedExam?.title || candidate.examName || "Examen Blanc"}
+            </span>
+            {resolvedExam?.period ? ` (${resolvedExam.period})` : ""}
           </div>
           <div>
-            <span className="font-semibold">Centre d'examen : </span>
-            <span>LFJP Saly (Bâtiment Principal)</span>
+            <span className="font-semibold">Salle &amp; Place : </span>
+            <span className="font-bold text-[#002060]">
+              {assignment.roomName || "En cours d'attribution"}
+              {assignment.tableNumber ? ` (Table ${assignment.tableNumber})` : ""}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Timetable Table */}
-      <div className="mb-5">
+      <div className="mb-4">
         <p className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-2 flex items-center gap-1.5">
           <Calendar className="w-3.5 h-3.5 text-indigo-600" />
           <span>Calendrier et Horaires des Épreuves</span>
         </p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border border-slate-300">
+        <div className="print-table-wrap">
+          <table className="print-a4-table w-full text-left border border-slate-300">
             <thead>
               <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300 text-[11px]">
                 <th className="p-2 border-r border-slate-300">Date</th>
-                <th className="p-2 border-r border-slate-300 w-16 text-center">Appel</th>
-                <th className="p-2 border-r border-slate-300 w-28 text-center">Épreuve</th>
+                <th className="p-2 border-r border-slate-300 text-center">Appel</th>
+                <th className="p-2 border-r border-slate-300 text-center">Épreuve</th>
                 <th className="p-2 border-r border-slate-300">Matière / Discipline</th>
-                <th className="p-2 border-r border-slate-300 w-24">Salle</th>
-                <th className="p-2 border-r border-slate-300 w-20">Place</th>
+                <th className="p-2 border-r border-slate-300">Salle</th>
+                <th className="p-2 border-r border-slate-300">Place</th>
                 <th className="p-2">Matériel</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-[11px]">
-              {schedule.map((slot, i) => (
-                <tr key={i} className="hover:bg-slate-50">
-                  <td className="p-2 font-semibold border-r border-slate-200 whitespace-nowrap">{slot.date}</td>
-                  <td className="p-2 text-center font-bold text-rose-700 border-r border-slate-200">
-                    {slot.appel}
+              {schedule.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-3 text-center text-slate-500 italic">
+                    Aucune épreuve programmée pour votre niveau ({candidate.className}) sur cette session.
                   </td>
-                  <td className="p-2 text-center font-mono font-medium border-r border-slate-200">
-                    {slot.debut} - {slot.fin}
-                  </td>
-                  <td className="p-2 font-bold text-slate-900 border-r border-slate-200">{slot.discipline}</td>
-                  <td className="p-2 font-semibold text-indigo-700 border-r border-slate-200 whitespace-nowrap">
-                    {slot.salle}
-                  </td>
-                  <td className="p-2 font-mono text-slate-700 border-r border-slate-200 whitespace-nowrap">
-                    {slot.table}
-                  </td>
-                  <td className="p-2 text-[10px] text-slate-500">{slot.materiel}</td>
                 </tr>
-              ))}
+              ) : (
+                schedule.map((slot, i) => (
+                  <tr key={i} className="hover:bg-slate-50">
+                    <td className="p-2 font-semibold border-r border-slate-200 whitespace-nowrap">{slot.date}</td>
+                    <td className="p-2 text-center font-bold text-rose-700 border-r border-slate-200 whitespace-nowrap">
+                      {slot.appel}
+                    </td>
+                    <td className="p-2 text-center font-mono font-medium border-r border-slate-200 whitespace-nowrap">
+                      {slot.debut} - {slot.fin}
+                    </td>
+                    <td className="p-2 font-bold text-slate-900 border-r border-slate-200">{slot.discipline}</td>
+                    <td className="p-2 font-semibold text-indigo-700 border-r border-slate-200 whitespace-nowrap">
+                      {slot.salle}
+                    </td>
+                    <td className="p-2 font-mono text-slate-700 border-r border-slate-200 whitespace-nowrap">
+                      {slot.table}
+                    </td>
+                    <td className="p-2 text-[10px] text-slate-500">{slot.materiel}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
       {/* Official Instructions */}
-      <div className="border border-slate-300 rounded-xl p-3 bg-amber-50/50 mb-5 text-[10px] text-slate-700 space-y-1 leading-relaxed">
+      <div className="border border-slate-300 rounded-xl p-3 bg-amber-50/50 mb-4 text-[10px] text-slate-700 space-y-1 leading-relaxed print-avoid-break">
         <p className="font-bold text-amber-950 uppercase flex items-center gap-1">
           <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
           <span>Consignes Réglementaires Impératives aux Candidats</span>
         </p>
         <p>
-          <strong>1. Présentation obligatoire :</strong> Vous devez impérativement vous présenter à l'heure d'appel indiquée (15 minutes avant le début des épreuves), muni(e) de la présente convocation et d'une pièce d'identité officielle avec photographie récente (carte d'identité, passeport ou carnet de correspondance).
+          <strong>1. Présentation obligatoire :</strong> Vous devez impérativement vous présenter à l&apos;heure d&apos;appel indiquée (15 minutes avant le début des épreuves), muni(e) de la présente convocation et d&apos;une pièce d&apos;identité officielle avec photographie récente (carte d&apos;identité, passeport ou carnet de correspondance).
         </p>
         <p>
-          <strong>2. Appareils électroniques strictement interdits :</strong> Les téléphones portables, montres connectées, écouteurs et tout dispositif connecté doivent être éteints dès l'entrée dans le centre et rangés au fond du sac. Toute possession d'un appareil connecté en cours d'épreuve est assimilée à une tentative de fraude.
+          <strong>2. Appareils électroniques strictement interdits :</strong> Les téléphones portables, montres connectées, écouteurs et tout dispositif connecté doivent être éteints dès l&apos;entrée dans le centre et rangés au fond du sac. Toute possession d&apos;un appareil connecté en cours d&apos;épreuve est assimilée à une tentative de fraude.
         </p>
         <p>
-          <strong>3. Retards :</strong> Aucun candidat ne sera admis en salle après l'ouverture des enveloppes de sujets au-delà d'un délai d'une heure. Aucun temps supplémentaire ne sera accordé pour compenser un retard.
+          <strong>3. Retards :</strong> Aucun candidat ne sera admis en salle après l&apos;ouverture des enveloppes de sujets au-delà d&apos;un délai d&apos;une heure. Aucun temps supplémentaire ne sera accordé pour compenser un retard.
         </p>
         <p>
-          <strong>4. Aménagements 1/3 Temps :</strong> Pour les élèves bénéficiant d'un aménagement horaire validé par la commission médicale, les horaires de fin d'épreuve tiennent compte de la majoration d'un tiers temps (+33%).
+          <strong>4. Aménagements 1/3 Temps :</strong> Pour les élèves bénéficiant d&apos;un aménagement horaire validé par la commission médicale, les horaires de fin d&apos;épreuve tiennent compte de la majoration d&apos;un tiers temps (+33%).
         </p>
       </div>
 
       {/* Official Signature and Stamp Box */}
-      <div className="grid grid-cols-2 gap-6 pt-3 border-t border-slate-300 text-xs">
+      <div className="grid grid-cols-2 gap-6 pt-3 border-t border-slate-300 text-xs print-avoid-break">
         <div>
           <p className="text-[10px] text-slate-500">Fait à Saly, le {new Date().toLocaleDateString("fr-FR")}</p>
-          <p className="text-[10px] text-slate-500 mt-0.5">Signature de l'élève ou du responsable légal :</p>
+          <p className="text-[10px] text-slate-500 mt-0.5">Signature de l&apos;élève ou du responsable légal :</p>
           <div className="h-14" />
         </div>
         <div className="text-right">
           <p className="font-bold text-slate-900">Le Proviseur du LFJP Saly</p>
-          <p className="text-[10px] text-slate-500">Cachet de l'établissement</p>
+          <p className="text-[10px] text-slate-500">Cachet de l&apos;établissement</p>
           <div className="h-14 flex items-center justify-end">
             <div className="w-24 h-12 border-2 border-indigo-900/30 rounded-lg flex items-center justify-center text-[9px] font-bold text-indigo-900/40 uppercase tracking-widest rotate-[-6deg]">
               SCEAU LFJP
