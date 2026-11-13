@@ -506,7 +506,8 @@ export default function AdminPage() {
     setIsSyncing(true);
     setDeployProgress(15);
     setDeployActiveStepIndex(0);
-    const roleName = adminSession?.role === "proviseur" ? "la Direction (Mme / M. le Proviseur)" : "le Super-Administrateur";
+    const isProviseur = adminSession?.role === "proviseur";
+    const roleName = isProviseur ? "la Direction (Mme / M. le Proviseur)" : "le Super-Administrateur";
     const startTimeStr = new Date().toLocaleTimeString("fr-FR");
     setDeployLogs([
       `[${startTimeStr}] 🚀 Lancement de la publication en ligne initié par ${roleName}...`,
@@ -515,7 +516,7 @@ export default function AdminPage() {
 
     try {
       // Étape 1 : Sauvegarde locale immédiate avec horodatage mondial
-      setDeployStepText("1/4. Enregistrement des données locales & horodatage...");
+      setDeployStepText("1/4. Enregistrement des données & horodatage...");
       const updatedData: CmsData = {
         ...cmsData,
         updatedAt: new Date().toISOString(),
@@ -532,13 +533,19 @@ export default function AdminPage() {
       setDeployLogs((prev) => [
         ...prev,
         `[${new Date().toLocaleTimeString("fr-FR")}] ✓ Données locales sauvegardées (${updatedData.candidates.length} candidats, ${updatedData.exams.length} examens, ${updatedData.rooms.length} salles, ${updatedData.examSlots?.length || 0} créneaux).`,
-        `[${new Date().toLocaleTimeString("fr-FR")}] ⚙️ Préparation du payload Git et des fichiers public/cms-data.json...`,
+        isProviseur
+          ? `[${new Date().toLocaleTimeString("fr-FR")}] ⚙️ Préparation de la mise à jour du portail...`
+          : `[${new Date().toLocaleTimeString("fr-FR")}] ⚙️ Préparation du payload Git et des fichiers public/cms-data.json...`,
       ]);
 
-      // Étape 2 & 3 : Préparation et envoi vers GitHub
+      // Étape 2 & 3 : Préparation et envoi en ligne
       setDeployProgress(55);
       setDeployActiveStepIndex(2);
-      setDeployStepText("2/4. Transmission sécurisée vers le dépôt GitHub...");
+      setDeployStepText(
+        isProviseur
+          ? "2/4. Synchronisation sécurisée du portail en ligne..."
+          : "2/4. Transmission sécurisée vers le dépôt GitHub..."
+      );
 
       const tokenToPass = (
         customToken ||
@@ -548,7 +555,7 @@ export default function AdminPage() {
         DEFAULT_GITHUB_TOKEN
       ).trim();
       const now = new Date();
-      const authorLabel = adminSession?.role === "proviseur" ? "Direction / Proviseur" : "Super-Administrateur";
+      const authorLabel = isProviseur ? "Direction / Proviseur" : "Super-Administrateur";
       const commitMsg = `Mise à jour par ${authorLabel} (${now.toLocaleDateString("fr-FR")} à ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })})`;
 
       const res = await pushCmsChangesToGitHub({
@@ -556,10 +563,17 @@ export default function AdminPage() {
         commitMessage: commitMsg,
         overrideToken: tokenToPass,
         onProgress: (status) => {
-          setDeployStepText(status);
+          const cleanStatus = isProviseur
+            ? status.includes("atomique") || status.includes("GitHub")
+              ? "Mise à jour du portail en ligne en cours..."
+              : status.includes("réussi") || status.includes("build")
+              ? "Finalisation de la publication en ligne..."
+              : status
+            : status;
+          setDeployStepText(cleanStatus);
           setDeployLogs((prev) => [
             ...prev,
-            `[${new Date().toLocaleTimeString("fr-FR")}] ${status}`,
+            `[${new Date().toLocaleTimeString("fr-FR")}] ${cleanStatus}`,
           ]);
           if (status.includes("Déploiement atomique de tous les fichiers")) {
             setDeployProgress(75);
@@ -579,19 +593,22 @@ export default function AdminPage() {
         setDeployStepText("Publication en ligne réussie !");
         setDeployLogs((prev) => [
           ...prev,
-          `[${new Date().toLocaleTimeString("fr-FR")}] 🎉 Succès : Commit GitHub ${res.commitSha ? res.commitSha.slice(0, 7) : ""} validé sur la branche main !`,
-          `[${new Date().toLocaleTimeString("fr-FR")}] 🌐 Vercel redéploie le site en direct (examens-blanc-lfjp.vercel.app).`,
+          `[${new Date().toLocaleTimeString("fr-FR")}] 🎉 Succès : Mise à jour publiée en ligne !`,
           `[${new Date().toLocaleTimeString("fr-FR")}] ✓ Données propagées sur tous les appareils et navigateurs.`,
         ]);
-        showNotification("✓ Enregistré et déployé avec succès sur GitHub & Vercel ! Le site en ligne sera à jour.");
+        showNotification(
+          isProviseur
+            ? "✓ Modifications enregistrées et publiées en ligne avec succès !"
+            : "✓ Enregistré et déployé avec succès sur GitHub & Vercel ! Le site en ligne sera à jour."
+        );
       } else {
         setDeployProgress(100);
-        setDeployStepText(`Échec : ${res.error || "Erreur de déploiement"}`);
+        setDeployStepText(`Échec : ${res.error || "Erreur de mise à jour"}`);
         setDeployLogs((prev) => [
           ...prev,
-          `[${new Date().toLocaleTimeString("fr-FR")}] ❌ Erreur : ${res.error || "Échec de connexion ou d'écriture sur GitHub."}`,
+          `[${new Date().toLocaleTimeString("fr-FR")}] ❌ Erreur : ${res.error || "Échec de synchronisation en ligne."}`,
         ]);
-        showNotification(`❌ Erreur de déploiement : ${res.error || "Échec"}`);
+        showNotification(`❌ Erreur de mise à jour : ${res.error || "Échec"}`);
       }
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
@@ -1136,7 +1153,11 @@ export default function AdminPage() {
               onClick={handleUnifiedSaveAndDeploy}
               disabled={isSyncing}
               className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-              title="Enregistrer toutes les modifications et déployer en direct sur le site en ligne (Vercel) en 1 clic"
+              title={
+                adminSession?.role === "proviseur"
+                  ? "Enregistrer toutes les modifications et publier en direct"
+                  : "Enregistrer toutes les modifications et déployer en direct sur le site en ligne (Vercel) en 1 clic"
+              }
             >
               {isSyncing ? (
                 <>
@@ -1207,7 +1228,9 @@ export default function AdminPage() {
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Enregistrement des modifications et synchronisation directe vers GitHub & Vercel
+                      {adminSession?.role === "proviseur"
+                        ? "Enregistrement des modifications et mise à jour du portail public LFJP"
+                        : "Enregistrement des modifications et synchronisation directe vers GitHub & Vercel"}
                     </p>
                   </div>
                 </div>
@@ -1263,28 +1286,52 @@ export default function AdminPage() {
 
                 {/* 4 Phases de Lancement */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-                  {[
-                    {
-                      label: "1. Sauvegarde des données",
-                      desc: "Élèves, créneaux, examens & salles",
-                      stepIdx: 0,
-                    },
-                    {
-                      label: "2. Préparation du code",
-                      desc: "Payloads Git & public/cms-data.json",
-                      stepIdx: 1,
-                    },
-                    {
-                      label: "3. Commit & Push GitHub",
-                      desc: "informatique-cmd/examens_blanc_lfjp",
-                      stepIdx: 2,
-                    },
-                    {
-                      label: "4. Publication Vercel",
-                      desc: "examens-blanc-lfjp.vercel.app",
-                      stepIdx: 3,
-                    },
-                  ].map((step) => {
+                  {(adminSession?.role === "proviseur"
+                    ? [
+                        {
+                          label: "1. Sauvegarde des données",
+                          desc: "Élèves, créneaux, examens & salles",
+                          stepIdx: 0,
+                        },
+                        {
+                          label: "2. Préparation du portail",
+                          desc: "Plannings, convocations & consignes",
+                          stepIdx: 1,
+                        },
+                        {
+                          label: "3. Synchronisation sécurisée",
+                          desc: "Enregistrement en ligne LFJP",
+                          stepIdx: 2,
+                        },
+                        {
+                          label: "4. Mise en ligne",
+                          desc: "Portail public & convocations à jour",
+                          stepIdx: 3,
+                        },
+                      ]
+                    : [
+                        {
+                          label: "1. Sauvegarde des données",
+                          desc: "Élèves, créneaux, examens & salles",
+                          stepIdx: 0,
+                        },
+                        {
+                          label: "2. Préparation du code",
+                          desc: "Payloads Git & public/cms-data.json",
+                          stepIdx: 1,
+                        },
+                        {
+                          label: "3. Commit & Push GitHub",
+                          desc: "informatique-cmd/examens_blanc_lfjp",
+                          stepIdx: 2,
+                        },
+                        {
+                          label: "4. Publication Vercel",
+                          desc: "examens-blanc-lfjp.vercel.app",
+                          stepIdx: 3,
+                        },
+                      ]
+                  ).map((step) => {
                     const isDone = deployActiveStepIndex > step.stepIdx;
                     const isActive = deployActiveStepIndex === step.stepIdx && isSyncing;
                     const isFailed =
@@ -1324,31 +1371,33 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Journal d'Exécution en Direct */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] text-slate-500 font-semibold px-1">
-                  <span>Journal de synchronisation en direct</span>
-                  <span>{deployLogs.length} étape(s)</span>
+              {/* Journal d'Exécution en Direct (SuperAdmin uniquement) */}
+              {adminSession?.role === "superadmin" && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 font-semibold px-1">
+                    <span>Journal de synchronisation en direct</span>
+                    <span>{deployLogs.length} étape(s)</span>
+                  </div>
+                  <div className="h-28 overflow-y-auto rounded-xl bg-slate-900 p-3 font-mono text-[11px] text-emerald-400 border border-slate-800 space-y-1 shadow-inner">
+                    {deployLogs.map((log, i) => (
+                      <div
+                        key={i}
+                        className={
+                          log.includes("❌")
+                            ? "text-rose-400 font-bold"
+                            : log.includes("🎉")
+                            ? "text-emerald-300 font-bold"
+                            : log.includes("🚀")
+                            ? "text-sky-300 font-bold"
+                            : "text-slate-300"
+                        }
+                      >
+                        {log}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="h-28 overflow-y-auto rounded-xl bg-slate-900 p-3 font-mono text-[11px] text-emerald-400 border border-slate-800 space-y-1 shadow-inner">
-                  {deployLogs.map((log, i) => (
-                    <div
-                      key={i}
-                      className={
-                        log.includes("❌")
-                          ? "text-rose-400 font-bold"
-                          : log.includes("🎉")
-                          ? "text-emerald-300 font-bold"
-                          : log.includes("🚀")
-                          ? "text-sky-300 font-bold"
-                          : "text-slate-300"
-                      }
-                    >
-                      {log}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              )}
 
               {/* Résultat : Succès de la publication */}
               {deployResult?.success && (
@@ -1359,10 +1408,12 @@ export default function AdminPage() {
                     </div>
                     <div>
                       <p className="font-bold text-sm text-emerald-950">
-                        Déploiement en ligne finalisé avec succès !
+                        Publication en ligne finalisée avec succès !
                       </p>
                       <p className="text-xs text-emerald-800">
-                        Vercel a reçu le commit et redéploie le site mondialement. Toutes vos données sont désormais à jour pour tous les utilisateurs.
+                        {adminSession?.role === "proviseur"
+                          ? "Toutes vos modifications sont enregistrées et visibles sur le portail public."
+                          : "Vercel a reçu le commit et redéploie le site mondialement. Toutes vos données sont désormais à jour pour tous les utilisateurs."}
                       </p>
                     </div>
                   </div>
@@ -1375,13 +1426,13 @@ export default function AdminPage() {
                       className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white shadow hover:bg-emerald-700 transition active:scale-95 cursor-pointer"
                     >
                       <ExternalLink className="h-4 w-4" />
-                      <span>Voir le site en ligne (Vercel) ↗</span>
+                      <span>Voir le site en ligne ↗</span>
                     </a>
                     <button
                       onClick={() => setIsDeployProgressModalOpen(false)}
                       className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-xs hover:bg-slate-50 transition cursor-pointer"
                     >
-                      Fermer & Continuer
+                      Fermer &amp; Continuer
                     </button>
                   </div>
                 </div>
@@ -1393,15 +1444,22 @@ export default function AdminPage() {
                   <div className="flex items-start gap-3">
                     <AlertTriangle className="h-6 w-6 text-rose-600 shrink-0 mt-0.5" />
                     <div className="min-w-0 flex-1">
-                      <p className="font-bold text-sm text-rose-950">Échec du déploiement GitHub</p>
+                      <p className="font-bold text-sm text-rose-950">
+                        {adminSession?.role === "proviseur"
+                          ? "Échec de la mise à jour en ligne"
+                          : "Échec du déploiement GitHub"}
+                      </p>
                       <p className="text-xs text-rose-800 mt-0.5 break-words">{deployResult.error}</p>
                       <p className="text-[11px] text-emerald-800 bg-emerald-100/80 border border-emerald-200 rounded-lg px-2.5 py-1.5 mt-2 font-medium">
-                        ✓ Vos données sont bien sauvegardées localement et sur le serveur de l&apos;établissement. Seule la synchronisation distante GitHub/Vercel nécessite un jeton valide.
+                        {adminSession?.role === "proviseur"
+                          ? "✓ Vos données sont bien sauvegardées localement. Veuillez contacter l'administrateur informatique si le problème persiste."
+                          : "✓ Vos données sont bien sauvegardées localement et sur le serveur de l'établissement. Seule la synchronisation distante GitHub/Vercel nécessite un jeton valide."}
                       </p>
                     </div>
                   </div>
 
-                  {/* Inline GitHub PAT update when 401 / credentials / permission issue */}
+                  {/* Inline GitHub PAT update when 401 / credentials / permission issue (SuperAdmin uniquement) */}
+                  {adminSession?.role === "superadmin" && (
                   <div className="rounded-xl border border-rose-200 bg-white p-3.5 space-y-2.5 text-xs">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-bold text-slate-900 flex items-center gap-1.5">
@@ -1482,6 +1540,7 @@ export default function AdminPage() {
                       </p>
                     )}
                   </div>
+                  )}
 
                   <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-rose-200">
                     <button
@@ -1524,7 +1583,7 @@ export default function AdminPage() {
       {/* ------------------------------------------------------------- */}
       {/* MODAL: METTRE À JOUR VERCEL / GITHUB (COMMIT & PUSH DIRECT)  */}
       {/* ------------------------------------------------------------- */}
-      {isSyncModalOpen && (
+      {isSyncModalOpen && adminSession?.role === "superadmin" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
           <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-7 shadow-2xl animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b pb-4">
@@ -2132,10 +2191,16 @@ export default function AdminPage() {
                 <div>
                   <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                     <UploadCloud className="h-5 w-5 text-sky-700" />
-                    <span>Étape 10 : Vitrine Publique & Déploiement Git / Vercel</span>
+                    <span>
+                      {adminSession?.role === "proviseur"
+                        ? "Étape 10 : Vitrine Publique & Publications"
+                        : "Étape 10 : Vitrine Publique & Déploiement Git / Vercel"}
+                    </span>
                   </h2>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Publication officielle des plannings sur la vitrine et synchronisation cloud GitHub & Vercel.
+                    {adminSession?.role === "proviseur"
+                      ? "Publication officielle des plannings, consignes et annonces sur le portail public."
+                      : "Publication officielle des plannings sur la vitrine et synchronisation cloud GitHub & Vercel."}
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 border border-slate-200/80">
@@ -2149,9 +2214,9 @@ export default function AdminPage() {
                     }`}
                   >
                     <Eye className="h-3.5 w-3.5 text-emerald-600" />
-                    <span>Vitrine & Publications</span>
+                    <span>Vitrine &amp; Publications</span>
                   </button>
-                  {(adminSession?.role === "superadmin" || adminSession?.role === "proviseur") && (
+                  {adminSession?.role === "superadmin" && (
                     <button
                       type="button"
                       onClick={() => setCurrentSection("deployment")}
@@ -2162,7 +2227,7 @@ export default function AdminPage() {
                       }`}
                     >
                       <Save className="h-3.5 w-3.5 text-emerald-600" />
-                      <span>Enregistrer & Mettre à jour</span>
+                      <span>Enregistrer &amp; Mettre à jour</span>
                     </button>
                   )}
                 </div>
@@ -2193,8 +2258,8 @@ export default function AdminPage() {
                 />
               )}
 
-          {/* 10. ENREGISTRER & METTRE À JOUR (DÉPLOIEMENT VERCEL) */}
-          {(currentSection === "deployment" || activeTab === "deployment") && (
+          {/* 10. ENREGISTRER & METTRE À JOUR (DÉPLOIEMENT VERCEL — SUPERADMIN UNIQUEMENT) */}
+          {(currentSection === "deployment" || activeTab === "deployment") && adminSession?.role === "superadmin" && (
             <div className="space-y-8">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>

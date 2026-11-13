@@ -250,9 +250,6 @@ export function PlanningRoomsSection({
                             <p className="font-bold text-xs text-slate-900 mt-1 line-clamp-1">
                               {slot.subject}
                             </p>
-                            <p className="text-[10px] text-purple-700 font-semibold mt-0.5">
-                              Tiers-Temps jusqu'à {slot.tiersTempsEndTime || slot.endTime}
-                            </p>
 
                             {/* Assigned Supervisor */}
                             <div className="mt-2.5">

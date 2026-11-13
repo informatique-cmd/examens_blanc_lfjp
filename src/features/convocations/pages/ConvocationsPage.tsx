@@ -21,6 +21,7 @@ import {
   isCandidateTiersTemps,
   getCandidateAssignmentForExam,
   getCandidateMatchingSlots,
+  getCandidateSlotRoom,
 } from "../../../shared/services/cms-store";
 
 function computeCallTime15(startTime: string): string {
@@ -216,14 +217,21 @@ export default function ConvocationsPage() {
       const endTimeDisplay = isTT
         ? slot.tiersTempsEndTime || computeTTEndTime(slot.startTime, slot.durationMinutes)
         : slot.endTime;
+      const slotRoom = getCandidateSlotRoom(
+        cand,
+        resolvedExam,
+        slot,
+        cmsData.examSlots || [],
+        cmsData.rooms
+      );
       return {
         discipline: slot.targetSpecialty ? `${slot.subject} (${slot.targetSpecialty})` : slot.subject,
         date: slot.date,
         appel: computeCallTime15(slot.startTime),
         debut: slot.startTime,
         fin: isTT ? `${endTimeDisplay} (+1/3)` : endTimeDisplay,
-        salle: assignment.roomName || (slot.roomNames && slot.roomNames[0]) || "Salle d'examen",
-        table: assignment.tableNumber ? `Table N° ${assignment.tableNumber}` : "Libre",
+        salle: slotRoom || "À attribuer",
+        table: assignment.tableNumber ? `Table N° ${assignment.tableNumber}` : "Selon salle",
         materiel: slot.notes || "Matériel réglementaire",
       };
     });
@@ -768,6 +776,11 @@ function CandidateConvocationSheet({
   batchTotal,
 }: CandidateConvocationSheetProps) {
   const isTiersTemps = isCandidateTiersTemps(candidate);
+  const uniqueScheduleRooms = Array.from(
+    new Set(schedule.map((s) => s.salle).filter((r) => r && r !== "À attribuer"))
+  );
+  const primaryRoom =
+    assignment.roomName || (uniqueScheduleRooms.length === 1 ? uniqueScheduleRooms[0] : "");
 
   return (
     <div className="bg-white rounded-2xl border border-slate-300 p-6 sm:p-8 shadow-xs print:shadow-none print:border-none print:p-0 print:m-0 print:w-full text-slate-900 text-xs font-sans">
@@ -847,13 +860,21 @@ function CandidateConvocationSheet({
             </span>
             {resolvedExam?.period ? ` (${resolvedExam.period})` : ""}
           </div>
-          <div>
-            <span className="font-semibold">Salle &amp; Place : </span>
-            <span className="font-bold text-[#002060]">
-              {assignment.roomName || "En cours d'attribution"}
-              {assignment.tableNumber ? ` (Table ${assignment.tableNumber})` : ""}
-            </span>
-          </div>
+          {(primaryRoom || assignment.tableNumber) && (
+            <div>
+              <span className="font-semibold">
+                {primaryRoom ? "Salle & Place : " : "Place attribuée : "}
+              </span>
+              <span className="font-bold text-[#002060]">
+                {primaryRoom}
+                {assignment.tableNumber
+                  ? primaryRoom
+                    ? ` (Table ${assignment.tableNumber})`
+                    : `Table N° ${assignment.tableNumber}`
+                  : ""}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

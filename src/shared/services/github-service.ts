@@ -5,6 +5,7 @@ import { generateConstantsTsCode, exportCmsDataJson, type CmsData } from "./cms-
 import appTsxRaw from "../../app/App.tsx?raw";
 import indexCssRaw from "../../index.css?raw";
 import homePageRaw from "../../features/home/pages/HomePage.tsx?raw";
+import homeHeroRaw from "../../features/home/components/HomeHero.tsx?raw";
 import homeLayoutRaw from "../../features/home/components/HomeLayout.tsx?raw";
 import homeCallToActionCardRaw from "../../features/home/components/HomeCallToActionCard.tsx?raw";
 import schoolYearPageRaw from "../../features/home/pages/SchoolYearPage.tsx?raw";
@@ -510,6 +511,7 @@ export async function pushCmsChangesToGitHub({
       { path: "src/index.css", content: indexCssRaw },
       { path: "src/app/App.tsx", content: appTsxRaw },
       { path: "src/features/home/pages/HomePage.tsx", content: homePageRaw },
+      { path: "src/features/home/components/HomeHero.tsx", content: homeHeroRaw },
       { path: "src/features/home/components/HomeLayout.tsx", content: homeLayoutRaw },
       { path: "src/features/admin/pages/AdminPage.tsx", content: adminPageRaw },
       { path: "src/features/admin/components/AdminSidebar.tsx", content: adminSidebarRaw },

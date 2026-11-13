@@ -587,11 +587,6 @@ export default function VitrinePublishSection({
                                 <span className="font-mono text-slate-700">
                                   {slot.startTime} ➔ {slot.endTime}
                                 </span>
-                                {slot.tiersTempsEndTime && (
-                                  <span className="font-mono text-purple-700 font-bold text-[10px]">
-                                    TT: {slot.tiersTempsEndTime}
-                                  </span>
-                                )}
                               </div>
                             </div>
                           ))}

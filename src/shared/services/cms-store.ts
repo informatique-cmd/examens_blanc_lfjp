@@ -77,7 +77,7 @@ export function isProviseurSectionAllowed(
   section: string
 ): boolean {
   if (!section || section === "dashboard") return true;
-  if (section === "config") return false;
+  if (section === "config" || section === "deployment") return false;
   const vis = getProviseurVisibleModules(siteInfo);
   if (
     ["data-eleves", "data-salles", "data-profs", "data-amenagements", "sec-pochettes"].includes(
@@ -104,7 +104,7 @@ export function isProviseurSectionAllowed(
   if (["convoc-eleves", "convoc-profs"].includes(section)) {
     return vis.convocMenu !== false;
   }
-  if (["vitrine-publish", "deployment"].includes(section)) {
+  if (section === "vitrine-publish") {
     return vis.publishDeployMenu !== false;
   }
   if (section === "view-edt") {
@@ -397,8 +397,58 @@ export function getCandidateAssignmentForExam(
   return { roomName: "", tableNumber: "", anonymatNumber: "" };
 }
 
+function normalizeSpecText(val?: string): string {
+  return (val || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function expandSpecTokens(raw: string): string[] {
+  const stopWords = new Set(["sujet", "groupe", "grp", "tc", "tronc", "commun", "specialite", "spe", "option"]);
+  return normalizeSpecText(raw)
+    .split(/[,/+()-]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !/^\d+$/.test(t) && !stopWords.has(t));
+}
+
+function candidateHasSpecialtyToken(candSpecsNorm: string, tok: string): boolean {
+  if (!candSpecsNorm || !tok) return false;
+  if (candSpecsNorm.includes(tok)) return true;
+  if (tok === "maths" || tok === "mathematiques" || tok === "math") {
+    return /\b(math|maths|mathematiques)\b/.test(candSpecsNorm);
+  }
+  if (tok === "pc" || tok === "physique" || tok === "chimie") {
+    return /\b(pc|physique|chimie)\b/.test(candSpecsNorm);
+  }
+  if (tok === "ses") {
+    return /\b(ses|sciences economiques)\b/.test(candSpecsNorm);
+  }
+  if (tok === "svt") {
+    return /\b(svt|sciences de la vie)\b/.test(candSpecsNorm);
+  }
+  if (tok === "hggsp") {
+    return /\b(hggsp|geopolitique)\b/.test(candSpecsNorm);
+  }
+  if (tok === "hlp") {
+    return /\b(hlp|humanites)\b/.test(candSpecsNorm);
+  }
+  if (tok === "llce" || tok === "llcer") {
+    return /\b(llce|llcer)\b/.test(candSpecsNorm);
+  }
+  if (tok === "amc") {
+    return /\bamc\b/.test(candSpecsNorm);
+  }
+  if (tok === "nsi") {
+    return /\bnsi\b/.test(candSpecsNorm);
+  }
+  return false;
+}
+
 /**
- * Filters exam slots strictly for a given candidate's exam session, school level, and optional specialty.
+ * Filters exam slots strictly for a given candidate's exam session, school level, and specialties,
+ * and sorts chronologically (date asc, startTime asc).
  */
 export function getCandidateMatchingSlots(
   cand: CmsCandidate,
@@ -415,18 +465,13 @@ export function getCandidateMatchingSlots(
     : allSlots;
 
   const parentFallbackLevels = exam ? getExamTargetLevels(exam) : [];
+  const isCandTT = isCandidateTiersTemps(cand);
 
-  const candSpecs = [
-    cand.specialty || "",
-    ...(Array.isArray(cand.options) ? cand.options : []),
-  ]
-    .join(" ")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
+  const candSpecs = normalizeSpecText(
+    [cand.specialty || "", ...(Array.isArray(cand.options) ? cand.options : [])].join(" ")
+  );
 
-  return scopedSlots.filter((slot) => {
+  const matched = scopedSlots.filter((slot) => {
     const slotLevels = slot.targetLevel
       ? slot.targetLevel
       : parentFallbackLevels.length > 0
@@ -437,21 +482,77 @@ export function getCandidateMatchingSlots(
       return false;
     }
 
-    const slotSpec = (slot.targetSpecialty || "")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .trim();
+    const subjNorm = normalizeSpecText(slot.subject);
+    if (!isCandTT && /\btiers[\s-]*temps\b/.test(subjNorm)) {
+      return false;
+    }
 
-    if (slotSpec && candSpecs) {
-      const slotTokens = slotSpec.split(/[,/+]+/).map((t) => t.trim()).filter((t) => t.length >= 2);
-      if (slotTokens.length > 0 && !slotTokens.some((tok) => candSpecs.includes(tok))) {
+    const slotSpec = normalizeSpecText(slot.targetSpecialty);
+    if (slotSpec) {
+      if (!candSpecs) {
         return false;
+      }
+      const slotTokens = expandSpecTokens(slotSpec);
+      if (slotTokens.length > 0 && !slotTokens.some((tok) => candidateHasSpecialtyToken(candSpecs, tok))) {
+        return false;
+      }
+    } else if (candSpecs) {
+      // If slot.targetSpecialty was left empty, check whether subject explicitly names specialty disciplines
+      const isTroncCommunExplicit =
+        /\b(philosophie|philo|francais|eaf|eam tc|histoire|geographie|emc|enseignement scientifique|maths specifique|oral|grand oral)\b/.test(
+          subjNorm
+        );
+      if (!isTroncCommunExplicit) {
+        const subjectSpecMatches = subjNorm.match(
+          /\b(hggsp|ses|svt|amc|nsi|hlp|llce|llcer|pc|physique|chimie|maths|mathematiques|si)\b/g
+        );
+        if (subjectSpecMatches && subjectSpecMatches.length > 0) {
+          if (!subjectSpecMatches.some((tok) => candidateHasSpecialtyToken(candSpecs, tok))) {
+            return false;
+          }
+        }
       }
     }
 
     return true;
   });
+
+  return matched.sort((a, b) => {
+    const dateCmp = (a.date || "").localeCompare(b.date || "");
+    if (dateCmp !== 0) return dateCmp;
+    return (a.startTime || "").localeCompare(b.startTime || "");
+  });
+}
+
+/**
+ * Resolves the precise room assigned to a candidate for a specific exam slot.
+ * Never returns a multi-room list.
+ */
+export function getCandidateSlotRoom(
+  cand: CmsCandidate,
+  exam: Pick<CmsExam, "id" | "title" | "mobilizedRoomIds"> | null | undefined,
+  slot: CmsExamSlot,
+  allSlots: CmsExamSlot[] = [],
+  allRooms: CmsRoom[] = []
+): string {
+  const assign = getCandidateAssignmentForExam(cand, exam, allSlots, allRooms);
+  const slotRooms = Array.isArray(slot.roomNames) ? slot.roomNames.filter(Boolean) : [];
+
+  if (assign.roomName) {
+    if (slotRooms.length === 0) return assign.roomName;
+    const matchInSlot = slotRooms.find(
+      (r) => r.trim().toLowerCase() === assign.roomName.trim().toLowerCase()
+    );
+    if (matchInSlot) return matchInSlot;
+    if (slotRooms.length === 1) return slotRooms[0];
+    return assign.roomName;
+  }
+
+  if (slotRooms.length === 1) {
+    return slotRooms[0];
+  }
+
+  return "";
 }
 
 export interface CmsCallout {

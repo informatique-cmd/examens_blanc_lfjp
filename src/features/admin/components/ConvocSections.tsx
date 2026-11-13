@@ -29,6 +29,7 @@ import {
   isCandidateTiersTemps,
   getCandidateAssignmentForExam,
   getCandidateMatchingSlots,
+  getCandidateSlotRoom,
 } from "../../../shared/services/cms-store";
 
 // Helper to compute call time (-15 minutes)
@@ -389,6 +390,18 @@ export function ConvocElevesSection({
                 examSlots
               );
               const isTT = isCandidateTiersTemps(candidate);
+              const uniqueSlotRooms = Array.from(
+                new Set(
+                  matchingSlots
+                    .map((slot) =>
+                      getCandidateSlotRoom(candidate, candResolvedExam, slot, examSlots, rooms)
+                    )
+                    .filter(Boolean)
+                )
+              );
+              const primaryRoom =
+                candAssignment.roomName ||
+                (uniqueSlotRooms.length === 1 ? uniqueSlotRooms[0] : "");
 
               return (
                 <div
@@ -465,12 +478,19 @@ export function ConvocElevesSection({
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[11px] text-slate-500 font-semibold">Salle d&apos;Examen :</p>
-                      <p className="text-sm font-black text-[#002060]">
-                        {candAssignment.roomName || "En cours d'attribution"}
-                      </p>
+                      {primaryRoom ? (
+                        <>
+                          <p className="text-[11px] text-slate-500 font-semibold">Salle d&apos;Examen :</p>
+                          <p className="text-sm font-black text-[#002060]">{primaryRoom}</p>
+                        </>
+                      ) : (
+                        <p className="text-[11px] text-slate-500 font-semibold">
+                          Repères Candidat :
+                        </p>
+                      )}
                       <p className="text-xs font-mono font-bold text-slate-800 mt-1">
-                        Table N° {candAssignment.tableNumber || "1"} • Anonymat : {candAssignment.anonymatNumber || `LFJP-${String(idx + 101).padStart(4, "0")}`}
+                        {candAssignment.tableNumber ? `Table N° ${candAssignment.tableNumber} • ` : ""}
+                        Anonymat : {candAssignment.anonymatNumber || `LFJP-${String(idx + 101).padStart(4, "0")}`}
                       </p>
                     </div>
                   </div>
@@ -521,6 +541,13 @@ export function ConvocElevesSection({
                               const endTimeDisplay = isTT
                                 ? slot.tiersTempsEndTime || calcTTEndTime(slot.startTime, slot.durationMinutes)
                                 : slot.endTime;
+                              const slotRoom = getCandidateSlotRoom(
+                                candidate,
+                                candResolvedExam,
+                                slot,
+                                examSlots,
+                                rooms
+                              );
                               return (
                                 <tr key={slot.id} className="hover:bg-slate-50">
                                   <td className="p-2 border border-slate-300 font-bold text-slate-900">
@@ -546,7 +573,7 @@ export function ConvocElevesSection({
                                     )}
                                   </td>
                                   <td className="p-2 border border-slate-300 font-bold text-[#002060]">
-                                    {candAssignment.roomName || (slot.roomNames && slot.roomNames[0]) || "Salle d'examen"}
+                                    {slotRoom || "À attribuer"}
                                     {candAssignment.tableNumber && (
                                       <span className="ml-1 font-normal text-slate-600">
                                         (T.{candAssignment.tableNumber})

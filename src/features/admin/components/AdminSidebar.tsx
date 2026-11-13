@@ -770,7 +770,9 @@ export default function AdminSidebar({
           >
             <div className="flex items-center gap-2.5">
               <UploadCloud className="h-4 w-4 shrink-0 text-sky-400" />
-              {!isCollapsed && <span>Vitrine & Déploiement</span>}
+              {!isCollapsed && (
+                <span>{role === "proviseur" ? "Vitrine & Publications" : "Vitrine & Déploiement"}</span>
+              )}
             </div>
             {!isCollapsed && (
               <div className="flex items-center gap-1.5">
@@ -800,7 +802,7 @@ export default function AdminSidebar({
                 <span>Vitrine & Publications</span>
               </button>
 
-              {(role === "superadmin" || role === "proviseur") && (
+              {role === "superadmin" && (
                 <button
                   onClick={() => onSelectSection("deployment")}
                   className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition rounded-lg ${

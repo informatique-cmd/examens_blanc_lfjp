@@ -33,6 +33,7 @@ import {
   isCandidateTiersTemps,
   getCandidateAssignmentForExam,
   getCandidateMatchingSlots,
+  getCandidateSlotRoom,
 } from "../../../shared/services/cms-store";
 
 // Helper to normalize search strings (removes accents, lowercase, trim)
@@ -180,14 +181,21 @@ export default function HomePage() {
       const ttEnd =
         slot.tiersTempsEndTime ||
         computeTimeOffset(slot.startTime, Math.round((slot.durationMinutes || 60) * (4 / 3)));
+      const slotRoom = getCandidateSlotRoom(
+        cand,
+        resolvedExam,
+        slot,
+        cmsData.examSlots || [],
+        cmsData.rooms
+      );
       return {
         discipline: slot.targetSpecialty ? `${slot.subject} (${slot.targetSpecialty})` : slot.subject,
         date: slot.date,
         appel: slot.startTime ? computeTimeOffset(slot.startTime, -15) : (cand.convocationTime || "07h45"),
         debut: slot.startTime,
         fin: isTT ? `${ttEnd} (+1/3)` : slot.endTime,
-        salle: assign.roomName || (slot.roomNames?.[0] ?? "Salle principale"),
-        table: assign.tableNumber ? `Table N° ${assign.tableNumber}` : "Libre",
+        salle: slotRoom || "À attribuer",
+        table: assign.tableNumber ? `Table N° ${assign.tableNumber}` : "Selon salle",
         materiel: slot.notes || "Matériel réglementaire",
       };
     });
@@ -815,6 +823,11 @@ export default function HomePage() {
         );
         const modalIsTT = isCandidateTiersTemps(selectedStudentForConvocation);
         const modalSchedule = getCandidateSchedule(selectedStudentForConvocation, selectedExamForConvocation);
+        const modalUniqueRooms = Array.from(
+          new Set(modalSchedule.map((s) => s.salle).filter((r) => r && r !== "À attribuer"))
+        );
+        const modalPrimaryRoom =
+          modalAssign.roomName || (modalUniqueRooms.length === 1 ? modalUniqueRooms[0] : "");
 
         return (
           <div
@@ -954,21 +967,23 @@ export default function HomePage() {
                       </strong>
                     </div>
 
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                        Salle d&apos;examen assignée
-                      </span>
-                      <strong className="text-sm font-black text-[#002060]">
-                        {modalAssign.roomName || "En cours d'attribution"}
-                      </strong>
-                    </div>
+                    {modalPrimaryRoom && (
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                          Salle d&apos;examen assignée
+                        </span>
+                        <strong className="text-sm font-black text-[#002060]">
+                          {modalPrimaryRoom}
+                        </strong>
+                      </div>
+                    )}
 
                     <div>
                       <span className="text-[10px] uppercase font-bold text-slate-400 block">
                         Numéro de Table
                       </span>
                       <strong className="text-sm font-bold text-slate-900 font-mono">
-                        Table N° {modalAssign.tableNumber || "1"}
+                        {modalAssign.tableNumber ? `Table N° ${modalAssign.tableNumber}` : "Selon salle"}
                       </strong>
                     </div>
 
@@ -1220,6 +1235,23 @@ export default function HomePage() {
                         cmsData.examSlots || []
                       );
                       const isTT = isCandidateTiersTemps(cand);
+                      const candUniqueRooms = Array.from(
+                        new Set(
+                          candSlots
+                            .map((s) =>
+                              getCandidateSlotRoom(
+                                cand,
+                                findRoomModalExam,
+                                s,
+                                cmsData.examSlots || [],
+                                cmsData.rooms
+                              )
+                            )
+                            .filter(Boolean)
+                        )
+                      );
+                      const candPrimaryRoom =
+                        assign.roomName || (candUniqueRooms.length === 1 ? candUniqueRooms[0] : "");
 
                       return (
                         <div
@@ -1240,21 +1272,23 @@ export default function HomePage() {
                             </span>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2.5 text-xs">
-                            <div className="p-2.5 bg-white rounded-lg border border-slate-200">
-                              <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                                Salle assignée
-                              </span>
-                              <strong className="text-sm font-extrabold text-[#0F2A56]">
-                                {assign.roomName || "En cours d'attribution"}
-                              </strong>
-                            </div>
+                          <div className={`grid ${candPrimaryRoom ? "grid-cols-2" : "grid-cols-1"} gap-2.5 text-xs`}>
+                            {candPrimaryRoom && (
+                              <div className="p-2.5 bg-white rounded-lg border border-slate-200">
+                                <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                                  Salle assignée
+                                </span>
+                                <strong className="text-sm font-extrabold text-[#0F2A56]">
+                                  {candPrimaryRoom}
+                                </strong>
+                              </div>
+                            )}
                             <div className="p-2.5 bg-white rounded-lg border border-slate-200">
                               <span className="text-[10px] uppercase font-bold text-slate-400 block">
                                 Table d&apos;examen
                               </span>
                               <strong className="text-sm font-bold text-slate-800 font-mono tabular-nums">
-                                Table N° {assign.tableNumber || "1"}
+                                {assign.tableNumber ? `Table N° ${assign.tableNumber}` : "Selon salle d'épreuve"}
                               </strong>
                             </div>
                           </div>
@@ -1277,17 +1311,31 @@ export default function HomePage() {
                                       slot.startTime,
                                       Math.round((slot.durationMinutes || 60) * (4 / 3))
                                     );
+                                  const slotRoom = getCandidateSlotRoom(
+                                    cand,
+                                    findRoomModalExam,
+                                    slot,
+                                    cmsData.examSlots || [],
+                                    cmsData.rooms
+                                  );
                                   return (
                                     <div
                                       key={slot.id || idx}
-                                      className="flex items-center justify-between text-[11px] bg-white px-2.5 py-1.5 rounded-lg border border-slate-200"
+                                      className="flex items-center justify-between gap-2 text-[11px] bg-white px-2.5 py-1.5 rounded-lg border border-slate-200"
                                     >
-                                      <span className="font-semibold text-slate-800 truncate mr-2">
+                                      <span className="font-semibold text-slate-800 truncate">
                                         {slot.subject}
                                       </span>
-                                      <span className="font-mono text-slate-600 text-[10px] shrink-0 tabular-nums">
-                                        {slot.date} • {slot.startTime} – {isTT ? `${ttEnd} (+1/3)` : slot.endTime}
-                                      </span>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        {slotRoom && (
+                                          <span className="px-1.5 py-0.5 rounded bg-blue-50 text-[#0F2A56] font-bold text-[10px] border border-blue-200">
+                                            {slotRoom}
+                                          </span>
+                                        )}
+                                        <span className="font-mono text-slate-600 text-[10px] tabular-nums">
+                                          {slot.date} • {slot.startTime} – {isTT ? `${ttEnd} (+1/3)` : slot.endTime}
+                                        </span>
+                                      </div>
                                     </div>
                                   );
                                 })
