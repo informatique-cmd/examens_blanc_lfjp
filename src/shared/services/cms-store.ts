@@ -47,6 +47,70 @@ export interface SiteInfo {
     name: string;
     enabled: boolean;
   }>;
+  proviseurVisibleModules?: Record<string, boolean>;
+}
+
+export const DEFAULT_PROVISEUR_VISIBLE_MODULES: Record<string, boolean> = {
+  dashboard: true,
+  dataMenu: true,
+  "sessions-examens": true,
+  "creneaux-epreuves": true,
+  organization: true,
+  planningMenu: true,
+  "view-edt": false,
+  resMenu: false,
+  convocMenu: true,
+  publishDeployMenu: true,
+};
+
+export function getProviseurVisibleModules(
+  siteInfo?: Partial<SiteInfo> | null
+): Record<string, boolean> {
+  return {
+    ...DEFAULT_PROVISEUR_VISIBLE_MODULES,
+    ...(siteInfo?.proviseurVisibleModules || {}),
+  };
+}
+
+export function isProviseurSectionAllowed(
+  siteInfo: Partial<SiteInfo> | null | undefined,
+  section: string
+): boolean {
+  if (!section || section === "dashboard") return true;
+  if (section === "config") return false;
+  const vis = getProviseurVisibleModules(siteInfo);
+  if (
+    ["data-eleves", "data-salles", "data-profs", "data-amenagements", "sec-pochettes"].includes(
+      section
+    )
+  ) {
+    return vis.dataMenu !== false;
+  }
+  if (["planning-rooms", "planning-profs"].includes(section)) {
+    return vis.planningMenu !== false;
+  }
+  if (
+    [
+      "corr-repartition",
+      "res-import",
+      "res-analyse",
+      "res-releves",
+      "res-datavis",
+      "res-simul",
+    ].includes(section)
+  ) {
+    return vis.resMenu === true;
+  }
+  if (["convoc-eleves", "convoc-profs"].includes(section)) {
+    return vis.convocMenu !== false;
+  }
+  if (["vitrine-publish", "deployment"].includes(section)) {
+    return vis.publishDeployMenu !== false;
+  }
+  if (section === "view-edt") {
+    return vis["view-edt"] === true;
+  }
+  return vis[section] !== false;
 }
 
 export const DEFAULT_SCHOOL_LEVELS: string[] = [
@@ -224,29 +288,23 @@ export function isLevelFilterMatch(
 
 /**
  * Accurately detects whether a candidate benefits from Tiers-Temps (+1/3) or exam accommodation
- * (Tiers-Temps, PAP, PPS, PAI, Aménagement) while excluding PPRE classroom remediation.
+ * (Tiers-Temps, PAP, PPRE, PPS, PAI, Aménagement).
  */
 export function isCandidateTiersTemps(cand?: Partial<CmsCandidate> | null): boolean {
+  if (cand?.isTiersTemps === true) return true;
   const acc = (cand?.accommodation || "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .trim();
-  if (!acc) return false;
-  if (
-    acc.includes("ppre") &&
-    !acc.includes("1/3") &&
-    !acc.includes("tiers") &&
-    !acc.includes("pap") &&
-    !acc.includes("pps") &&
-    !acc.includes("pai")
-  ) {
+  if (!acc || acc === "aucun" || acc === "aucune" || acc === "non" || acc === "-") {
     return false;
   }
   return (
     acc.includes("1/3") ||
     acc.includes("tiers") ||
     acc.includes("pap") ||
+    acc.includes("ppre") ||
     acc.includes("pps") ||
     acc.includes("pai") ||
     acc.includes("amenag") ||
@@ -414,7 +472,7 @@ export interface CmsAnnouncement {
   id: string;
   title: string;
   content: string;
-  priority: "information" | "important" | "urgent";
+  priority: "information" | "important" | "urgent" | "resultats";
   target: "all" | "bac" | "dnb" | "teachers";
   isPublished: boolean;
   date: string;
@@ -493,6 +551,7 @@ export interface CmsCandidate {
   roomName: string;
   convocationTime: string;
   accommodation: string;
+  isTiersTemps?: boolean;
   specialty?: string;
   options?: string[];
   tableNumber?: string;
@@ -619,6 +678,11 @@ export function getCmsData(): CmsData {
         bannerAlert: {
           ...DEFAULT_CMS_DATA.siteInfo.bannerAlert,
           ...(parsed.siteInfo?.bannerAlert || {}),
+        },
+        proviseurVisibleModules: {
+          ...DEFAULT_PROVISEUR_VISIBLE_MODULES,
+          ...(DEFAULT_CMS_DATA.siteInfo?.proviseurVisibleModules || {}),
+          ...(parsed.siteInfo?.proviseurVisibleModules || {}),
         },
       },
       callouts: Array.isArray(parsed.callouts)

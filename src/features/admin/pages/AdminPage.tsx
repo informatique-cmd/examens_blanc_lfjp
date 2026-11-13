@@ -21,7 +21,6 @@ import {
   Layers,
   Search,
   LogOut,
-  GitBranch,
   Github,
   Loader2,
   CheckCircle,
@@ -61,6 +60,8 @@ import {
   type CmsSurveillance,
   type CmsCandidate,
   type SiteInfo,
+  getProviseurVisibleModules,
+  isProviseurSectionAllowed,
 } from "../../../shared/services/cms-store";
 
 import {
@@ -276,12 +277,15 @@ export default function AdminPage() {
 
   useEffect(() => {
     const sec = (searchParams.get("section") as AdminSection) || "dashboard";
-    if (adminSession?.role === "proviseur" && sec === "config") {
+    if (
+      adminSession?.role === "proviseur" &&
+      !isProviseurSectionAllowed(cmsData.siteInfo, sec)
+    ) {
       setCurrentSection("dashboard");
       return;
     }
     setLocalCurrentSection(sec);
-  }, [searchParams, adminSession?.role, setCurrentSection]);
+  }, [searchParams, adminSession?.role, cmsData.siteInfo, setCurrentSection]);
 
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
     dataMenu: true,
@@ -1053,19 +1057,16 @@ export default function AdminPage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold text-slate-900 group-hover:text-blue-700 transition">Administration Examens LFJP</h1>
-              <span className="rounded-full bg-blue-100 border border-blue-300 px-2.5 py-0.5 text-xs font-bold text-[#002060]">
+              <h1 className="text-base font-bold text-[#0F2A56] group-hover:text-[#1D4ED8] transition">
+                Administration Examens LFJP
+              </h1>
+              <span className="rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-bold text-[#0F2A56]">
                 Année scolaire {cmsData.siteInfo.schoolYear || "2026-2027"}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <span className="flex items-center gap-1 font-mono text-slate-700">
-                <GitBranch className="h-3 w-3 text-blue-600" />
-                {githubConfig.owner}/{githubConfig.repo}
-              </span>
-              <span>•</span>
-              <span className="text-emerald-700 font-medium">Branche : {githubConfig.branch}</span>
-            </div>
+            <p className="text-xs text-slate-500 font-medium">
+              {cmsData.siteInfo.schoolName || "Lycée Français Jacques Prévert"} • Réseau AEFE
+            </p>
           </div>
         </div>
 
@@ -1074,8 +1075,8 @@ export default function AdminPage() {
           {/* User badge */}
           {adminSession?.role === "proviseur" ? (
             <div className="flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-950 font-bold shadow-xs">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>👔 Direction : {adminSession.name || "Proviseur"}</span>
+              <span className="flex h-2 w-2 rounded-full bg-emerald-600" />
+              <span>Direction : {adminSession.name || "Proviseur"}</span>
             </div>
           ) : (
             githubUser ? (
@@ -1815,7 +1816,7 @@ export default function AdminPage() {
       )}
 
       {/* Main Layout Container with Target Site Sidebar */}
-      <div className="flex flex-col lg:flex-row min-h-screen bg-[#f4f6f9]">
+      <div className="flex flex-col lg:flex-row min-h-screen bg-[#F8FAFC]">
         {/* Authentic Sidebar matching target site */}
         <AdminSidebar
           currentSection={currentSection}
@@ -1840,6 +1841,7 @@ export default function AdminPage() {
           examSlotsCount={cmsData.examSlots?.length || 0}
           schoolYear={cmsData.siteInfo.schoolYear || "2025-2026"}
           role={adminSession?.role}
+          visibleModules={getProviseurVisibleModules(cmsData.siteInfo)}
           onProviseurSave={handleProviseurSave}
           onSuperadminSave={handleSuperAdminSaveAndDeploy}
           isSyncing={isSyncing}

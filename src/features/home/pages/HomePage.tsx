@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   CalendarDays,
   AlertCircle,
@@ -58,9 +58,11 @@ export default function HomePage() {
 
   // Search and filter state
   const [selectedLevel, setSelectedLevel] = useState<string>("all");
+  const [selectedDateByExam, setSelectedDateByExam] = useState<Record<string, string>>({});
 
-  // Exam-specific search queries (one per exam session)
-  const [examSearchQueries, setExamSearchQueries] = useState<Record<string, string>>({});
+  // Floating "Trouver ma Salle" modal state
+  const [findRoomModalExam, setFindRoomModalExam] = useState<CmsExam | null>(null);
+  const [modalSearchQuery, setModalSearchQuery] = useState<string>("");
 
   // Selected student & exam for full downloadable convocation modal
   const [selectedStudentForConvocation, setSelectedStudentForConvocation] =
@@ -70,6 +72,17 @@ export default function HomePage() {
 
   // Expanded exam IDs (dict for independent toggling)
   const [expandedExamIds, setExpandedExamIds] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!findRoomModalExam) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setFindRoomModalExam(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [findRoomModalExam]);
 
   const toggleExamExpanded = (examId: string, defaultExpanded: boolean = true) => {
     setExpandedExamIds((prev) => {
@@ -289,28 +302,27 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 3. CONSIGNES & RÈGLEMENTS OFFICIELS (HIGHLY VISIBLE, ATTRACTIVE & INSTITUTIONAL) */}
+      {/* 3. CONSIGNES & RÈGLEMENTS OFFICIELS + COMMUNIQUÉS DE LA DIRECTION */}
       <section className="w-full max-w-4xl space-y-4 text-left">
-        <div className="rounded-3xl border border-blue-200/90 bg-gradient-to-br from-blue-50/80 via-white to-amber-50/30 p-6 sm:p-7 shadow-xs relative overflow-hidden">
-          {/* Micro Hairline Tricolor Accent */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#002060] via-[#002060] to-[#c92a2a]" />
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0F2A56] via-[#1D4ED8] to-[#c92a2a]" />
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-blue-100 pb-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-100/80 border border-blue-200 text-[#002060] font-bold text-[11px] uppercase tracking-wider">
-                  <span className="w-2 h-2 rounded-full bg-[#002060] animate-pulse" />
-                  Règlement Officiel & Discipline LFJP
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-[#0F2A56] font-bold text-[10px] uppercase tracking-wider">
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#1D4ED8]" />
+                  Règlement Officiel &amp; Discipline LFJP
                 </span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-red-100/70 border border-red-200 text-red-800 font-bold text-[11px]">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-red-50 border border-red-200 text-[#c92a2a] font-bold text-[10px] uppercase tracking-wider">
                   Directives Direction
                 </span>
               </div>
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight pt-1">
-                Consignes Officielles & Règlements des Examens
+              <h2 className="text-lg sm:text-xl font-extrabold text-[#0F2A56] tracking-tight pt-0.5">
+                Consignes Officielles &amp; Règlements des Examens
               </h2>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Directives institutionnelles impératives pour les candidats, familles et équipes pédagogiques afin de garantir la régularité et l'équité des épreuves.
+                Directives institutionnelles impératives pour les candidats, familles et équipes pédagogiques afin de garantir la régularité et l&apos;équité des épreuves.
               </p>
             </div>
           </div>
@@ -321,31 +333,33 @@ export default function HomePage() {
               const renderRuleIcon = (iconName?: string) => {
                 switch (iconName) {
                   case "BookOpen":
-                    return <BookOpen className="h-4 w-4 text-amber-700" />;
+                    return <BookOpen className="h-4 w-4 text-amber-700 shrink-0" />;
                   case "ShieldCheck":
-                    return <ShieldCheck className="h-4 w-4 text-purple-700" />;
+                    return <ShieldCheck className="h-4 w-4 text-[#0F2A56] shrink-0" />;
                   case "FileText":
-                    return <FileText className="h-4 w-4 text-emerald-700" />;
+                    return <FileText className="h-4 w-4 text-emerald-700 shrink-0" />;
                   case "AlertCircle":
-                    return <AlertCircle className="h-4 w-4 text-rose-700" />;
+                    return <AlertCircle className="h-4 w-4 text-rose-700 shrink-0" />;
                   case "CheckCircle2":
-                    return <CheckCircle2 className="h-4 w-4 text-emerald-700" />;
+                    return <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />;
                   case "Clock":
                   default:
-                    return <Clock className="h-4 w-4 text-indigo-700" />;
+                    return <Clock className="h-4 w-4 text-[#1D4ED8] shrink-0" />;
                 }
               };
 
               return (
                 <div
                   key={rule.id}
-                  className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2 hover:border-blue-400 transition"
+                  className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200 space-y-1.5 hover:border-blue-300 hover:bg-white transition"
                 >
                   <div className="flex items-center gap-2">
                     {renderRuleIcon(rule.icon)}
-                    <span className="font-bold text-xs text-slate-900">{rule.title}</span>
+                    <span className="font-bold text-xs text-[#0F2A56] leading-tight">
+                      {rule.title}
+                    </span>
                   </div>
-                  <p className="text-[11px] text-slate-600 leading-snug">
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
                     {rule.content}
                   </p>
                 </div>
@@ -353,52 +367,89 @@ export default function HomePage() {
             })}
           </div>
 
-          {/* Published Announcements Feed */}
+          {/* Published Announcements Feed (4 Color-Coded Categories) */}
           {publishedAnnouncements.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-blue-100/80 space-y-2.5">
+            <div className="mt-5 pt-4 border-t border-slate-100 space-y-2.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-                Communiqués récents de la Direction ({publishedAnnouncements.length}) :
+                Communiqués &amp; Annonces de la Direction ({publishedAnnouncements.length})
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {publishedAnnouncements.map((ann) => (
-                  <div
-                    key={ann.id}
-                    className="p-3.5 rounded-xl border border-blue-100 bg-white/95 shadow-2xs space-y-1.5"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-xs text-slate-900">{ann.title}</span>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700">
-                        {ann.target === "all" ? "Tous" : ann.target === "teachers" ? "Professeurs" : "Élèves"}
-                      </span>
+                {publishedAnnouncements.map((ann) => {
+                  const priority = ann.priority || "information";
+                  const styleMap = {
+                    information: {
+                      card: "bg-blue-50/75 border-blue-200 text-blue-950",
+                      badge: "bg-blue-100 text-blue-800 border-blue-200",
+                      label: "Information",
+                      icon: <Info className="h-4 w-4 text-blue-700 shrink-0" />,
+                    },
+                    important: {
+                      card: "bg-amber-50/80 border-amber-200 text-amber-950",
+                      badge: "bg-amber-100 text-amber-800 border-amber-200",
+                      label: "Important",
+                      icon: <AlertCircle className="h-4 w-4 text-amber-700 shrink-0" />,
+                    },
+                    urgent: {
+                      card: "bg-rose-50/85 border-rose-200 text-rose-950",
+                      badge: "bg-rose-100 text-rose-800 border-rose-200",
+                      label: "Urgent",
+                      icon: <AlertCircle className="h-4 w-4 text-rose-700 shrink-0" />,
+                    },
+                    resultats: {
+                      card: "bg-emerald-50/80 border-emerald-200 text-emerald-950",
+                      badge: "bg-emerald-100 text-emerald-800 border-emerald-200",
+                      label: "Résultats",
+                      icon: <Award className="h-4 w-4 text-emerald-700 shrink-0" />,
+                    },
+                  } as const;
+                  const cfg = styleMap[priority] || styleMap.information;
+
+                  return (
+                    <div
+                      key={ann.id}
+                      className={`p-3.5 rounded-xl border shadow-2xs space-y-1.5 ${cfg.card}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {cfg.icon}
+                          <span className="font-bold text-xs truncate">{ann.title}</span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${cfg.badge}`}>
+                            {cfg.label}
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/80 text-slate-700 border border-slate-200/80">
+                            {ann.target === "all" ? "Tous" : ann.target === "teachers" ? "Professeurs" : "Élèves"}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-xs opacity-90 leading-relaxed">{ann.content}</p>
+                      <p className="text-[10px] opacity-70 pt-1 border-t border-black/10 tabular-nums">
+                        Publié le {ann.date}
+                      </p>
                     </div>
-                    <p className="text-xs text-slate-600 leading-relaxed">{ann.content}</p>
-                    <p className="text-[10px] text-slate-400 pt-1 border-t border-slate-100">
-                      Publié le {ann.date}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
         </div>
       </section>
 
-
-
-      {/* 5. SESSIONS D'EXAMENS & CRÉNEAUX DES ÉPREUVES */}
+      {/* 4. SESSIONS D'EXAMENS & CALENDRIER COMPACT DES ÉPREUVES */}
       <section className="w-full max-w-4xl space-y-4 text-left">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
           <div>
-            <h2 className="text-xl font-black text-slate-900 tracking-tight">
-              Sessions d'Examens & Horaires des Épreuves
+            <h2 className="text-xl font-extrabold text-[#0F2A56] tracking-tight">
+              Sessions d&apos;Examens &amp; Calendrier des Épreuves
             </h2>
             <p className="text-xs text-slate-600 mt-0.5">
-              Consultez le déroulement complet des épreuves et les salles d'examen affectées.
+              Consultez les créneaux par jour, les salles affectées ou cliquez sur &quot;Trouver ma Salle&quot;.
             </p>
           </div>
 
           {/* Level Filter Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start sm:self-auto">
+          <div className="flex flex-wrap items-center gap-1 bg-slate-200/60 p-1 rounded-xl self-start sm:self-auto">
             {[
               { id: "all", label: "Tous" },
               { id: "3ème", label: "3ème" },
@@ -408,10 +459,11 @@ export default function HomePage() {
             ].map((tab) => (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setSelectedLevel(tab.id)}
                 className={`px-3 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                   selectedLevel === tab.id
-                    ? "bg-white text-blue-700 shadow-2xs font-bold"
+                    ? "bg-white text-[#0F2A56] shadow-2xs font-bold"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
@@ -423,7 +475,7 @@ export default function HomePage() {
 
         {/* Exams List */}
         {filteredExams.length > 0 ? (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {filteredExams.map((exam) => {
               const countdown = getExamCountdown(exam);
               const isExpanded = expandedExamIds[exam.id] !== undefined ? expandedExamIds[exam.id] : true;
@@ -447,22 +499,37 @@ export default function HomePage() {
                   return (a.startTime || "").localeCompare(b.startTime || "");
                 });
 
+              const examDates = Array.from(
+                new Set(examSlots.map((s) => s.date).filter(Boolean))
+              ).sort();
+
+              const activeDateFilter =
+                selectedDateByExam[exam.id] &&
+                (selectedDateByExam[exam.id] === "all" ||
+                  examDates.includes(selectedDateByExam[exam.id]))
+                  ? selectedDateByExam[exam.id]
+                  : "all";
+
+              const visibleSlots =
+                activeDateFilter === "all"
+                  ? examSlots
+                  : examSlots.filter((s) => s.date === activeDateFilter);
+
               return (
                 <div
                   key={exam.id}
-                  className="rounded-3xl border border-slate-200/90 bg-white shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 overflow-hidden relative group"
+                  className="rounded-2xl border border-slate-200 bg-white shadow-xs hover:shadow-md transition-shadow overflow-hidden relative"
                 >
-                  {/* Floating Card Top Tricolor Accent */}
-                  <div className="h-1.5 w-full bg-gradient-to-r from-[#002060] via-[#3498db] to-[#c92a2a]" />
+                  <div className="h-1 w-full bg-gradient-to-r from-[#0F2A56] via-[#1D4ED8] to-[#c92a2a]" />
 
                   {/* Exam Card Header */}
-                  <div className="p-5 sm:p-6 bg-gradient-to-r from-slate-50/70 via-white to-blue-50/20 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-5">
+                  <div className="p-5 bg-slate-50/60 border-b border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="space-y-1.5 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
                         {examLevels.map((lvl) => (
                           <span
                             key={lvl}
-                            className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-blue-50 text-[#002060] border border-blue-200"
+                            className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-[#0F2A56] border border-blue-200"
                           >
                             {getShortLevelBadge(lvl)}
                           </span>
@@ -470,14 +537,14 @@ export default function HomePage() {
 
                         {countdown && (
                           <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold inline-flex items-center gap-1 border ${
                               countdown.isToday
-                                ? "bg-rose-100 text-rose-800"
+                                ? "bg-rose-50 text-rose-800 border-rose-200"
                                 : countdown.isSoon
-                                ? "bg-amber-100 text-amber-800"
+                                ? "bg-amber-50 text-amber-800 border-amber-200"
                                 : countdown.isPast
-                                ? "bg-slate-100 text-slate-500"
-                                : "bg-emerald-100 text-emerald-800"
+                                ? "bg-slate-100 text-slate-600 border-slate-200"
+                                : "bg-emerald-50 text-emerald-800 border-emerald-200"
                             }`}
                           >
                             <Clock className="h-3 w-3" />
@@ -485,18 +552,18 @@ export default function HomePage() {
                           </span>
                         )}
 
-                        <span className="text-xs text-slate-400">•</span>
-                        <span className="text-xs font-semibold text-slate-600">
+                        <span className="text-xs text-slate-300">•</span>
+                        <span className="text-xs font-medium text-slate-600">
                           Statut : <strong className="text-slate-900">{exam.status || "Prévu"}</strong>
                         </span>
                       </div>
 
-                      <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight group-hover:text-blue-900 transition">
+                      <h3 className="text-lg sm:text-xl font-extrabold text-[#0F2A56] tracking-tight">
                         {exam.title}
                       </h3>
 
                       <p className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
-                        <CalendarDays className="h-3.5 w-3.5 text-blue-700" />
+                        <CalendarDays className="h-3.5 w-3.5 text-[#1D4ED8]" />
                         <span>Période officielle : {exam.period}</span>
                       </p>
 
@@ -507,19 +574,17 @@ export default function HomePage() {
                       )}
                     </div>
 
-                    {/* Dual Action Buttons: "Consulter le planning" and "Trouver ma Salle" */}
+                    {/* Dual Action Buttons: "Trouver ma Salle" (Modal) & "Consulter le planning" */}
                     <div className="flex flex-wrap items-center gap-2 self-start md:self-center shrink-0">
                       <button
                         type="button"
                         onClick={() => {
-                          if (!isExpanded) toggleExamExpanded(exam.id, true);
-                          const el = document.getElementById(`search-cand-${exam.id}`);
-                          el?.focus();
-                          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          setModalSearchQuery("");
+                          setFindRoomModalExam(exam);
                         }}
-                        className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                        className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
                       >
-                        <Search className="h-3.5 w-3.5 text-slate-900" />
+                        <Search className="h-3.5 w-3.5 text-slate-950" />
                         <span>Trouver ma Salle</span>
                       </button>
 
@@ -528,333 +593,204 @@ export default function HomePage() {
                         onClick={() => toggleExamExpanded(exam.id, true)}
                         className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-[0.98] ${
                           isExpanded
-                            ? "bg-slate-900 text-white shadow-xs"
-                            : "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200"
+                            ? "bg-[#0F2A56] text-white shadow-2xs"
+                            : "bg-white hover:bg-slate-100 text-slate-800 border border-slate-200"
                         }`}
                       >
-                        <span>{isExpanded ? "Replier l'organisation" : `Consulter le planning (${examSlots.length} épreuves)`}</span>
+                        <span>
+                          {isExpanded
+                            ? "Replier le planning"
+                            : `Voir le planning (${examSlots.length} épreuves)`}
+                        </span>
                         {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                       </button>
                     </div>
                   </div>
 
-                  {/* Exam Épreuves & Créneaux (when expanded) */}
+                  {/* Compact Schedule Table + Date Tabs (when expanded) */}
                   {isExpanded && (
-                    <div className="p-5 sm:p-6 bg-slate-50/60 space-y-4">
+                    <div className="p-4 sm:p-5 bg-white space-y-4">
                       {examSlots.length === 0 ? (
                         <p className="text-xs text-slate-400 italic text-center py-4">
-                          Aucune épreuve n'est encore programmée pour cette session.
+                          Aucune épreuve n&apos;est encore programmée pour cette session.
                         </p>
                       ) : (
-                        examSlots.map((slot, sIdx) => {
-                          // Retrieve ONLY rooms where candidates or surveillants are allocated
-                          const activeRooms = getActiveRoomsForSlot(slot, exam);
-
-                          return (
-                            <div
-                              key={slot.id || sIdx}
-                              className="p-4 sm:p-5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-3"
-                            >
-                              {/* Épreuve Title & Date */}
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="font-black text-sm sm:text-base text-slate-900">
-                                    {slot.subject}
-                                  </span>
-                                  {slot.targetLevel && (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                                      {getShortLevelBadge(slot.targetLevel)}
-                                    </span>
-                                  )}
-                                  {slot.targetSpecialty && (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200">
-                                      {slot.targetSpecialty}
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-blue-50 text-blue-900 border border-blue-200 self-start sm:self-auto">
-                                  {slot.date}
-                                </span>
-                              </div>
-
-                              {/* Clean Single Schedule Display */}
-                              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
-                                <div className="flex items-center gap-2">
-                                  <Clock className="h-4 w-4 text-blue-700 shrink-0" />
-                                  <span className="font-semibold text-slate-600">Horaires de l&apos;épreuve :</span>
-                                  <span className="font-mono font-black text-slate-900 text-sm">
-                                    {slot.startTime} ➔ {slot.endTime}
-                                  </span>
-                                </div>
-                                <span className="px-2.5 py-0.5 rounded-md bg-white border border-slate-200 font-bold text-slate-700 text-[11px]">
-                                  Durée : {slot.durationMinutes} min
-                                </span>
-                              </div>
-
-                              {/* ACTIVE ROOMS WITH CANDIDATES & SURVEILLANTS ONLY */}
-                              <div className="pt-2 border-t border-slate-100 space-y-2">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                                    <School className="h-3.5 w-3.5 text-blue-700" />
-                                    <span>Salles d'examen avec élèves & surveillants affectés :</span>
-                                  </span>
-                                  <span className="text-[11px] text-slate-500 font-medium">
-                                    {activeRooms.length} salle(s) mobilisée(s)
-                                  </span>
-                                </div>
-
-                                {activeRooms.length === 0 ? (
-                                  <div className="p-3 rounded-xl bg-slate-50 border border-dashed border-slate-200 text-xs text-slate-500 flex items-center gap-2">
-                                    <Info className="h-4 w-4 text-slate-400 shrink-0" />
-                                    <span>
-                                      Affectation des élèves et des surveillants en cours de confirmation par la direction.
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                                    {activeRooms.map((activeItem) => (
-                                      <div
-                                        key={activeItem.room.id}
-                                        className={`p-3 rounded-xl border text-xs space-y-1 ${
-                                          activeItem.isTTRoom
-                                            ? "border-purple-300 bg-purple-50/30"
-                                            : "border-slate-200 bg-slate-50/50"
-                                        }`}
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <span className="font-bold text-slate-900">
-                                            {activeItem.room.name}
-                                          </span>
-                                          {activeItem.isTTRoom && (
-                                            <span className="px-1.5 py-0.2 rounded bg-purple-200 text-purple-900 font-bold text-[9px]">
-                                              ♿ TT
-                                            </span>
-                                          )}
-                                        </div>
-
-                                        <p className="text-[11px] text-slate-600">
-                                          Élèves convoqués :{" "}
-                                          <strong className="text-slate-900 font-mono">
-                                            {activeItem.candidateCount} élève(s)
-                                          </strong>
-                                        </p>
-
-                                        <div className="pt-1 border-t border-slate-200/60 flex items-center gap-1 text-[11px]">
-                                          <UserCheck className="h-3 w-3 text-emerald-600 shrink-0" />
-                                          <span className="text-slate-500 text-[10px]">Surveillant :</span>
-                                          <span className="font-bold text-slate-800 truncate">
-                                            {activeItem.surveillant || "En cours"}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-
-                              {slot.notes && (
-                                <p className="text-[11px] text-slate-500 italic bg-slate-50 p-2 rounded-lg border border-slate-200">
-                                  Consigne : {slot.notes}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
-
-                      {/* ESPACE CANDIDAT INTÉGRÉ : TROUVER MA SALLE & TÉLÉCHARGER MA CONVOCATION POUR CET EXAMEN */}
-                      <div className="pt-4 border-t-2 border-slate-200/80 space-y-4">
-                        <div className="p-4 sm:p-5 rounded-2xl bg-white border-2 border-blue-900/15 shadow-2xs space-y-3">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full bg-red-600" />
-                                <span className="text-[11px] font-bold uppercase tracking-wider text-red-600">
-                                  Convocation Officielle • {exam.title}
-                                </span>
-                              </div>
-                              <h4 className="text-sm sm:text-base font-black text-[#002060] flex items-center gap-1.5 mt-0.5">
-                                <Search className="h-4 w-4 text-[#002060]" />
-                                <span>Trouver ma Salle</span>
-                              </h4>
-                              <p className="text-xs text-slate-500 mt-0.5">
-                                Saisissez votre nom ou N° d'anonymat pour consulter instantanément votre salle d'examen, numéro de table et télécharger votre convocation.
-                              </p>
-                            </div>
-
-                            <div className="relative w-full sm:w-64 shrink-0">
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                              <input
-                                type="text"
-                                value={examSearchQueries[exam.id] || ""}
-                                onChange={(e) =>
-                                  setExamSearchQueries((prev) => ({
-                                    ...prev,
-                                    [exam.id]: e.target.value,
-                                  }))
-                                }
-                                id={`search-cand-${exam.id}`} placeholder="Votre nom ou N° d'anonymat... (ex: Aguesse, Allier, Benson...)"
-                                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-[#002060] focus:ring-2 focus:ring-blue-100 focus:outline-hidden font-medium"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Candidate search results for this exam session */}
-                          {(() => {
-                            const query = normalizeSearchStr(examSearchQueries[exam.id]);
-                            if (query.length < 1) return null;
-
-                            // Search candidates strictly belonging to this exam (and active level tab when selected)
-                            const candidatesFound = cmsData.candidates.filter((cand) => {
-                              if (!isCandidateInExam(cand, exam)) return false;
-                              if (
-                                selectedLevel !== "all" &&
-                                !isCandidateMatchingLevel(cand.className, selectedLevel)
-                              ) {
-                                return false;
-                              }
-                              const lastName = normalizeSearchStr(cand.lastName);
-                              const firstName = normalizeSearchStr(cand.firstName);
-                              const fullName = `${lastName} ${firstName}`;
-                              const reverseName = `${firstName} ${lastName}`;
-                              const assign = getCandidateAssignmentForExam(
-                                cand,
-                                exam,
-                                cmsData.examSlots || [],
-                                cmsData.rooms
-                              );
-                              const anonymat = normalizeSearchStr(assign.anonymatNumber || cand.anonymatNumber);
-                              const id = normalizeSearchStr(cand.id);
-                              const className = normalizeSearchStr(cand.className);
-
-                              return (
-                                lastName.includes(query) ||
-                                firstName.includes(query) ||
-                                fullName.includes(query) ||
-                                reverseName.includes(query) ||
-                                anonymat.includes(query) ||
-                                id.includes(query) ||
-                                className.includes(query)
-                              );
-                            });
-
-                            if (candidatesFound.length === 0) {
-                              return (
-                                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
-                                  <p className="text-xs text-slate-500">
-                                    Aucun élève trouvé pour &quot;<strong>{examSearchQueries[exam.id]}</strong>&quot; sur cette session. Vérifiez l&apos;orthographe ou le niveau sélectionné.
-                                  </p>
-                                </div>
-                              );
-                            }
-
-                            return (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-                                {candidatesFound.map((cand) => {
-                                  const assign = getCandidateAssignmentForExam(
-                                    cand,
-                                    exam,
-                                    cmsData.examSlots || [],
-                                    cmsData.rooms
-                                  );
-                                  const candSlots = getCandidateMatchingSlots(
-                                    cand,
-                                    exam,
-                                    cmsData.examSlots || []
-                                  );
-                                  const isTT = isCandidateTiersTemps(cand);
-
+                        <>
+                          {/* Date Filter Tabs */}
+                          {examDates.length > 1 && (
+                            <div className="flex flex-wrap items-center justify-between gap-2 pb-1">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSelectedDateByExam((prev) => ({
+                                      ...prev,
+                                      [exam.id]: "all",
+                                    }))
+                                  }
+                                  className={`px-3 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                                    activeDateFilter === "all"
+                                      ? "bg-[#0F2A56] text-white border-[#0F2A56]"
+                                      : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                                  }`}
+                                >
+                                  Tous les jours ({examSlots.length})
+                                </button>
+                                {examDates.map((d) => {
+                                  const countOnDay = examSlots.filter((s) => s.date === d).length;
                                   return (
-                                    <div
-                                      key={cand.id}
-                                      className="p-4 rounded-xl bg-slate-50 border border-slate-300 space-y-3"
+                                    <button
+                                      key={d}
+                                      type="button"
+                                      onClick={() =>
+                                        setSelectedDateByExam((prev) => ({
+                                          ...prev,
+                                          [exam.id]: d,
+                                        }))
+                                      }
+                                      className={`px-3 py-1 rounded-lg text-xs font-mono font-semibold border transition cursor-pointer tabular-nums ${
+                                        activeDateFilter === d
+                                          ? "bg-[#1D4ED8] text-white border-[#1D4ED8]"
+                                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                                      }`}
                                     >
-                                      <div className="flex items-start justify-between gap-2 border-b border-slate-200 pb-2">
-                                        <div>
-                                          <span className="font-black text-sm text-[#002060] block">
-                                            {cand.lastName.toUpperCase()} {cand.firstName}
-                                          </span>
-                                          <span className="text-[11px] text-slate-500 font-mono">
-                                            N° Anonymat : {assign.anonymatNumber || `LFJP-${cand.id.slice(-4)}`}
-                                          </span>
-                                        </div>
-                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-[#002060]">
-                                          {cand.className}
-                                        </span>
-                                      </div>
-
-                                      <div className="grid grid-cols-2 gap-2 text-xs">
-                                        <div className="p-2 bg-white rounded-lg border border-slate-200">
-                                          <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                                            Salle assignée
-                                          </span>
-                                          <strong className="text-xs font-black text-[#002060]">
-                                            {assign.roomName || "En cours d'attribution"}
-                                          </strong>
-                                        </div>
-                                        <div className="p-2 bg-white rounded-lg border border-slate-200">
-                                          <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                                            Table d&apos;examen
-                                          </span>
-                                          <strong className="text-xs font-bold text-slate-800 font-mono">
-                                            Table N° {assign.tableNumber || "1"}
-                                          </strong>
-                                        </div>
-                                      </div>
-
-                                      {/* Matières programmées pour cet élève (filtrées par niveau & spécialité) */}
-                                      <div className="space-y-1">
-                                        <span className="text-[10px] uppercase font-bold text-slate-600 block">
-                                          Épreuves du candidat ({candSlots.length}) :
-                                        </span>
-                                        <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
-                                          {candSlots.length === 0 ? (
-                                            <p className="text-[11px] text-slate-400 italic">
-                                              Aucune épreuve programmée pour ce niveau.
-                                            </p>
-                                          ) : (
-                                            candSlots.map((slot, idx) => (
-                                              <div
-                                                key={slot.id || idx}
-                                                className="flex items-center justify-between text-[11px] bg-white px-2 py-1 rounded border border-slate-200"
-                                              >
-                                                <span className="font-semibold text-slate-800 truncate mr-2">
-                                                  {slot.subject}
-                                                </span>
-                                                <span className="font-mono text-slate-500 text-[10px] shrink-0">
-                                                  {slot.date} ({slot.startTime} - {isTT && slot.tiersTempsEndTime ? `${slot.tiersTempsEndTime} +1/3` : slot.endTime})
-                                                </span>
-                                              </div>
-                                            ))
-                                          )}
-                                        </div>
-                                      </div>
-
-                                      {isTT && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-100 text-purple-900 text-[10px] font-bold">
-                                          <span>♿ {cand.accommodation || "Tiers-Temps"} (+1/3 temps)</span>
-                                        </span>
-                                      )}
-
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setSelectedExamForConvocation(exam);
-                                          setSelectedStudentForConvocation(cand);
-                                        }}
-                                        className="w-full py-2 px-3 rounded-lg bg-[#002060] hover:bg-[#001746] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs group cursor-pointer"
-                                      >
-                                        <Printer className="h-3.5 w-3.5 text-amber-300 group-hover:scale-110 transition" />
-                                        <span>Télécharger ma convocation ({exam.title})</span>
-                                      </button>
-                                    </div>
+                                      {d} ({countOnDay})
+                                    </button>
                                   );
                                 })}
                               </div>
-                            );
-                          })()}
-                        </div>
-                      </div>
+
+                              <span className="text-[11px] text-slate-500 font-medium tabular-nums">
+                                {visibleSlots.length} épreuve(s) affichée(s)
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Compact Responsive Schedule Table */}
+                          <div className="border border-slate-200 rounded-xl overflow-hidden">
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs text-left border-collapse">
+                                <thead className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-600">
+                                  <tr>
+                                    <th className="py-2.5 px-3.5 font-bold whitespace-nowrap">Date &amp; Horaires</th>
+                                    <th className="py-2.5 px-3.5 font-bold">Épreuve &amp; Niveau</th>
+                                    <th className="py-2.5 px-3.5 font-bold">Salles &amp; Surveillants Affectés</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200/80 bg-white">
+                                  {visibleSlots.map((slot, sIdx) => {
+                                    const activeRooms = getActiveRoomsForSlot(slot, exam);
+
+                                    return (
+                                      <tr key={slot.id || sIdx} className="hover:bg-slate-50/70 align-top">
+                                        {/* Date & Horaires */}
+                                        <td className="py-3 px-3.5 whitespace-nowrap">
+                                          <div className="font-mono font-bold text-[#0F2A56] text-xs tabular-nums">
+                                            {slot.date}
+                                          </div>
+                                          <div className="font-mono font-semibold text-slate-800 text-xs mt-0.5 tabular-nums">
+                                            {slot.startTime} – {slot.endTime}
+                                          </div>
+                                          <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-semibold tabular-nums">
+                                            {slot.durationMinutes} min
+                                          </span>
+                                        </td>
+
+                                        {/* Épreuve & Niveau */}
+                                        <td className="py-3 px-3.5 min-w-[200px]">
+                                          <div className="font-bold text-slate-900 text-xs sm:text-sm">
+                                            {slot.subject}
+                                          </div>
+                                          <div className="flex flex-wrap items-center gap-1 mt-1">
+                                            {slot.targetLevel && (
+                                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                                {getShortLevelBadge(slot.targetLevel)}
+                                              </span>
+                                            )}
+                                            {slot.targetSpecialty && (
+                                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                                {slot.targetSpecialty}
+                                              </span>
+                                            )}
+                                          </div>
+                                          {slot.notes && (
+                                            <p className="text-[11px] text-slate-500 italic mt-1.5 leading-snug">
+                                              {slot.notes}
+                                            </p>
+                                          )}
+                                        </td>
+
+                                        {/* Salles & Surveillants */}
+                                        <td className="py-3 px-3.5 min-w-[260px]">
+                                          {activeRooms.length === 0 ? (
+                                            <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 border border-dashed border-slate-200 px-2.5 py-1 rounded-lg">
+                                              <Info className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                              <span>Affectation en cours de confirmation</span>
+                                            </span>
+                                          ) : (
+                                            <div className="flex flex-wrap gap-1.5">
+                                              {activeRooms.map((activeItem) => (
+                                                <div
+                                                  key={activeItem.room.id}
+                                                  className={`px-2.5 py-1.5 rounded-lg border text-[11px] leading-tight ${
+                                                    activeItem.isTTRoom
+                                                      ? "border-purple-200 bg-purple-50/50"
+                                                      : "border-slate-200 bg-slate-50/70"
+                                                  }`}
+                                                >
+                                                  <div className="flex items-center gap-1.5 font-bold text-[#0F2A56]">
+                                                    <School className="h-3 w-3 text-[#1D4ED8] shrink-0" />
+                                                    <span>{activeItem.room.name}</span>
+                                                    {activeItem.isTTRoom && (
+                                                      <span className="px-1 rounded bg-purple-200 text-purple-900 font-bold text-[9px]">
+                                                        TT
+                                                      </span>
+                                                    )}
+                                                    <span className="text-slate-500 font-mono font-semibold tabular-nums">
+                                                      ({activeItem.candidateCount})
+                                                    </span>
+                                                  </div>
+                                                  <div className="flex items-center gap-1 text-[10px] text-slate-600 mt-0.5">
+                                                    <UserCheck className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
+                                                    <span className="truncate max-w-[150px]">
+                                                      {activeItem.surveillant || "Surveillant à confirmer"}
+                                                    </span>
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          {/* Sleek Candidate CTA Row opening the Floating Modal */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200">
+                            <div className="text-xs text-slate-700">
+                              <strong className="text-[#0F2A56]">Espace Candidat • {exam.title}</strong>
+                              <span className="text-slate-500 block sm:inline sm:ml-2">
+                                Vérifiez votre salle, numéro de table et téléchargez votre convocation officielle.
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setModalSearchQuery("");
+                                setFindRoomModalExam(exam);
+                              }}
+                              className="px-3.5 py-2 rounded-lg bg-[#0F2A56] hover:bg-[#1D4ED8] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                            >
+                              <Search className="h-3.5 w-3.5 text-amber-300" />
+                              <span>Trouver ma Salle &amp; Convocation</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -863,51 +799,9 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 text-xs">
-            Aucune session d'examen trouvée.
+            Aucune session d&apos;examen trouvée pour ce niveau.
           </div>
         )}
-      </section>
-
-      {/* 6. RÈGLES & CONSIGNES OFFICIELLES */}
-      <section className="w-full max-w-4xl rounded-2xl bg-white border border-slate-200 p-6 text-slate-700 text-left shadow-2xs space-y-4">
-        <div className="border-b border-slate-100 pb-2">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-2">
-            <BookOpen className="h-4 w-4 text-blue-700" />
-            <span>Réglementation Officielle des Épreuves au LFJP</span>
-          </h3>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-            <p className="font-bold text-slate-900 flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5 text-blue-700" />
-              <span>Ponctualité & Pièce d'Identité</span>
-            </p>
-            <p className="text-slate-600 leading-relaxed text-[11px]">
-              Présentez-vous impérativement <strong>15 minutes avant le début</strong> de chaque épreuve avec votre convocation et votre pièce d'identité avec photo.
-            </p>
-          </div>
-
-          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-            <p className="font-bold text-slate-900 flex items-center gap-1.5">
-              <ShieldCheck className="h-3.5 w-3.5 text-amber-600" />
-              <span>Calculatrices & Téléphones</span>
-            </p>
-            <p className="text-slate-600 leading-relaxed text-[11px]">
-              Le mode examen avec voyant lumineux clignotant est obligatoire si la calculatrice est autorisée. Tout smartphone ou montre connectée doit être totalement éteint dans le sac.
-            </p>
-          </div>
-
-          <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-            <p className="font-bold text-slate-900 flex items-center gap-1.5">
-              <Award className="h-3.5 w-3.5 text-purple-600" />
-              <span>Aménagements Tiers-Temps</span>
-            </p>
-            <p className="text-slate-600 leading-relaxed text-[11px]">
-              Les élèves bénéficiant d'aménagements (PAP / PPS / PAI) disposent d'horaires majorés (+1/3 de temps) et sont accueillis dans des salles spécifiques avec encadrement adapté.
-            </p>
-          </div>
-        </div>
       </section>
       </div>
 
@@ -1187,6 +1081,244 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+      {/* 6. MODAL FLOTTANTE CENTRÉE : TROUVER MA SALLE & CONVOCATION */}
+      {findRoomModalExam && (() => {
+        const query = normalizeSearchStr(modalSearchQuery);
+        const candidatesFound =
+          query.length >= 1
+            ? cmsData.candidates.filter((cand) => {
+                if (!isCandidateInExam(cand, findRoomModalExam)) return false;
+                if (
+                  selectedLevel !== "all" &&
+                  !isCandidateMatchingLevel(cand.className, selectedLevel)
+                ) {
+                  return false;
+                }
+                const lastName = normalizeSearchStr(cand.lastName);
+                const firstName = normalizeSearchStr(cand.firstName);
+                const fullName = `${lastName} ${firstName}`;
+                const reverseName = `${firstName} ${lastName}`;
+                const assign = getCandidateAssignmentForExam(
+                  cand,
+                  findRoomModalExam,
+                  cmsData.examSlots || [],
+                  cmsData.rooms
+                );
+                const anonymat = normalizeSearchStr(assign.anonymatNumber || cand.anonymatNumber);
+                const id = normalizeSearchStr(cand.id);
+                const className = normalizeSearchStr(cand.className);
+
+                return (
+                  lastName.includes(query) ||
+                  firstName.includes(query) ||
+                  fullName.includes(query) ||
+                  reverseName.includes(query) ||
+                  anonymat.includes(query) ||
+                  id.includes(query) ||
+                  className.includes(query)
+                );
+              })
+            : [];
+
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 print:hidden"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setFindRoomModalExam(null);
+              }
+            }}
+          >
+            <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[88vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
+              {/* Modal Header */}
+              <div className="bg-[#0F2A56] text-white px-5 py-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                    Portail Candidat • {findRoomModalExam.title}
+                  </p>
+                  <h3 className="text-base sm:text-lg font-extrabold tracking-tight flex items-center gap-2 truncate">
+                    <Search className="h-4 w-4 text-amber-300 shrink-0" />
+                    <span>Trouver ma Salle &amp; Ma Convocation</span>
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFindRoomModalExam(null)}
+                  className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition cursor-pointer shrink-0"
+                  title="Fermer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/70 space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    autoFocus
+                    value={modalSearchQuery}
+                    onChange={(e) => setModalSearchQuery(e.target.value)}
+                    placeholder="Tapez votre nom, prénom, classe ou N° d'anonymat..."
+                    className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#1D4ED8] focus:ring-2 focus:ring-blue-100 focus:outline-hidden font-medium"
+                  />
+                  {modalSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setModalSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                      title="Effacer"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Période : <strong className="text-slate-700">{findRoomModalExam.period}</strong> • Saisissez au moins 1 caractère pour afficher votre affectation.
+                </p>
+              </div>
+
+              {/* Results Body */}
+              <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-3 bg-white">
+                {query.length < 1 ? (
+                  <div className="py-10 text-center space-y-2 text-slate-500">
+                    <Search className="h-8 w-8 text-slate-300 mx-auto" />
+                    <p className="text-xs font-semibold text-slate-700">
+                      Recherche instantanée par nom, classe ou numéro d&apos;anonymat
+                    </p>
+                    <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                      Vous verrez immédiatement votre salle assignée, votre numéro de table, vos horaires personnalisés (incluant +1/3 temps le cas échéant) et le bouton de convocation PDF.
+                    </p>
+                  </div>
+                ) : candidatesFound.length === 0 ? (
+                  <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                    <p className="text-xs text-slate-600">
+                      Aucun élève trouvé pour &quot;<strong>{modalSearchQuery}</strong>&quot; sur cette session. Vérifiez l&apos;orthographe ou le filtre de niveau.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      {candidatesFound.length} candidat(s) trouvé(s)
+                    </p>
+                    {candidatesFound.map((cand) => {
+                      const assign = getCandidateAssignmentForExam(
+                        cand,
+                        findRoomModalExam,
+                        cmsData.examSlots || [],
+                        cmsData.rooms
+                      );
+                      const candSlots = getCandidateMatchingSlots(
+                        cand,
+                        findRoomModalExam,
+                        cmsData.examSlots || []
+                      );
+                      const isTT = isCandidateTiersTemps(cand);
+
+                      return (
+                        <div
+                          key={cand.id}
+                          className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3"
+                        >
+                          <div className="flex items-start justify-between gap-2 border-b border-slate-200 pb-2.5">
+                            <div>
+                              <span className="font-extrabold text-sm text-[#0F2A56] block">
+                                {cand.lastName.toUpperCase()} {cand.firstName}
+                              </span>
+                              <span className="text-[11px] text-slate-500 font-mono">
+                                N° Anonymat : {assign.anonymatNumber || `LFJP-${cand.id.slice(-4)}`}
+                              </span>
+                            </div>
+                            <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-blue-100 text-[#0F2A56]">
+                              {cand.className}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2.5 text-xs">
+                            <div className="p-2.5 bg-white rounded-lg border border-slate-200">
+                              <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                                Salle assignée
+                              </span>
+                              <strong className="text-sm font-extrabold text-[#0F2A56]">
+                                {assign.roomName || "En cours d'attribution"}
+                              </strong>
+                            </div>
+                            <div className="p-2.5 bg-white rounded-lg border border-slate-200">
+                              <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                                Table d&apos;examen
+                              </span>
+                              <strong className="text-sm font-bold text-slate-800 font-mono tabular-nums">
+                                Table N° {assign.tableNumber || "1"}
+                              </strong>
+                            </div>
+                          </div>
+
+                          {/* Épreuves du candidat */}
+                          <div className="space-y-1.5">
+                            <span className="text-[10px] uppercase font-bold text-slate-600 block">
+                              Épreuves du candidat ({candSlots.length}) :
+                            </span>
+                            <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                              {candSlots.length === 0 ? (
+                                <p className="text-[11px] text-slate-400 italic">
+                                  Aucune épreuve programmée pour ce niveau.
+                                </p>
+                              ) : (
+                                candSlots.map((slot, idx) => {
+                                  const ttEnd =
+                                    slot.tiersTempsEndTime ||
+                                    computeTimeOffset(
+                                      slot.startTime,
+                                      Math.round((slot.durationMinutes || 60) * (4 / 3))
+                                    );
+                                  return (
+                                    <div
+                                      key={slot.id || idx}
+                                      className="flex items-center justify-between text-[11px] bg-white px-2.5 py-1.5 rounded-lg border border-slate-200"
+                                    >
+                                      <span className="font-semibold text-slate-800 truncate mr-2">
+                                        {slot.subject}
+                                      </span>
+                                      <span className="font-mono text-slate-600 text-[10px] shrink-0 tabular-nums">
+                                        {slot.date} • {slot.startTime} – {isTT ? `${ttEnd} (+1/3)` : slot.endTime}
+                                      </span>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </div>
+
+                          {isTT && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-purple-100 text-purple-900 text-[10px] font-bold">
+                              Aménagement : {cand.accommodation || "Tiers-Temps"} (+1/3 temps appliqué)
+                            </span>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const examRef = findRoomModalExam;
+                              setFindRoomModalExam(null);
+                              setSelectedExamForConvocation(examRef);
+                              setSelectedStudentForConvocation(cand);
+                            }}
+                            className="w-full py-2.5 px-3 rounded-xl bg-[#0F2A56] hover:bg-[#1D4ED8] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                          >
+                            <Printer className="h-3.5 w-3.5 text-amber-300" />
+                            <span>Télécharger / Imprimer ma convocation ({findRoomModalExam.title})</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>

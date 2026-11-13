@@ -101,7 +101,7 @@ export default function VitrinePublishSection({
   const [annTitle, setAnnTitle] = useState("");
   const [annContent, setAnnContent] = useState("");
   const [annTarget, setAnnTarget] = useState<"all" | "bac" | "dnb" | "teachers">("all");
-  const [annPriority, setAnnPriority] = useState<"information" | "important" | "urgent">("information");
+  const [annPriority, setAnnPriority] = useState<"information" | "important" | "urgent" | "resultats">("information");
   const [annIsPublished, setAnnIsPublished] = useState(true);
 
   // Exam Modal State
@@ -662,9 +662,11 @@ export default function VitrinePublishSection({
                           ? "bg-rose-100 text-rose-800 border-rose-200"
                           : ann.priority === "important"
                           ? "bg-amber-100 text-amber-800 border-amber-200"
-                          : "bg-slate-100 text-slate-700 border-slate-200"
+                          : ann.priority === "resultats"
+                          ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                          : "bg-blue-100 text-blue-800 border-blue-200"
                       }`}>
-                        {ann.priority}
+                        {ann.priority === "resultats" ? "Résultats" : ann.priority}
                       </span>
                     </div>
                     <p className="text-xs text-slate-600 leading-relaxed">{ann.content}</p>
@@ -1056,9 +1058,10 @@ export default function VitrinePublishSection({
                     onChange={(e) => setAnnPriority(e.target.value as any)}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white"
                   >
-                    <option value="information">Information générale</option>
-                    <option value="important">Important (Orange)</option>
-                    <option value="urgent">Urgent / Impératif (Rouge)</option>
+                    <option value="information">Information générale (Bleu)</option>
+                    <option value="important">Rappel important (Or / Orange)</option>
+                    <option value="urgent">Urgence / Changement de salle (Rouge)</option>
+                    <option value="resultats">Résultats & Listes d&apos;admission (Vert)</option>
                   </select>
                 </div>
               </div>

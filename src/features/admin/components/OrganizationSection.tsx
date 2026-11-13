@@ -337,6 +337,7 @@ export default function OrganizationSection({
   const [manualSelectedIds, setManualSelectedIds] = useState<string[]>([]);
   const [manualClassFilter, setManualClassFilter] = useState<string>("all");
   const [manualTargetRoomName, setManualTargetRoomName] = useState<string>("");
+  const [manualRoomLocked, setManualRoomLocked] = useState<boolean>(false);
   const [manualTableNumber, setManualTableNumber] = useState<string>("");
   const [manualSearchTerm, setManualSearchTerm] = useState<string>("");
   const [inspectingRoomName, setInspectingRoomName] = useState<string | null>(null);
@@ -658,10 +659,13 @@ export default function OrganizationSection({
   const handleOpenManualAssign = (preselectedRoomName?: string) => {
     if (preselectedRoomName) {
       setManualTargetRoomName(preselectedRoomName);
+      setManualRoomLocked(true);
     } else if (selectedRooms.length > 0) {
       setManualTargetRoomName(selectedRooms[0].name);
+      setManualRoomLocked(false);
     } else if (rooms.length > 0) {
       setManualTargetRoomName(rooms[0].name);
+      setManualRoomLocked(false);
     }
     setManualSelectedIds([]);
     setManualClassFilter("all");
@@ -1680,46 +1684,66 @@ export default function OrganizationSection({
                 </div>
               </div>
 
-              {/* Target Room */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    2. Salle de destination :
-                  </label>
-                  <select
-                    value={manualTargetRoomName}
-                    onChange={(e) => setManualTargetRoomName(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-slate-800 bg-white"
-                  >
-                    {rooms.map((r) => {
-                      const assignedInRoom = targetCandidates.filter(
-                        (c) =>
-                          getCandidateAssignmentForExam(c, selectedExam, currentExamSlots, rooms).roomName === r.name
-                      ).length;
-                      const quota = getRoomQuota(r);
-                      return (
-                        <option key={r.id} value={r.name}>
-                          {r.name} ({assignedInRoom} / {quota} places)
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
+              {manualRoomLocked ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                  <div className="px-3 py-2 rounded-lg bg-[#0F2A56]/5 border border-[#0F2A56]/20 flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-slate-600">Salle sélectionnée :</span>
+                    <span className="font-bold text-[#0F2A56] text-xs">{manualTargetRoomName}</span>
+                  </div>
 
-                {/* Starting Table Number */}
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    3. Table de départ (auto si vide) :
-                  </label>
-                  <input
-                    type="text"
-                    value={manualTableNumber}
-                    onChange={(e) => setManualTableNumber(e.target.value)}
-                    placeholder="Auto-incrémenté à la suite"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-                  />
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      2. Table de départ (auto si vide) :
+                    </label>
+                    <input
+                      type="text"
+                      value={manualTableNumber}
+                      onChange={(e) => setManualTableNumber(e.target.value)}
+                      placeholder="Auto-incrémenté à la suite"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      2. Salle de destination :
+                    </label>
+                    <select
+                      value={manualTargetRoomName}
+                      onChange={(e) => setManualTargetRoomName(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-bold text-slate-800 bg-white"
+                    >
+                      {rooms.map((r) => {
+                        const assignedInRoom = targetCandidates.filter(
+                          (c) =>
+                            getCandidateAssignmentForExam(c, selectedExam, currentExamSlots, rooms).roomName === r.name
+                        ).length;
+                        const quota = getRoomQuota(r);
+                        return (
+                          <option key={r.id} value={r.name}>
+                            {r.name} ({assignedInRoom} / {quota} places)
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      3. Table de départ (auto si vide) :
+                    </label>
+                    <input
+                      type="text"
+                      value={manualTableNumber}
+                      onChange={(e) => setManualTableNumber(e.target.value)}
+                      placeholder="Auto-incrémenté à la suite"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">

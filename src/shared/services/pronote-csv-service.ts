@@ -1,4 +1,9 @@
-import type { CmsCandidate, CmsTeacher, CmsRoom } from "./cms-store";
+import {
+  isCandidateTiersTemps,
+  type CmsCandidate,
+  type CmsTeacher,
+  type CmsRoom,
+} from "./cms-store";
 
 // ============================================================================
 // TEMPLATES CSV OFFICIELS PRONOTE (AVEC BOM UTF-8 POUR EXCEL ET PRONOTE)
@@ -198,6 +203,7 @@ export function parsePronoteElevesCsv(content: string): {
         roomName: "",
         convocationTime: "07h45",
         accommodation: amenagement,
+        isTiersTemps: isCandidateTiersTemps({ accommodation: amenagement }),
         ...(specialite ? { specialty: specialite } : {}),
         tableNumber: "",
         anonymatNumber: "",

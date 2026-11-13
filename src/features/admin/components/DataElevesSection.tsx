@@ -131,6 +131,7 @@ export default function DataElevesSection({
       return;
     }
 
+    const autoIsTT = isCandidateTiersTemps({ accommodation: formAccommodation.trim() });
     if (editingCandidate) {
       onUpdateCandidate(editingCandidate.id, {
         lastName: formLastName.toUpperCase().trim(),
@@ -138,6 +139,7 @@ export default function DataElevesSection({
         className: formClass.trim(),
         specialty: formSpecialty.trim(),
         accommodation: formAccommodation.trim(),
+        isTiersTemps: autoIsTT,
         roomName: formRoom.trim(),
         tableNumber: formTable.trim(),
       });
@@ -152,6 +154,7 @@ export default function DataElevesSection({
         convocationTime: "07h45",
         specialty: formSpecialty.trim(),
         accommodation: formAccommodation.trim(),
+        isTiersTemps: autoIsTT,
         tableNumber: formTable.trim(),
       });
       onShowNotification(`Élève ${formLastName} ajouté avec succès.`);
@@ -610,15 +613,20 @@ FALL;Fatou;3A;F;05/09/2011;Tiers-temps;3EME"
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
-                  Aménagement officiel (PAP / PPS / Tiers-Temps)
+                  Aménagement officiel (PAP / PPRE / PPS / Tiers-Temps)
                 </label>
                 <input
                   type="text"
                   value={formAccommodation}
                   onChange={(e) => setFormAccommodation(e.target.value)}
-                  placeholder="Ex: Tiers-temps (+1/3 temps), PAP, PPS, Ordinateur..."
+                  placeholder="Ex: PAP, PPS, PPRE, Tiers-temps (+1/3 temps), Ordinateur..."
                   className="w-full px-3 py-1.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#3498db]"
                 />
+                {isCandidateTiersTemps({ accommodation: formAccommodation }) && (
+                  <p className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-purple-50 border border-purple-200 text-purple-800 text-[11px] font-semibold">
+                    <span>✓ Statut Tiers-Temps (+1/3 temps) activé automatiquement</span>
+                  </p>
+                )}
               </div>
 
               <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">

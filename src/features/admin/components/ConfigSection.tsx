@@ -38,6 +38,8 @@ import {
   deleteConfigSnapshot,
   restoreConfigSnapshot,
   DEFAULT_SCHOOL_LEVELS,
+  DEFAULT_PROVISEUR_VISIBLE_MODULES,
+  getProviseurVisibleModules,
 } from "../../../shared/services/cms-store";
 
 export interface StandardSlotItem {
@@ -212,6 +214,7 @@ export default function ConfigSection({
     if (Array.isArray(siteInfo.logos)) {
       setLogos(siteInfo.logos);
     }
+    setProviseurVisibleModules(getProviseurVisibleModules(siteInfo));
   }, [siteInfo]);
   const [isSlotModalOpen, setIsSlotModalOpen] = useState(false);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
@@ -253,9 +256,13 @@ export default function ConfigSection({
   const [editingAnnId, setEditingAnnId] = useState<string | null>(null);
   const [annTitle, setAnnTitle] = useState("");
   const [annContent, setAnnContent] = useState("");
-  const [annPriority, setAnnPriority] = useState<"information" | "important" | "urgent">("information");
+  const [annPriority, setAnnPriority] = useState<"information" | "important" | "urgent" | "resultats">("information");
   const [annTarget, setAnnTarget] = useState<"all" | "bac" | "dnb" | "teachers">("all");
   const [annIsPublished, setAnnIsPublished] = useState(true);
+
+  const [proviseurVisibleModules, setProviseurVisibleModules] = useState<Record<string, boolean>>(() =>
+    getProviseurVisibleModules(siteInfo)
+  );
 
   // 6. Logos
   const [logos, setLogos] = useState<Array<{ src: string; alt?: string }>>(
@@ -392,6 +399,7 @@ export default function ConfigSection({
         password: proviseurPassword.trim(),
         name: proviseurName.trim(),
       },
+      proviseurVisibleModules,
     });
     setIdentitySavedFeedback(true);
     setTimeout(() => setIdentitySavedFeedback(false), 3000);
@@ -1438,6 +1446,89 @@ export default function ConfigSection({
         </div>
       </div>
 
+      {/* 7b. Visibilité des Modules (Espace Proviseur) */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6 space-y-4">
+        <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+              <Eye className="h-4 w-4 text-[#1D4ED8]" />
+              <span>Visibilité des Modules (Espace Proviseur)</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Choisissez les modules accessibles dans le menu latéral du Proviseur. Par défaut, les modules techniques avancés (07 Vers EDT et 08 Corrections & Notes) sont masqués.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const resetVis = { ...DEFAULT_PROVISEUR_VISIBLE_MODULES };
+              setProviseurVisibleModules(resetVis);
+              onUpdateSiteInfo({ proviseurVisibleModules: resetVis });
+              onShowNotification("Visibilité des modules Proviseur rétablie par défaut.");
+            }}
+            className="px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition self-start sm:self-auto cursor-pointer"
+          >
+            Rétablir par défaut
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          {[
+            { key: "dashboard", label: "00. Tableau de Bord" },
+            { key: "dataMenu", label: "02. Données Pronote (Élèves, Salles, Profs)" },
+            { key: "sessions-examens", label: "03. Sessions d'Examens" },
+            { key: "creneaux-epreuves", label: "04. Créneaux des Épreuves" },
+            { key: "organization", label: "05. Répartition & Brassage" },
+            { key: "planningMenu", label: "06. Plannings Surveillances" },
+            { key: "view-edt", label: "07. Vers EDT & Cours Impactés" },
+            { key: "resMenu", label: "08. Corrections & Notes" },
+            { key: "convocMenu", label: "09. Convocations & Ordres" },
+            { key: "publishDeployMenu", label: "10. Vitrine & Déploiement" },
+          ].map((mod) => {
+            const isChecked = proviseurVisibleModules[mod.key] !== false;
+            return (
+              <label
+                key={mod.key}
+                className={`flex items-center justify-between gap-2 p-3 rounded-xl border text-xs cursor-pointer transition ${
+                  isChecked
+                    ? "border-[#1D4ED8]/30 bg-blue-50/40 text-slate-900 font-semibold"
+                    : "border-slate-200 bg-slate-50 text-slate-500"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={(e) => {
+                      const next = {
+                        ...proviseurVisibleModules,
+                        [mod.key]: e.target.checked,
+                      };
+                      setProviseurVisibleModules(next);
+                      onUpdateSiteInfo({ proviseurVisibleModules: next });
+                      onShowNotification(
+                        `${mod.label} ${e.target.checked ? "activé" : "masqué"} pour l'espace Proviseur.`
+                      );
+                    }}
+                    className="rounded border-slate-300 text-[#1D4ED8] focus:ring-[#1D4ED8] h-4 w-4 shrink-0"
+                  />
+                  <span className="truncate">{mod.label}</span>
+                </div>
+                <span
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                    isChecked
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-slate-200 text-slate-600"
+                  }`}
+                >
+                  {isChecked ? "Visible" : "Masqué"}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
       {/* 8. Réinitialisation pour la Nouvelle Année Scolaire (UNIQUE BOUTON CONSERVÉ) */}
       <div className="bg-white rounded-2xl border-2 border-blue-200/90 shadow-sm p-6 space-y-5">
         <div className="border-b border-blue-100 pb-3 flex items-center justify-between">
@@ -1821,9 +1912,10 @@ export default function ConfigSection({
                     onChange={(e) => setAnnPriority(e.target.value as any)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
                   >
-                    <option value="information">Information générale</option>
-                    <option value="important">Important</option>
-                    <option value="urgent">Urgent / Impératif</option>
+                    <option value="information">Information générale (Bleu)</option>
+                    <option value="important">Rappel important (Or / Orange)</option>
+                    <option value="urgent">Urgence / Changement de salle (Rouge)</option>
+                    <option value="resultats">Résultats & Listes d&apos;admission (Vert)</option>
                   </select>
                 </div>
 

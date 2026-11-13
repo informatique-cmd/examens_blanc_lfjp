@@ -11,7 +11,10 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import type { CmsCandidate } from "../../../shared/services/cms-store";
+import {
+  isCandidateTiersTemps,
+  type CmsCandidate,
+} from "../../../shared/services/cms-store";
 
 interface DataAmenagementsSectionProps {
   candidates: CmsCandidate[];
@@ -54,9 +57,7 @@ export default function DataAmenagementsSection({
     });
   }, [candidates, selectedClass, search]);
 
-  const totalTT = candidates.filter(
-    (c) => c.accommodation?.includes("1/3") || c.accommodation?.includes("Tiers-temps")
-  ).length;
+  const totalTT = candidates.filter((c) => isCandidateTiersTemps(c)).length;
 
   const totalLaptop = candidates.filter(
     (c) => c.accommodation?.toLowerCase().includes("ordinateur") || c.accommodation?.toLowerCase().includes("pc")
@@ -174,10 +175,7 @@ export default function DataAmenagementsSection({
             <tbody className="divide-y divide-slate-100">
               {accommodatedStudents.length > 0 ? (
                 accommodatedStudents.map((cand) => {
-                  const isTT =
-                    cand.accommodation?.includes("1/3") ||
-                    cand.accommodation?.includes("Tiers-temps") ||
-                    cand.accommodation?.includes("Temps");
+                  const isTT = isCandidateTiersTemps(cand);
 
                   return (
                     <tr key={cand.id} className="hover:bg-slate-50/70">
@@ -193,10 +191,14 @@ export default function DataAmenagementsSection({
                         <input
                           type="text"
                           value={cand.accommodation || ""}
-                          onChange={(e) =>
-                            onUpdateCandidate(cand.id, { accommodation: e.target.value })
-                          }
-                          placeholder="Ex: Tiers-temps 1/3, Ordinateur..."
+                          onChange={(e) => {
+                            const nextVal = e.target.value;
+                            onUpdateCandidate(cand.id, {
+                              accommodation: nextVal,
+                              isTiersTemps: isCandidateTiersTemps({ accommodation: nextVal }),
+                            });
+                          }}
+                          placeholder="Ex: PAP, PPS, PPRE, Tiers-temps 1/3, Ordinateur..."
                           className="w-full px-2 py-1 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-purple-500"
                         />
                       </td>
@@ -212,8 +214,16 @@ export default function DataAmenagementsSection({
                         <button
                           type="button"
                           onClick={() => {
-                            const newAccom = isTT ? "Standard" : "Tiers-temps (+1/3)";
-                            onUpdateCandidate(cand.id, { accommodation: newAccom });
+                            const nextIsTT = !isTT;
+                            const newAccom = nextIsTT
+                              ? cand.accommodation && cand.accommodation !== "Standard"
+                                ? cand.accommodation
+                                : "Tiers-temps (+1/3)"
+                              : "Standard";
+                            onUpdateCandidate(cand.id, {
+                              accommodation: newAccom,
+                              isTiersTemps: nextIsTT,
+                            });
                             onShowNotification(`Statut tiers-temps mis à jour pour ${cand.lastName}.`);
                           }}
                           className={`px-2.5 py-1 rounded text-[11px] font-bold transition ${

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Users,
   School,
@@ -10,16 +10,24 @@ import {
   ExternalLink,
   Compass,
   CheckCircle2,
+  ClipboardList,
+  Accessibility,
+  AlertTriangle,
+  ArrowRight,
+  Clock,
 } from "lucide-react";
-import type {
-  CmsCandidate,
-  CmsRoom,
-  CmsTeacher,
-  CmsExam,
-  CmsExamSlot,
-  CmsSurveillance,
-  SiteInfo,
-  CmsAnnouncement,
+import {
+  isCandidateTiersTemps,
+  getExamTargetLevels,
+  formatTargetLevelsSummary,
+  type CmsCandidate,
+  type CmsRoom,
+  type CmsTeacher,
+  type CmsExam,
+  type CmsExamSlot,
+  type CmsSurveillance,
+  type SiteInfo,
+  type CmsAnnouncement,
 } from "../../../shared/services/cms-store";
 import type { AdminSection } from "./AdminSidebar";
 
@@ -50,35 +58,30 @@ export default function AdminDashboardSection({
 }: AdminDashboardSectionProps) {
   // 1. TOTALS & BASELINE STATS
   const totalCapacity = rooms.reduce((acc, r) => acc + (Number(r.capacity) || 0), 0);
-  const ttCandidatesCount = candidates.filter(
-    (c) =>
-      c.accommodation &&
-      c.accommodation !== "Aucun" &&
-      (c.accommodation.toLowerCase().includes("tiers") ||
-        c.accommodation.toLowerCase().includes("1/3") ||
-        c.accommodation.toLowerCase().includes("pap") ||
-        c.accommodation.toLowerCase().includes("pps") ||
-        c.accommodation.toLowerCase().includes("aménag"))
-  ).length;
+  const ttCandidatesCount = useMemo(
+    () => candidates.filter((c) => isCandidateTiersTemps(c)).length,
+    [candidates]
+  );
 
-  const effectiveSurveillancesCount = exams.length === 0 || examSlots.length === 0 ? 0 : surveillances.length;
+  const effectiveSurveillancesCount =
+    exams.length === 0 || examSlots.length === 0 ? 0 : surveillances.length;
   const publishedAnnouncements = announcements.filter((a) => a.isPublished);
+  const activeSessionsCount = exams.filter((e) => e.status !== "Archivé").length;
 
   // 2. DYNAMIC MOBILIZED ROOMS CALCULATION
-  // A room is considered "mobilized" if it is explicitly selected in exam slots,
-  // assigned in surveillances, or populated in candidate roomName.
-  const mobilizedRoomMap = new Map<string, { name: string; capacity: number; building?: string; count: number }>();
+  const mobilizedRoomMap = new Map<
+    string,
+    { name: string; capacity: number; building?: string; count: number }
+  >();
 
   const registerMobilizedRoom = (rawName?: string) => {
     if (!rawName) return;
     const trimmed = rawName.trim();
     if (!trimmed || trimmed.toLowerCase() === "renfort") return;
 
-    // Match against configured rooms table (case-insensitive)
     const matchedRoom = rooms.find(
       (r) => r.name.trim().toLowerCase() === trimmed.toLowerCase()
     );
-
     const standardName = matchedRoom ? matchedRoom.name : trimmed;
     const existing = mobilizedRoomMap.get(standardName);
     if (existing) {
@@ -105,6 +108,11 @@ export default function AdminDashboardSection({
 
   (candidates || []).forEach((c) => {
     registerMobilizedRoom(c.roomName);
+    if (c.assignmentsByExam) {
+      Object.values(c.assignmentsByExam).forEach((assign) => {
+        registerMobilizedRoom(assign?.roomName);
+      });
+    }
   });
 
   const mobilizedRoomList = Array.from(mobilizedRoomMap.values());
@@ -115,10 +123,9 @@ export default function AdminDashboardSection({
     : totalCapacity;
 
   // 3. DYNAMIC MOBILIZED SURVEILLANTS CALCULATION
-  // Identify distinct invigilators assigned to active exams (both teachers & renforts)
   const mobilizedSurveillantMap = new Map<
     string,
-    { name: string; isRenfort: boolean; missionsCount: number; rooms: Set<string> }
+    { name: string; isRenfort: boolean; missionsCount: number }
   >();
 
   (surveillances || []).forEach((s) => {
@@ -126,10 +133,12 @@ export default function AdminDashboardSection({
       const name = s.teacherName.trim();
       const isRenfort =
         s.roomName === "Renfort" ||
-        s.mission?.toLowerCase().includes("renfort") ||
+        Boolean(s.mission?.toLowerCase().includes("renfort")) ||
         !teachers.some(
           (t) =>
-            `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`.toLowerCase().includes(name.toLowerCase()) ||
+            `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`
+              .toLowerCase()
+              .includes(name.toLowerCase()) ||
             `${t.lastName} ${t.firstName}`.toLowerCase().includes(name.toLowerCase())
         );
 
@@ -137,15 +146,11 @@ export default function AdminDashboardSection({
       if (existing) {
         existing.missionsCount += 1;
         if (isRenfort) existing.isRenfort = true;
-        if (s.roomName && s.roomName !== "Renfort") existing.rooms.add(s.roomName);
       } else {
-        const roomSet = new Set<string>();
-        if (s.roomName && s.roomName !== "Renfort") roomSet.add(s.roomName);
         mobilizedSurveillantMap.set(name, {
           name,
           isRenfort,
           missionsCount: 1,
-          rooms: roomSet,
         });
       }
     }
@@ -154,69 +159,158 @@ export default function AdminDashboardSection({
   const mobilizedSurveillantsList = Array.from(mobilizedSurveillantMap.values());
   const hasMobilizedSurveillants = mobilizedSurveillantsList.length > 0;
   const mobilizedSurveillantsCount = mobilizedSurveillantsList.length;
-  const renfortSurveillantsCount = mobilizedSurveillantsList.filter((s) => s.isRenfort).length;
-  const profsSurveillantsCount = mobilizedSurveillantsCount - renfortSurveillantsCount;
 
   // 4. CANDIDATES DISPATCH STATUS
-  const assignedCandidates = candidates.filter((c) => Boolean(c.roomName && c.roomName.trim()));
+  const assignedCandidates = candidates.filter(
+    (c) =>
+      Boolean(c.roomName && c.roomName.trim()) ||
+      Boolean(
+        c.assignmentsByExam &&
+          Object.values(c.assignmentsByExam).some((a) => Boolean(a?.roomName?.trim()))
+      )
+  );
   const assignedCandidatesCount = assignedCandidates.length;
   const hasAssignedCandidates = assignedCandidatesCount > 0;
-  const dispatchPercentage = candidates.length > 0
-    ? Math.round((assignedCandidatesCount / candidates.length) * 100)
-    : 0;
+  const dispatchPercentage =
+    candidates.length > 0
+      ? Math.round((assignedCandidatesCount / candidates.length) * 100)
+      : 0;
 
-  // 5. EXAM SLOTS COVERAGE
-  const coveredSlotIds = new Set<string>();
-  (surveillances || []).forEach((s) => {
-    if (s.slotId) coveredSlotIds.add(s.slotId);
-  });
-  const coveredSlotsCount = coveredSlotIds.size;
+  // 5. EXAM SLOTS COVERAGE & LOGISTICAL ALERTS
+  const slotAlerts = useMemo(() => {
+    return (examSlots || []).map((slot) => {
+      const slotRooms = slot.roomNames || [];
+      const slotSurvs = (surveillances || []).filter(
+        (s) =>
+          (slot.id && s.slotId === slot.id) ||
+          (s.date === slot.date &&
+            s.timeSlot.includes(slot.startTime) &&
+            (!s.examTitle ||
+              s.examTitle.trim().toLowerCase() === slot.examTitle.trim().toLowerCase()))
+      );
+      const missingRooms = slotRooms.length === 0;
+      const missingSurveillants = slotSurvs.length === 0;
+      const uncoveredRoomsCount = Math.max(0, slotRooms.length - slotSurvs.length);
+      return {
+        slot,
+        missingRooms,
+        missingSurveillants,
+        uncoveredRoomsCount,
+        coveredCount: slotSurvs.length,
+        roomCount: slotRooms.length,
+      };
+    });
+  }, [examSlots, surveillances]);
+
+  const logisticalIssues = useMemo(
+    () =>
+      slotAlerts.filter(
+        (a) => a.missingRooms || a.missingSurveillants || a.uncoveredRoomsCount > 0
+      ),
+    [slotAlerts]
+  );
+
+  const upcomingSlots = useMemo(() => {
+    return [...(examSlots || [])].sort((a, b) => {
+      const d = (a.date || "").localeCompare(b.date || "");
+      if (d !== 0) return d;
+      return (a.startTime || "").localeCompare(b.startTime || "");
+    });
+  }, [examSlots]);
+
+  // 6. GLOBAL WORKFLOW STEPPER PROGRESS
+  const step1Done = candidates.length > 0 && rooms.length > 0;
+  const step2Done = exams.length > 0 && examSlots.length > 0;
+  const step3Done = assignedCandidatesCount > 0 && effectiveSurveillancesCount > 0;
+  const step4Done = exams.some((e) => e.isPublished !== false) && step3Done;
+
+  const completedStepsCount = [step1Done, step2Done, step3Done, step4Done].filter(Boolean).length;
+  const workflowProgressPct = Math.round((completedStepsCount / 4) * 100);
+
+  const workflowSteps: Array<{
+    num: string;
+    title: string;
+    detail: string;
+    done: boolean;
+    cta: string;
+    section: AdminSection;
+  }> = [
+    {
+      num: "01",
+      title: "Import des élèves & salles",
+      detail: `${candidates.length} candidat(s) • ${rooms.length} salle(s) • ${teachers.length} enseignant(s)`,
+      done: step1Done,
+      cta: "Données Pronote",
+      section: "data-eleves",
+    },
+    {
+      num: "02",
+      title: "Sessions & créneaux des épreuves",
+      detail: `${exams.length} session(s) • ${examSlots.length} créneau(x) programmé(s)`,
+      done: step2Done,
+      cta: "Créneaux",
+      section: "creneaux-epreuves",
+    },
+    {
+      num: "03",
+      title: "Brassage des tables & surveillances",
+      detail: `${assignedCandidatesCount}/${candidates.length} candidat(s) en salle • ${effectiveSurveillancesCount} poste(s)`,
+      done: step3Done,
+      cta: "Brassage",
+      section: "organization",
+    },
+    {
+      num: "04",
+      title: "Convocations A4 & diffusion vitrine",
+      detail: `${exams.filter((e) => e.isPublished !== false).length}/${exams.length} session(s) en ligne`,
+      done: step4Done,
+      cta: "Convocations",
+      section: "convoc-eleves",
+    },
+  ];
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto w-full animate-in fade-in duration-300">
-      {/* 1. TOP EXECUTIVE WELCOME BANNER (LUMINOUS & REFINED FRENCH INSTITUTIONAL STYLE) */}
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-xs relative overflow-hidden">
-        {/* Institutional Tricolor Micro-Hairline Accent */}
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#002060] via-[#3498db] to-[#c92a2a]" />
+    <div className="space-y-6 max-w-6xl mx-auto w-full animate-in fade-in duration-300">
+      {/* 1. INSTITUTIONAL HEADER BANNER (LFJP / AEFE) */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0F2A56] via-[#1D4ED8] to-[#c92a2a]" />
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pt-1">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 pt-1">
           <div className="space-y-2 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#002060] font-bold text-xs uppercase tracking-wider">
-                <span className="w-2 h-2 rounded-full bg-[#002060]" />
-                {role === "proviseur" ? "Espace Proviseur & Organisation" : "Espace Direction & Organisation"}
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-[#0F2A56]/5 border border-[#0F2A56]/15 text-[#0F2A56] font-bold text-[11px] uppercase tracking-wider">
+                {role === "proviseur" ? "Direction • Espace Proviseur" : "Direction • Administration LFJP"}
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 font-bold text-xs">
-                Session Officielle {siteInfo.schoolYear || "2026-2027"}
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-[#1D4ED8] font-bold text-[11px]">
+                Année scolaire {siteInfo.schoolYear || "2026-2027"}
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              Tableau de Bord — Examens Blancs LFJP
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F2A56] tracking-tight">
+              Tableau de Bord — Organisation des Examens
             </h1>
 
             <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-              Supervisez l'intégralité du déroulement des épreuves : de l'import Pronote au brassage des tables, jusqu'à l'impression des convocations certifiées et la publication sur la vitrine officielle.
+              Pilotage centralisé des épreuves du Lycée Français Jacques Prévert : cohorte Pronote, créneaux, brassage anti-fraude, surveillances et convocations A4.
             </p>
           </div>
 
-          {/* Quick Institutional Action Links - Harmonized */}
           <div className="flex flex-wrap items-center gap-2.5 shrink-0 self-start lg:self-center">
             <button
               type="button"
               onClick={() => onNavigateSection("convoc-eleves")}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-xs hover:shadow cursor-pointer active:scale-[0.98]"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0F2A56] hover:bg-[#173B75] text-white text-xs font-bold transition shadow-2xs cursor-pointer"
             >
               <Printer className="h-4 w-4 text-amber-300" />
-              <span>Imprimer Convocations</span>
+              <span>Convocations A4</span>
             </button>
 
             <button
               type="button"
               onClick={() => onNavigateSection("organization")}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-[#002060] text-xs font-bold transition shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.98]"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#1D4ED8]/25 bg-blue-50 hover:bg-blue-100 text-[#1D4ED8] text-xs font-bold transition cursor-pointer"
             >
-              <Compass className="h-4 w-4 text-blue-700" />
+              <Compass className="h-4 w-4" />
               <span>Répartition & Brassage</span>
             </button>
 
@@ -224,7 +318,7 @@ export default function AdminDashboardSection({
               href="/"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition shadow-2xs hover:shadow-xs cursor-pointer active:scale-[0.98]"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition cursor-pointer"
               title="Ouvrir le site vitrine dans un nouvel onglet"
             >
               <Eye className="h-4 w-4 text-slate-500" />
@@ -235,293 +329,387 @@ export default function AdminDashboardSection({
         </div>
       </div>
 
-      {/* 2. KEY METRICS ROW (DYNAMICALLY UPDATED BASED ON MOBILIZED CHOICES) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Candidates (Inscrits & Répartis) */}
-        <div
+      {/* 2. 5 BALANCED EXECUTIVE KPI CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* KPI 1: Sessions actives */}
+        <button
+          type="button"
+          onClick={() => onNavigateSection("sessions-examens")}
+          className="text-left rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs hover:border-[#1D4ED8]/50 hover:shadow-xs transition cursor-pointer group"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              Sessions actives
+            </span>
+            <div className="h-8 w-8 rounded-lg bg-[#0F2A56]/5 border border-[#0F2A56]/10 flex items-center justify-center text-[#0F2A56]">
+              <ClipboardList className="h-4 w-4" />
+            </div>
+          </div>
+          <p className="mt-3 text-2xl font-extrabold text-[#0F2A56] font-mono tabular-nums">
+            {activeSessionsCount}
+            {exams.length !== activeSessionsCount && (
+              <span className="text-xs font-medium text-slate-400 ml-1">/ {exams.length}</span>
+            )}
+          </p>
+          <p className="mt-1.5 text-[11px] text-slate-500">
+            <strong className="text-slate-700 tabular-nums">{examSlots.length}</strong> épreuve(s) programmée(s)
+          </p>
+        </button>
+
+        {/* KPI 2: Candidats inscrits */}
+        <button
+          type="button"
           onClick={() => onNavigateSection(hasAssignedCandidates ? "organization" : "data-eleves")}
-          className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-xs hover:border-indigo-300 transition cursor-pointer group"
-          title="Cliquez pour gérer les élèves et la répartition"
+          className="text-left rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs hover:border-[#1D4ED8]/50 hover:shadow-xs transition cursor-pointer group"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              {hasAssignedCandidates ? "Candidats Répartis" : "Candidats Inscrits"}
+              Candidats inscrits
             </span>
-            <div className="h-9 w-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 group-hover:scale-110 transition">
-              <Users className="h-5 w-5" />
+            <div className="h-8 w-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-[#1D4ED8]">
+              <Users className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-black text-slate-900 font-mono">
-            {hasAssignedCandidates ? (
-              <span>
-                {assignedCandidatesCount}
-                <span className="text-sm font-normal text-slate-400 ml-1">/ {candidates.length}</span>
-              </span>
-            ) : (
-              candidates.length
-            )}
+          <p className="mt-3 text-2xl font-extrabold text-slate-900 font-mono tabular-nums">
+            {candidates.length}
           </p>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
-            {hasAssignedCandidates ? (
-              <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold text-[10px] border border-emerald-200 flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                {dispatchPercentage}% en salle
-              </span>
-            ) : (
-              <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-800 font-bold text-[10px] border border-indigo-200">
-                Cohorte active
-              </span>
-            )}
-            <span className="text-slate-400">•</span>
-            <span className="text-slate-500 text-[11px]">♿ {ttCandidatesCount} Tiers-Temps</span>
-          </div>
-        </div>
+          <p className="mt-1.5 text-[11px] text-slate-500">
+            <strong className="text-emerald-700 tabular-nums">{dispatchPercentage}%</strong> affectés en salle
+          </p>
+        </button>
 
-        {/* Card 2: Rooms (Salles Mobilisées vs Salles Totales) */}
-        <div
+        {/* KPI 3: Salles mobilisées */}
+        <button
+          type="button"
           onClick={() => onNavigateSection("data-salles")}
-          className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-xs hover:border-emerald-300 transition cursor-pointer group"
-          title="Cliquez pour consulter les jauges et salles mobilisées"
+          className="text-left rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs hover:border-emerald-300 hover:shadow-xs transition cursor-pointer group"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              {hasMobilizedRooms ? "Salles Mobilisées" : "Salles d'Examens"}
+              Salles mobilisées
             </span>
-            <div className="h-9 w-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 group-hover:scale-110 transition">
-              <School className="h-5 w-5" />
+            <div className="h-8 w-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700">
+              <School className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-black text-emerald-700 font-mono">
+          <p className="mt-3 text-2xl font-extrabold text-emerald-700 font-mono tabular-nums">
             {mobilizedRoomsCount}
-            {hasMobilizedRooms && rooms.length > mobilizedRoomsCount && (
-              <span className="text-sm font-normal text-slate-400 ml-1">/ {rooms.length}</span>
-            )}
+            <span className="text-xs font-medium text-slate-400 ml-1">/ {rooms.length}</span>
           </p>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
-            <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold text-[10px] border border-emerald-200">
-              {mobilizedCapacity} places assises
-            </span>
-            <span className="text-slate-400">•</span>
-            <span className="text-slate-500 text-[11px]">
-              {hasMobilizedRooms ? `sur ${rooms.length} salles école` : "Capacité globale"}
-            </span>
-          </div>
-        </div>
-
-        {/* Card 3: Sessions & Slots */}
-        <div
-          onClick={() => onNavigateSection("creneaux-epreuves")}
-          className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-xs hover:border-amber-300 transition cursor-pointer group"
-          title="Cliquez pour planifier les créneaux et épreuves"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Créneaux d'Épreuves
-            </span>
-            <div className="h-9 w-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-700 group-hover:scale-110 transition">
-              <Calendar className="h-5 w-5" />
-            </div>
-          </div>
-          <p className="mt-3 text-3xl font-black text-slate-900 font-mono">
-            {examSlots.length}
+          <p className="mt-1.5 text-[11px] text-slate-500">
+            <strong className="text-slate-700 tabular-nums">{mobilizedCapacity}</strong> places assises
           </p>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
-            <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 font-bold text-[10px] border border-amber-200">
-              {exams.length} session{exams.length > 1 ? "s" : ""}
-            </span>
-            <span className="text-slate-400">•</span>
-            <span className="text-slate-500 text-[11px]">
-              {coveredSlotsCount > 0
-                ? `${coveredSlotsCount}/${examSlots.length} surveillés`
-                : "Calendrier actif"}
-            </span>
-          </div>
-        </div>
+        </button>
 
-        {/* Card 4: Surveillants (Surveillants Mobilisés vs Inscrits) */}
-        <div
+        {/* KPI 4: Surveillants affectés */}
+        <button
+          type="button"
           onClick={() => onNavigateSection("planning-rooms")}
-          className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-2xs hover:shadow-xs hover:border-rose-300 transition cursor-pointer group"
-          title="Cliquez pour gérer les surveillances et renforts"
+          className="text-left rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition cursor-pointer group"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              {hasMobilizedSurveillants ? "Surveillants Mobilisés" : "Surveillances Assignées"}
+              Surveillants affectés
             </span>
-            <div className="h-9 w-9 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-700 group-hover:scale-110 transition">
-              <Shield className="h-5 w-5" />
+            <div className="h-8 w-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700">
+              <Shield className="h-4 w-4" />
             </div>
           </div>
-          <p className="mt-3 text-3xl font-black text-slate-900 font-mono">
-            {hasMobilizedSurveillants ? (
-              <span>
-                {mobilizedSurveillantsCount}
-                <span className="text-sm font-normal text-slate-400 ml-1">/ {teachers.length}</span>
-              </span>
-            ) : (
-              effectiveSurveillancesCount
-            )}
+          <p className="mt-3 text-2xl font-extrabold text-slate-900 font-mono tabular-nums">
+            {hasMobilizedSurveillants ? mobilizedSurveillantsCount : effectiveSurveillancesCount}
+            <span className="text-xs font-medium text-slate-400 ml-1">/ {teachers.length}</span>
           </p>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-600">
-            <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-900 font-bold text-[10px] border border-rose-200">
-              {effectiveSurveillancesCount} poste{effectiveSurveillancesCount > 1 ? "s" : ""} couvert{effectiveSurveillancesCount > 1 ? "s" : ""}
+          <p className="mt-1.5 text-[11px] text-slate-500">
+            <strong className="text-slate-700 tabular-nums">{effectiveSurveillancesCount}</strong> créneau(x) couvert(s)
+          </p>
+        </button>
+
+        {/* KPI 5: Élèves PAP / PPS */}
+        <button
+          type="button"
+          onClick={() => onNavigateSection("data-amenagements")}
+          className="text-left rounded-2xl border border-slate-200 bg-white p-4 shadow-2xs hover:border-purple-300 hover:shadow-xs transition cursor-pointer group"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              Aménagements PAP/PPS
             </span>
-            <span className="text-slate-400">•</span>
-            <span className="text-slate-500 text-[11px]">
-              {renfortSurveillantsCount > 0
-                ? `${profsSurveillantsCount} profs + ${renfortSurveillantsCount} renforts`
-                : `${teachers.length} enseignants`}
-            </span>
+            <div className="h-8 w-8 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-700">
+              <Accessibility className="h-4 w-4" />
+            </div>
           </div>
-        </div>
+          <p className="mt-3 text-2xl font-extrabold text-purple-800 font-mono tabular-nums">
+            {ttCandidatesCount}
+          </p>
+          <p className="mt-1.5 text-[11px] text-slate-500">
+            Tiers-temps (+1/3) actifs
+          </p>
+        </button>
       </div>
-      {/* 3. RACCOURCIS D'ACCÈS RAPIDE AUX ESPACES CLÉS */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {[
-          {
-            label: "Base Élèves",
-            icon: Users,
-            sec: "data-eleves",
-            badge: hasAssignedCandidates
-              ? `${assignedCandidatesCount}/${candidates.length} placés`
-              : `${candidates.length} élèves`,
-          },
-          {
-            label: "Salles & Jauges",
-            icon: School,
-            sec: "data-salles",
-            badge: hasMobilizedRooms
-              ? `${mobilizedRoomsCount} mobilisée${mobilizedRoomsCount > 1 ? "s" : ""}`
-              : `${rooms.length} salles`,
-          },
-          {
-            label: "Enseignants",
-            icon: Shield,
-            sec: "data-profs",
-            badge: hasMobilizedSurveillants
-              ? `${mobilizedSurveillantsCount} mobilisé${mobilizedSurveillantsCount > 1 ? "s" : ""}`
-              : `${teachers.length} profs`,
-          },
-          {
-            label: "Créneaux Épreuves",
-            icon: Calendar,
-            sec: "creneaux-epreuves",
-            badge: `${examSlots.length} créneau${examSlots.length > 1 ? "x" : ""}`,
-          },
-          {
-            label: "Brassage Tables",
-            icon: Compass,
-            sec: "organization",
-            badge: hasAssignedCandidates ? `Terminé (${assignedCandidatesCount})` : "Répartition",
-          },
-          {
-            label: "Convocations A4",
-            icon: Printer,
-            sec: "convoc-eleves",
-            badge: "Impression",
-          },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.label}
-              type="button"
-              onClick={() => onNavigateSection(item.sec as AdminSection)}
-              className="p-3.5 rounded-2xl border border-slate-200 bg-white hover:border-blue-400 hover:shadow-xs transition text-center flex flex-col items-center justify-center gap-1.5 group cursor-pointer"
-            >
-              <div className="h-9 w-9 rounded-xl bg-slate-100 group-hover:bg-blue-50 group-hover:text-blue-700 text-slate-700 flex items-center justify-center transition">
-                <Icon className="h-4.5 w-4.5" />
+
+      {/* 3. BALANCED 2-COLUMN BODY: LEFT PROGRESSION, RIGHT UPCOMING SLOTS & ALERTS */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* LEFT COLUMN: WORKFLOW PROGRESSION & ACTIVE SESSIONS */}
+        <div className="space-y-6">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs space-y-5">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+              <div>
+                <h2 className="font-extrabold text-sm text-[#0F2A56] flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-[#1D4ED8]" />
+                  <span>État d&apos;avancement des sessions</span>
+                </h2>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Progression globale du workflow d&apos;organisation ({completedStepsCount}/4 étapes)
+                </p>
               </div>
-              <span className="text-xs font-bold text-slate-800 group-hover:text-blue-700 transition">
-                {item.label}
+              <span className="px-2.5 py-1 rounded-lg bg-[#0F2A56]/5 border border-[#0F2A56]/15 text-[#0F2A56] font-mono font-bold text-xs tabular-nums">
+                {workflowProgressPct}%
               </span>
-              <span className="text-[10px] font-semibold text-slate-500">
-                {item.badge}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+            </div>
 
-      {/* 5. SUMMARY PANELS: SESSIONS D'EXAMENS & CONSIGNES OFFICIELLES */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-1">
-        {/* Active Exam Sessions */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="font-black text-sm text-slate-900 flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-blue-700" />
-              <span>Sessions d'Examens Programmées ({exams.length})</span>
-            </h3>
-            <button
-              type="button"
-              onClick={() => onNavigateSection("sessions-examens")}
-              className="text-xs font-bold text-blue-700 hover:underline cursor-pointer"
-            >
-              Gérer ➔
-            </button>
+            {/* Visual Progress Bar */}
+            <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden border border-slate-200/70">
+              <div
+                className="h-full bg-gradient-to-r from-[#0F2A56] to-[#1D4ED8] transition-all duration-500"
+                style={{ width: `${workflowProgressPct}%` }}
+              />
+            </div>
+
+            {/* 4 Step Action Rows */}
+            <div className="space-y-2.5">
+              {workflowSteps.map((step) => (
+                <div
+                  key={step.num}
+                  className="p-3.5 rounded-xl border border-slate-200/90 bg-[#F8FAFC] hover:bg-white hover:border-[#1D4ED8]/30 transition flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className={`h-7 w-7 rounded-lg font-mono text-[11px] font-bold flex items-center justify-center shrink-0 ${
+                        step.done
+                          ? "bg-emerald-600 text-white"
+                          : "bg-white border border-slate-300 text-slate-600"
+                      }`}
+                    >
+                      {step.done ? "✓" : step.num}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-900 truncate">{step.title}</p>
+                      <p className="text-[11px] text-slate-500 truncate">{step.detail}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onNavigateSection(step.section)}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-[#0F2A56] hover:text-white hover:border-[#0F2A56] text-slate-700 text-[11px] font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                  >
+                    <span>{step.cta}</span>
+                    <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="space-y-2.5">
-            {exams.length === 0 ? (
-              <p className="text-xs text-slate-400 italic py-3 text-center">
-                Aucune session d'examen enregistrée.
-              </p>
-            ) : (
-              exams.slice(0, 4).map((ex) => (
-                <div
-                  key={ex.id}
-                  className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition flex items-center justify-between text-xs"
-                >
-                  <div className="space-y-0.5">
-                    <span className="font-bold text-slate-900 block">{ex.title}</span>
-                    <span className="text-[11px] text-slate-500">
-                      {ex.period} • Niveau : <strong className="text-slate-700">{ex.targetLevel}</strong>
-                    </span>
-                  </div>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
-                    {ex.status || "Prévu"}
-                  </span>
-                </div>
-              ))
-            )}
+          {/* Active Sessions Summary */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-sm text-[#0F2A56] flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-[#1D4ED8]" />
+                <span>Sessions d&apos;examens ({exams.length})</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => onNavigateSection("sessions-examens")}
+                className="text-xs font-bold text-[#1D4ED8] hover:underline cursor-pointer"
+              >
+                Gérer les sessions →
+              </button>
+            </div>
+
+            <div className="space-y-2.5">
+              {exams.length === 0 ? (
+                <p className="text-xs text-slate-400 italic py-4 text-center">
+                  Aucune session d&apos;examen enregistrée.
+                </p>
+              ) : (
+                exams.slice(0, 4).map((ex) => {
+                  const slotsCount = examSlots.filter(
+                    (s) =>
+                      s.examId === ex.id ||
+                      s.examTitle.trim().toLowerCase() === ex.title.trim().toLowerCase()
+                  ).length;
+                  return (
+                    <div
+                      key={ex.id}
+                      className="p-3.5 rounded-xl border border-slate-200 bg-[#F8FAFC] hover:bg-white transition flex items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="space-y-0.5 min-w-0">
+                        <span className="font-bold text-slate-900 block truncate">{ex.title}</span>
+                        <span className="text-[11px] text-slate-500 block truncate">
+                          {ex.period} • {formatTargetLevelsSummary(getExamTargetLevels(ex))} •{" "}
+                          <strong className="text-slate-700">{slotsCount} créneau(x)</strong>
+                        </span>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-50 text-[#0F2A56] border border-blue-200 shrink-0">
+                        {ex.status || "Prévu"}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Published Announcements & Official Communications */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="font-black text-sm text-slate-900 flex items-center gap-2">
-              <Bell className="h-4 w-4 text-amber-600" />
-              <span>Consignes Officielles & Direction ({publishedAnnouncements.length})</span>
-            </h3>
-            <button
-              type="button"
-              onClick={() => onNavigateSection("config")}
-              className="text-xs font-bold text-blue-700 hover:underline cursor-pointer"
-            >
-              Modifier ➔
-            </button>
+        {/* RIGHT COLUMN: UPCOMING EPREUVES, LOGISTICAL ALERTS & ANNOUNCEMENTS */}
+        <div className="space-y-6">
+          {/* Logistical Alerts */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-sm text-[#0F2A56] flex items-center gap-2">
+                <AlertTriangle
+                  className={`h-4 w-4 ${
+                    logisticalIssues.length > 0 ? "text-amber-600" : "text-emerald-600"
+                  }`}
+                />
+                <span>Alertes logistiques ({logisticalIssues.length})</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => onNavigateSection("creneaux-epreuves")}
+                className="text-xs font-bold text-[#1D4ED8] hover:underline cursor-pointer"
+              >
+                Vérifier les créneaux →
+              </button>
+            </div>
+
+            {logisticalIssues.length === 0 ? (
+              <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/60 text-xs text-emerald-900 flex items-center gap-2.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>
+                  Tous les créneaux disposent de salles mobilisées et de surveillants affectés.
+                </span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {logisticalIssues.slice(0, 4).map(({ slot, missingRooms, missingSurveillants, uncoveredRoomsCount }) => (
+                  <div
+                    key={slot.id}
+                    className="p-3 rounded-xl border border-amber-200 bg-amber-50/50 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-900 truncate">
+                        {slot.subject}{" "}
+                        <span className="font-normal text-slate-500">({slot.date})</span>
+                      </p>
+                      <p className="text-[11px] text-amber-800 truncate">
+                        {missingRooms
+                          ? "Aucune salle assignée sur ce créneau"
+                          : missingSurveillants
+                          ? "Aucun surveillant affecté"
+                          : `${uncoveredRoomsCount} salle(s) sans surveillant`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onNavigateSection("creneaux-epreuves")}
+                      className="px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 text-[11px] font-bold shrink-0 cursor-pointer"
+                    >
+                      Compléter
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="space-y-2.5">
-            {publishedAnnouncements.length === 0 ? (
-              <p className="text-xs text-slate-400 italic py-3 text-center">
-                Aucune consigne officielle publiée actuellement.
+          {/* Upcoming Programmed Slots */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-sm text-[#0F2A56] flex items-center gap-2">
+                <Clock className="h-4 w-4 text-[#1D4ED8]" />
+                <span>Prochaines épreuves programmées ({upcomingSlots.length})</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => onNavigateSection("creneaux-epreuves")}
+                className="text-xs font-bold text-[#1D4ED8] hover:underline cursor-pointer"
+              >
+                Planning complet →
+              </button>
+            </div>
+
+            {upcomingSlots.length === 0 ? (
+              <p className="text-xs text-slate-400 italic py-4 text-center">
+                Aucune épreuve programmée pour le moment.
               </p>
             ) : (
-              publishedAnnouncements.slice(0, 3).map((ann) => (
-                <div
-                  key={ann.id}
-                  className="p-3.5 rounded-xl border border-amber-100 bg-amber-50/30 space-y-1 text-xs"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900">{ann.title}</span>
-                    <span className="text-[10px] font-semibold text-slate-400">{ann.date}</span>
+              <div className="space-y-2">
+                {upcomingSlots.slice(0, 5).map((slot) => (
+                  <div
+                    key={slot.id}
+                    className="p-3 rounded-xl border border-slate-200 bg-[#F8FAFC] flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-900 truncate">{slot.subject}</p>
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {slot.examTitle} • {(slot.roomNames || []).length} salle(s)
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="block font-mono font-bold text-[#0F2A56] text-[11px] tabular-nums">
+                        {slot.date}
+                      </span>
+                      <span className="block font-mono text-[11px] text-slate-500 tabular-nums">
+                        {slot.startTime} – {slot.endTime}
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-600 line-clamp-2">{ann.content}</p>
-                </div>
-              ))
+                ))}
+              </div>
             )}
+          </div>
+
+          {/* Published Official Communications */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-sm text-[#0F2A56] flex items-center gap-2">
+                <Bell className="h-4 w-4 text-amber-600" />
+                <span>Consignes & communiqués publiés ({publishedAnnouncements.length})</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() =>
+                  onNavigateSection(role === "superadmin" ? "config" : "vitrine-publish")
+                }
+                className="text-xs font-bold text-[#1D4ED8] hover:underline cursor-pointer"
+              >
+                Gérer →
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {publishedAnnouncements.length === 0 ? (
+                <p className="text-xs text-slate-400 italic py-3 text-center">
+                  Aucun communiqué publié actuellement sur la vitrine.
+                </p>
+              ) : (
+                publishedAnnouncements.slice(0, 3).map((ann) => (
+                  <div
+                    key={ann.id}
+                    className="p-3 rounded-xl border border-slate-200 bg-[#F8FAFC] space-y-1 text-xs"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-slate-900 truncate">{ann.title}</span>
+                      <span className="text-[10px] font-semibold text-slate-400 shrink-0 tabular-nums">
+                        {ann.date}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 line-clamp-2">{ann.content}</p>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>

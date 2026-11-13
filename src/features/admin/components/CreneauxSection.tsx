@@ -82,7 +82,7 @@ export default function CreneauxSection({
   const [formDurationMinutes, setFormDurationMinutes] = useState<number>(90);
   const [formTargetLevel, setFormTargetLevel] = useState<string>(availableLevels[0] || "3ème (DNB Collège)");
   const [formTargetSpecialty, setFormTargetSpecialty] = useState<string>("");
-  const [formSelectedRooms, setFormSelectedRooms] = useState<string[]>(rooms.map((r) => r.name));
+  const [formSelectedRooms, setFormSelectedRooms] = useState<string[]>([]);
   const [formNotes, setFormNotes] = useState<string>("");
 
   // Filter state
@@ -558,7 +558,7 @@ export default function CreneauxSection({
     const activeLevels = activeExam ? getExamTargetLevels(activeExam) : [];
     setFormTargetLevel(activeLevels[0] || availableLevels[0] || "3ème (DNB Collège)");
     setFormTargetSpecialty("");
-    setFormSelectedRooms(rooms.map((r) => r.name));
+    setFormSelectedRooms([]);
     setFormNotes("");
     setIsModalOpen(true);
   };
@@ -575,7 +575,7 @@ export default function CreneauxSection({
     setFormDurationMinutes(slot.durationMinutes);
     setFormTargetLevel(slot.targetLevel || "3ème");
     setFormTargetSpecialty(slot.targetSpecialty || "");
-    setFormSelectedRooms(slot.roomNames || rooms.map((r) => r.name));
+    setFormSelectedRooms(Array.isArray(slot.roomNames) ? slot.roomNames : []);
     setFormNotes(slot.notes || "");
     setIsModalOpen(true);
   };
@@ -604,7 +604,7 @@ export default function CreneauxSection({
       tiersTempsDurationMinutes: formTiersTempsDuration,
       targetLevel: formTargetLevel,
       targetSpecialty: formTargetSpecialty.trim(),
-      roomNames: formSelectedRooms.length > 0 ? formSelectedRooms : rooms.map((r) => r.name),
+      roomNames: formSelectedRooms,
       notes: formNotes.trim(),
     };
 
@@ -830,7 +830,7 @@ export default function CreneauxSection({
                       s.date === slot.date &&
                       (s.timeSlot.includes(slot.startTime) || (slot.id && s.slotId === slot.id))
                   );
-                  const roomCoverage = slot.roomNames?.length || rooms.length;
+                  const roomCoverage = slot.roomNames?.length ?? 0;
                   const coveredCount = tiedSurvs.length;
 
                   return (
@@ -979,8 +979,20 @@ export default function CreneauxSection({
                         </div>
 
                         {/* ROOMS GRID */}
+                        {(slot.roomNames || []).length === 0 ? (
+                          <div className="p-4 rounded-xl bg-white border border-dashed border-slate-300 text-xs text-slate-600 flex items-center justify-between gap-3">
+                            <span>Aucune salle mobilisée sur ce créneau. Cliquez sur <strong>Modifier</strong> pour cocher les salles concernées.</span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(slot)}
+                              className="px-3 py-1.5 rounded-lg bg-[#0F2A56] text-white text-xs font-bold shrink-0 cursor-pointer"
+                            >
+                              Sélectionner des salles
+                            </button>
+                          </div>
+                        ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                          {(slot.roomNames && slot.roomNames.length > 0 ? slot.roomNames : rooms.map((r) => r.name)).map((roomName) => {
+                          {(slot.roomNames || []).map((roomName) => {
                             const roomSurvs = getRoomSurveillances(slot, roomName);
                             const isTTRoom =
                               roomName.toLowerCase().includes("tt") ||
@@ -1293,6 +1305,7 @@ export default function CreneauxSection({
                             );
                           })}
                         </div>
+                        )}
 
                         {/* RENFORT POSTE (Couloir & Secrétariat) */}
                         <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1554,31 +1567,6 @@ export default function CreneauxSection({
                     </span>
                   </div>
                 </div>
-              </div>
-
-              {/* Quick Presets Buttons */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                <span className="text-[11px] font-semibold text-slate-500 mr-1">Présélections rapides :</span>
-                {[
-                  { label: "1h00 (Sciences)", val: 60 },
-                  { label: "1h30 (Français / Dictée)", val: 90 },
-                  { label: "2h00 (Maths / HG)", val: 120 },
-                  { label: "3h00 (Spécialités)", val: 180 },
-                  { label: "4h00 (Bac Philo / Français)", val: 240 },
-                ].map((preset) => (
-                  <button
-                    key={preset.val}
-                    type="button"
-                    onClick={() => handleDurationPresetChange(preset.val)}
-                    className={`px-2.5 py-1 text-[11px] rounded-lg border font-medium transition ${
-                      formDurationMinutes === preset.val
-                        ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
-                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-                    }`}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
               </div>
 
               {/* Simplified single schedule preview */}
