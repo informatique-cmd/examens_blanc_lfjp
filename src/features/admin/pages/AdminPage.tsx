@@ -2057,6 +2057,7 @@ export default function AdminPage() {
               onSetCandidates={setCandidates}
               onSetSurveillances={setSurveillances}
               onUpdateExam={updateExam}
+              onUpdateExamSlot={updateExamSlot}
               onShowNotification={showNotification}
             />
           )}

@@ -318,6 +318,38 @@ export interface CandidateExamAssignment {
   anonymatNumber: string;
 }
 
+export interface CandidateSlotAssignment extends CandidateExamAssignment {
+  examId?: string;
+  slotId?: string;
+}
+
+export function parseTimeMinutes(timeStr?: string): number | null {
+  if (!timeStr) return null;
+  const clean = timeStr.replace("h", ":").trim();
+  const match = clean.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+export function slotsTimeOverlap(slotA: CmsExamSlot, slotB: CmsExamSlot): boolean {
+  if ((slotA.date || "").trim() !== (slotB.date || "").trim()) return false;
+  const startA = parseTimeMinutes(slotA.startTime);
+  const startB = parseTimeMinutes(slotB.startTime);
+  if (startA === null || startB === null) {
+    return (slotA.startTime || "").trim() === (slotB.startTime || "").trim();
+  }
+  const endA =
+    parseTimeMinutes(slotA.endTime) ??
+    startA + (slotA.durationMinutes && slotA.durationMinutes > 0 ? slotA.durationMinutes : 60);
+  const endB =
+    parseTimeMinutes(slotB.endTime) ??
+    startB + (slotB.durationMinutes && slotB.durationMinutes > 0 ? slotB.durationMinutes : 60);
+  return startA < endB && startB < endA;
+}
+
 /**
  * Resolves a candidate's room/table/anonymat strictly for a specific exam session,
  * preserving legacy assignments stored directly on roomName/tableNumber when appropriate
@@ -346,7 +378,7 @@ export function getCandidateAssignmentForExam(
         anonymatNumber: byExam[exam.id].anonymatNumber || "",
       };
     }
-    const normTitle = exam.title.trim().toLowerCase();
+    const normTitle = (exam.title || "").trim().toLowerCase();
     const matchedKey = Object.keys(byExam).find((k) => k.trim().toLowerCase() === normTitle);
     if (matchedKey) {
       return {
@@ -357,13 +389,32 @@ export function getCandidateAssignmentForExam(
     }
   }
 
+  // Fallback to first matching per-slot assignment in this exam if present
+  if (cand.assignmentsBySlot) {
+    const examTitleNorm = (exam.title || "").trim().toLowerCase();
+    const examSlotIds = new Set(
+      examSlots
+        .filter((s) => s.examId === exam.id || (examTitleNorm && (s.examTitle || "").trim().toLowerCase() === examTitleNorm))
+        .map((s) => s.id)
+    );
+    for (const [sId, sAssign] of Object.entries(cand.assignmentsBySlot)) {
+      if (sAssign?.roomName && (sAssign.examId === exam.id || examSlotIds.has(sId))) {
+        return {
+          roomName: sAssign.roomName,
+          tableNumber: sAssign.tableNumber || "",
+          anonymatNumber: sAssign.anonymatNumber || "",
+        };
+      }
+    }
+  }
+
   // Legacy fallback: direct fields on candidate
   if (!cand.roomName) {
     return { roomName: "", tableNumber: "", anonymatNumber: "" };
   }
 
   const candExamNorm = (cand.examName || "").trim().toLowerCase();
-  const examTitleNorm = exam.title.trim().toLowerCase();
+  const examTitleNorm = (exam.title || "").trim().toLowerCase();
   if (candExamNorm && candExamNorm === examTitleNorm) {
     return {
       roomName: cand.roomName,
@@ -375,9 +426,9 @@ export function getCandidateAssignmentForExam(
   // Check if candidate's legacy room belongs to this exam's slots or mobilizedRoomIds
   const examSlotRooms = new Set(
     examSlots
-      .filter((s) => s.examId === exam.id || s.examTitle.trim().toLowerCase() === examTitleNorm)
+      .filter((s) => s.examId === exam.id || (examTitleNorm && (s.examTitle || "").trim().toLowerCase() === examTitleNorm))
       .flatMap((s) => s.roomNames || [])
-      .map((r) => r.trim().toLowerCase())
+      .map((r) => (r || "").trim().toLowerCase())
   );
   if (Array.isArray(exam.mobilizedRoomIds) && allRooms.length > 0) {
     exam.mobilizedRoomIds.forEach((rid) => {
@@ -443,16 +494,116 @@ function candidateHasSpecialtyToken(candSpecsNorm: string, tok: string): boolean
   if (tok === "nsi") {
     return /\bnsi\b/.test(candSpecsNorm);
   }
+  if (tok === "eam specialite" || tok === "specialite") {
+    return /\b(specialite|spe)\b/.test(candSpecsNorm);
+  }
   return false;
+}
+
+function isSlotExplicitTroncCommun(slot: CmsExamSlot): boolean {
+  if (normalizeSpecText(slot.targetSpecialty)) return false;
+  const subjNorm = normalizeSpecText(slot.subject);
+  return /\b(philosophie|philo|francais|eaf|eam tc|tronc commun|histoire|geographie|emc|enseignement scientifique|maths specifique|oral|grand oral)\b/.test(
+    subjNorm
+  );
+}
+
+function extractSlotSpecialtyTokens(slot: CmsExamSlot): {
+  hasExplicitSpec: boolean;
+  tokens: string[];
+} {
+  const slotSpec = normalizeSpecText(slot.targetSpecialty);
+  if (slotSpec) {
+    return { hasExplicitSpec: true, tokens: expandSpecTokens(slotSpec) };
+  }
+
+  if (isSlotExplicitTroncCommun(slot)) {
+    return { hasExplicitSpec: false, tokens: [] };
+  }
+
+  const subjNorm = normalizeSpecText(slot.subject);
+  const lvlNorm = normalizeSpecText(slot.targetLevel);
+  const isLyceeLevel =
+    !lvlNorm ||
+    lvlNorm.includes("terminale") ||
+    lvlNorm.includes("tle") ||
+    lvlNorm.includes("1ere") ||
+    lvlNorm.includes("premiere") ||
+    lvlNorm.includes("eaf") ||
+    lvlNorm.includes("tous");
+
+  if (/\beam specialite\b/.test(subjNorm)) {
+    return { hasExplicitSpec: true, tokens: ["specialite"] };
+  }
+
+  if (isLyceeLevel) {
+    const matches = subjNorm.match(
+      /\b(hggsp|ses|svt|amc|nsi|hlp|llce|llcer|pc|physique|chimie|maths|mathematiques|si)\b/g
+    );
+    if (matches && matches.length > 0) {
+      return { hasExplicitSpec: true, tokens: Array.from(new Set(matches)) };
+    }
+  }
+
+  return { hasExplicitSpec: false, tokens: [] };
+}
+
+/**
+ * Checks if a candidate is eligible for a specific exam slot based on level,
+ * Tiers-Temps rules, specialty matching, and explicit per-slot assignment.
+ */
+export function isCandidateEligibleForSlot(
+  cand: CmsCandidate,
+  exam: Pick<CmsExam, "id" | "title" | "targetLevel" | "targetLevels"> | null | undefined,
+  slot: CmsExamSlot,
+  opts: { ignoreExistingAssignment?: boolean; allowMissingSpecialty?: boolean } = {}
+): boolean {
+  if (!opts.ignoreExistingAssignment && cand.assignmentsBySlot?.[slot.id]?.roomName) {
+    return true;
+  }
+
+  const parentFallbackLevels = exam ? getExamTargetLevels(exam) : [];
+  const slotLevels = slot.targetLevel
+    ? slot.targetLevel
+    : parentFallbackLevels.length > 0
+      ? parentFallbackLevels
+      : "Tous niveaux";
+
+  if (!isCandidateMatchingLevel(cand.className, slotLevels)) {
+    return false;
+  }
+
+  const isCandTT = isCandidateTiersTemps(cand);
+  const subjNorm = normalizeSpecText(slot.subject);
+  if (!isCandTT && /\btiers[\s-]*temps\b/.test(subjNorm)) {
+    return false;
+  }
+
+  const candSpecs = normalizeSpecText(
+    [cand.specialty || "", ...(Array.isArray(cand.options) ? cand.options : [])].join(" ")
+  );
+
+  const { hasExplicitSpec, tokens } = extractSlotSpecialtyTokens(slot);
+  if (hasExplicitSpec && tokens.length > 0) {
+    if (!candSpecs) {
+      return Boolean(opts.allowMissingSpecialty);
+    }
+    if (!tokens.some((tok) => candidateHasSpecialtyToken(candSpecs, tok))) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /**
  * Filters exam slots strictly for a given candidate's exam session, school level, and specialties,
- * and sorts chronologically (date asc, startTime asc).
+ * enforcing ZERO time overlap (at most 1 épreuve per overlapping time window on any date)
+ * and sorting chronologically (date asc, startTime asc).
  */
 export function getCandidateMatchingSlots(
   cand: CmsCandidate,
-  exam: Pick<CmsExam, "id" | "title" | "targetLevel" | "targetLevels"> | null | undefined,
+  exam: Pick<CmsExam, "id" | "title" | "targetLevel" | "targetLevels" | "mobilizedRoomIds"> | null | undefined,
   allSlots: CmsExamSlot[]
 ): CmsExamSlot[] {
   const examTitleNorm = exam?.title?.trim().toLowerCase() || "";
@@ -460,68 +611,289 @@ export function getCandidateMatchingSlots(
     ? allSlots.filter(
         (s) =>
           s.examId === exam.id ||
-          (examTitleNorm && s.examTitle.trim().toLowerCase() === examTitleNorm)
+          (examTitleNorm && (s.examTitle || "").trim().toLowerCase() === examTitleNorm)
       )
     : allSlots;
 
-  const parentFallbackLevels = exam ? getExamTargetLevels(exam) : [];
   const isCandTT = isCandidateTiersTemps(cand);
-
   const candSpecs = normalizeSpecText(
     [cand.specialty || "", ...(Array.isArray(cand.options) ? cand.options : [])].join(" ")
   );
+  const legacyExamRoom = exam
+    ? (getCandidateAssignmentForExam(cand, exam, allSlots).roomName || "").trim().toLowerCase()
+    : "";
 
-  const matched = scopedSlots.filter((slot) => {
-    const slotLevels = slot.targetLevel
-      ? slot.targetLevel
-      : parentFallbackLevels.length > 0
-        ? parentFallbackLevels
-        : "Tous niveaux";
+  const matched = scopedSlots.filter((slot) =>
+    isCandidateEligibleForSlot(cand, exam, slot, {
+      ignoreExistingAssignment: false,
+      allowMissingSpecialty: false,
+    })
+  );
 
-    if (!isCandidateMatchingLevel(cand.className, slotLevels)) {
-      return false;
-    }
-
-    const subjNorm = normalizeSpecText(slot.subject);
-    if (!isCandTT && /\btiers[\s-]*temps\b/.test(subjNorm)) {
-      return false;
-    }
-
-    const slotSpec = normalizeSpecText(slot.targetSpecialty);
-    if (slotSpec) {
-      if (!candSpecs) {
-        return false;
-      }
-      const slotTokens = expandSpecTokens(slotSpec);
-      if (slotTokens.length > 0 && !slotTokens.some((tok) => candidateHasSpecialtyToken(candSpecs, tok))) {
-        return false;
-      }
-    } else if (candSpecs) {
-      // If slot.targetSpecialty was left empty, check whether subject explicitly names specialty disciplines
-      const isTroncCommunExplicit =
-        /\b(philosophie|philo|francais|eaf|eam tc|histoire|geographie|emc|enseignement scientifique|maths specifique|oral|grand oral)\b/.test(
-          subjNorm
-        );
-      if (!isTroncCommunExplicit) {
-        const subjectSpecMatches = subjNorm.match(
-          /\b(hggsp|ses|svt|amc|nsi|hlp|llce|llcer|pc|physique|chimie|maths|mathematiques|si)\b/g
-        );
-        if (subjectSpecMatches && subjectSpecMatches.length > 0) {
-          if (!subjectSpecMatches.some((tok) => candidateHasSpecialtyToken(candSpecs, tok))) {
-            return false;
-          }
-        }
-      }
-    }
-
-    return true;
-  });
-
-  return matched.sort((a, b) => {
+  const sorted = [...matched].sort((a, b) => {
     const dateCmp = (a.date || "").localeCompare(b.date || "");
     if (dateCmp !== 0) return dateCmp;
     return (a.startTime || "").localeCompare(b.startTime || "");
   });
+
+  // Strict anti-overlap deduplication: cluster any slots whose (date, startTime..endTime) overlap
+  const scoreSlot = (slot: CmsExamSlot): number => {
+    let score = 0;
+    if (cand.assignmentsBySlot?.[slot.id]?.roomName) score += 10000;
+    const subjNorm = normalizeSpecText(slot.subject);
+    const isSlotTT = /\btiers[\s-]*temps\b/.test(subjNorm);
+    if (isCandTT && isSlotTT) score += 1000;
+    if (!isCandTT && isSlotTT) score -= 5000;
+    const { hasExplicitSpec, tokens } = extractSlotSpecialtyTokens(slot);
+    if (hasExplicitSpec && candSpecs && tokens.some((tok) => candidateHasSpecialtyToken(candSpecs, tok))) {
+      score += 300;
+    }
+    if (isSlotExplicitTroncCommun(slot)) score += 150;
+    if (
+      legacyExamRoom &&
+      Array.isArray(slot.roomNames) &&
+      slot.roomNames.some((r) => r.trim().toLowerCase() === legacyExamRoom)
+    ) {
+      score += 50;
+    }
+    return score;
+  };
+
+  const resolved: CmsExamSlot[] = [];
+  for (const slot of sorted) {
+    const overlappingIndices: number[] = [];
+    resolved.forEach((existing, idx) => {
+      if (slotsTimeOverlap(existing, slot)) {
+        overlappingIndices.push(idx);
+      }
+    });
+
+    if (overlappingIndices.length === 0) {
+      resolved.push(slot);
+    } else {
+      const candidateScore = scoreSlot(slot);
+      const bestExistingScore = Math.max(
+        ...overlappingIndices.map((i) => scoreSlot(resolved[i]))
+      );
+      if (candidateScore > bestExistingScore) {
+        // Replace all overlapping lower-priority slots with this winning slot
+        const keep = resolved.filter((_, i) => !overlappingIndices.includes(i));
+        keep.push(slot);
+        resolved.length = 0;
+        resolved.push(...keep);
+      }
+    }
+  }
+
+  return resolved.sort((a, b) => {
+    const dateCmp = (a.date || "").localeCompare(b.date || "");
+    if (dateCmp !== 0) return dateCmp;
+    const minA = parseTimeMinutes(a.startTime);
+    const minB = parseTimeMinutes(b.startTime);
+    if (minA !== null && minB !== null && minA !== minB) return minA - minB;
+    return (a.startTime || "").localeCompare(b.startTime || "");
+  });
+}
+
+/**
+ * Formats a table number cleanly (e.g. "4" -> "04").
+ */
+export function formatConvocationTableNumber(tableNumber?: string): string {
+  const clean = (tableNumber || "").trim();
+  if (!clean) return "";
+  return /^\d+$/.test(clean) ? clean.padStart(2, "0") : clean;
+}
+
+/**
+ * Formats the exact Room & Table string for convocations (e.g. "S1 • Table 04"),
+ * or returns "Non affecté" when no room has been assigned yet for the slot.
+ */
+export function formatConvocationRoomAndTable(roomName?: string, tableNumber?: string): string {
+  const cleanRoom = (roomName || "").trim();
+  if (!cleanRoom) return "Non affecté";
+  const formattedTable = formatConvocationTableNumber(tableNumber);
+  return formattedTable ? `${cleanRoom} • Table ${formattedTable}` : cleanRoom;
+}
+
+/**
+ * Checks whether a candidate can be assigned to a target slot without overlapping
+ * an already-assigned slot on the same date & time window.
+ */
+export function canAssignCandidateToSlot(
+  cand: CmsCandidate,
+  targetSlot: CmsExamSlot,
+  examSlots: CmsExamSlot[]
+): { allowed: boolean; conflictingSlot?: CmsExamSlot; conflictingRoom?: string } {
+  for (const other of examSlots) {
+    if (other.id === targetSlot.id) continue;
+    if (!slotsTimeOverlap(other, targetSlot)) continue;
+    const existing = cand.assignmentsBySlot?.[other.id];
+    if (existing?.roomName) {
+      return {
+        allowed: false,
+        conflictingSlot: other,
+        conflictingRoom: existing.roomName,
+      };
+    }
+  }
+  return { allowed: true };
+}
+
+export interface ScheduleConflictItem {
+  candidate: CmsCandidate;
+  slotA: CmsExamSlot;
+  slotB: CmsExamSlot;
+  kind: "assigned_overlap" | "eligible_overlap";
+  roomA?: string;
+  roomB?: string;
+}
+
+/**
+ * Detects any time-overlapping slots for candidates in an exam:
+ * - "assigned_overlap": candidate was somehow assigned to 2 overlapping slots
+ * - "eligible_overlap": two compatible slots (level + specialty) for the candidate overlap in time
+ */
+export function detectExamScheduleConflicts(
+  candidates: CmsCandidate[],
+  exam: Pick<CmsExam, "id" | "title" | "targetLevel" | "targetLevels" | "mobilizedRoomIds"> | null | undefined,
+  examSlots: CmsExamSlot[]
+): ScheduleConflictItem[] {
+  if (!exam || examSlots.length < 2) return [];
+  const examTitleNorm = (exam.title || "").trim().toLowerCase();
+  const scopedSlots = examSlots
+    .filter(
+      (s) =>
+        s.examId === exam.id ||
+        (examTitleNorm && (s.examTitle || "").trim().toLowerCase() === examTitleNorm)
+    )
+    .sort((a, b) => {
+      const d = (a.date || "").localeCompare(b.date || "");
+      if (d !== 0) return d;
+      const mA = parseTimeMinutes(a.startTime) ?? 0;
+      const mB = parseTimeMinutes(b.startTime) ?? 0;
+      return mA - mB;
+    });
+
+  const conflicts: ScheduleConflictItem[] = [];
+
+  for (const cand of candidates) {
+    const assignedInExam = scopedSlots.filter((s) =>
+      Boolean(cand.assignmentsBySlot?.[s.id]?.roomName)
+    );
+    let hasAssignedPair = false;
+    for (let i = 0; i < assignedInExam.length; i++) {
+      for (let j = i + 1; j < assignedInExam.length; j++) {
+        if (slotsTimeOverlap(assignedInExam[i], assignedInExam[j])) {
+          hasAssignedPair = true;
+          conflicts.push({
+            candidate: cand,
+            slotA: assignedInExam[i],
+            slotB: assignedInExam[j],
+            kind: "assigned_overlap",
+            roomA: cand.assignmentsBySlot?.[assignedInExam[i].id]?.roomName,
+            roomB: cand.assignmentsBySlot?.[assignedInExam[j].id]?.roomName,
+          });
+        }
+      }
+    }
+
+    if (!hasAssignedPair) {
+      const compatibleSlots = scopedSlots.filter((s) =>
+        isCandidateEligibleForSlot(cand, exam, s, {
+          ignoreExistingAssignment: true,
+          allowMissingSpecialty: false,
+        })
+      );
+      for (let i = 0; i < compatibleSlots.length; i++) {
+        for (let j = i + 1; j < compatibleSlots.length; j++) {
+          if (slotsTimeOverlap(compatibleSlots[i], compatibleSlots[j])) {
+            const subjA = normalizeSpecText(compatibleSlots[i].subject);
+            const subjB = normalizeSpecText(compatibleSlots[j].subject);
+            const isTwinTT =
+              (/\btiers[\s-]*temps\b/.test(subjA) && !/\btiers[\s-]*temps\b/.test(subjB)) ||
+              (!/\btiers[\s-]*temps\b/.test(subjA) && /\btiers[\s-]*temps\b/.test(subjB));
+            if (isTwinTT) continue;
+            conflicts.push({
+              candidate: cand,
+              slotA: compatibleSlots[i],
+              slotB: compatibleSlots[j],
+              kind: "eligible_overlap",
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return conflicts;
+}
+
+/**
+ * Resolves the precise room, table number, and anonymat assigned to a candidate
+ * strictly for a specific exam slot. Never leaks assignments across unrelated slots
+ * and returns empty roomName ("Non affecté") until dispatch is explicitly run for the slot.
+ */
+export function getCandidateAssignmentForSlot(
+  cand: CmsCandidate,
+  exam: Pick<CmsExam, "id" | "title" | "mobilizedRoomIds"> | null | undefined,
+  slot: CmsExamSlot,
+  allSlots: CmsExamSlot[] = [],
+  allRooms: CmsRoom[] = []
+): CandidateExamAssignment {
+  const slotAssign = cand.assignmentsBySlot?.[slot.id];
+  if (slotAssign && slotAssign.roomName) {
+    return {
+      roomName: slotAssign.roomName,
+      tableNumber: slotAssign.tableNumber || "",
+      anonymatNumber: slotAssign.anonymatNumber || "",
+    };
+  }
+
+  const slotRooms = Array.isArray(slot.roomNames) ? slot.roomNames.filter(Boolean) : [];
+  const examAssign = getCandidateAssignmentForExam(cand, exam, allSlots, allRooms);
+
+  // Check whether candidate already uses per-slot assignments in this exam
+  const examTitleNorm = exam?.title?.trim().toLowerCase() || "";
+  const examSlotIds = new Set(
+    allSlots
+      .filter((s) => !exam || s.examId === exam.id || (examTitleNorm && (s.examTitle || "").trim().toLowerCase() === examTitleNorm))
+      .map((s) => s.id)
+  );
+  const hasAnySlotAssignInExam = Boolean(
+    cand.assignmentsBySlot &&
+      Object.entries(cand.assignmentsBySlot).some(
+        ([sId, a]) => Boolean(a?.roomName) && ((!exam && examSlotIds.has(sId)) || (exam && (a.examId === exam.id || examSlotIds.has(sId))))
+      )
+  );
+
+  if (hasAnySlotAssignInExam) {
+    return {
+      roomName: "",
+      tableNumber: "",
+      anonymatNumber: examAssign.anonymatNumber || "",
+    };
+  }
+
+  // Legacy exam-level fallback (only if candidate has NO per-slot assignments yet in this exam)
+  if (examAssign.roomName) {
+    if (slotRooms.length === 0) return examAssign;
+    const matchInSlot = slotRooms.find(
+      (r) => r.trim().toLowerCase() === examAssign.roomName.trim().toLowerCase()
+    );
+    if (matchInSlot) {
+      return {
+        roomName: matchInSlot,
+        tableNumber: examAssign.tableNumber,
+        anonymatNumber: examAssign.anonymatNumber,
+      };
+    }
+  }
+
+  return {
+    roomName: "",
+    tableNumber: "",
+    anonymatNumber: examAssign.anonymatNumber || "",
+  };
 }
 
 /**
@@ -535,24 +907,84 @@ export function getCandidateSlotRoom(
   allSlots: CmsExamSlot[] = [],
   allRooms: CmsRoom[] = []
 ): string {
-  const assign = getCandidateAssignmentForExam(cand, exam, allSlots, allRooms);
-  const slotRooms = Array.isArray(slot.roomNames) ? slot.roomNames.filter(Boolean) : [];
+  return getCandidateAssignmentForSlot(cand, exam, slot, allSlots, allRooms).roomName;
+}
 
-  if (assign.roomName) {
-    if (slotRooms.length === 0) return assign.roomName;
-    const matchInSlot = slotRooms.find(
-      (r) => r.trim().toLowerCase() === assign.roomName.trim().toLowerCase()
-    );
-    if (matchInSlot) return matchInSlot;
-    if (slotRooms.length === 1) return slotRooms[0];
-    return assign.roomName;
+/**
+ * Summarizes the top-box room/table display for a candidate convocation:
+ * returns singleRoom/singleTable if identical across all épreuves, or hasMultipleLocations=true
+ * ("Voir tableau ci-dessous") when rooms vary across épreuves.
+ */
+export function summarizeCandidateConvocationLocation(
+  cand: CmsCandidate,
+  exam: Pick<CmsExam, "id" | "title" | "mobilizedRoomIds"> | null | undefined,
+  matchingSlots: CmsExamSlot[],
+  allSlots: CmsExamSlot[] = [],
+  allRooms: CmsRoom[] = []
+): {
+  singleRoom: string;
+  singleTable: string;
+  hasMultipleLocations: boolean;
+  anonymatNumber: string;
+} {
+  const examAssign = getCandidateAssignmentForExam(cand, exam, allSlots, allRooms);
+  const slotAssigns = matchingSlots.map((slot) =>
+    getCandidateAssignmentForSlot(cand, exam, slot, allSlots, allRooms)
+  );
+
+  const distinctRooms = Array.from(
+    new Set(slotAssigns.map((a) => a.roomName.trim()).filter(Boolean))
+  );
+  const distinctTables = Array.from(
+    new Set(slotAssigns.map((a) => a.tableNumber.trim()).filter(Boolean))
+  );
+  const firstAnon =
+    slotAssigns.map((a) => a.anonymatNumber.trim()).find(Boolean) ||
+    examAssign.anonymatNumber ||
+    "";
+
+  if (distinctRooms.length > 1) {
+    return {
+      singleRoom: "",
+      singleTable: "",
+      hasMultipleLocations: true,
+      anonymatNumber: firstAnon,
+    };
   }
 
-  if (slotRooms.length === 1) {
-    return slotRooms[0];
+  if (distinctRooms.length === 1) {
+    const hasUnassignedSlots = slotAssigns.some((a) => !a.roomName.trim());
+    if (hasUnassignedSlots) {
+      return {
+        singleRoom: "",
+        singleTable: "",
+        hasMultipleLocations: true,
+        anonymatNumber: firstAnon,
+      };
+    }
+    return {
+      singleRoom: distinctRooms[0],
+      singleTable: distinctTables.length === 1 ? distinctTables[0] : "",
+      hasMultipleLocations: false,
+      anonymatNumber: firstAnon,
+    };
   }
 
-  return "";
+  if (matchingSlots.length === 0 && examAssign.roomName) {
+    return {
+      singleRoom: examAssign.roomName,
+      singleTable: examAssign.tableNumber,
+      hasMultipleLocations: false,
+      anonymatNumber: firstAnon,
+    };
+  }
+
+  return {
+    singleRoom: "",
+    singleTable: "",
+    hasMultipleLocations: false,
+    anonymatNumber: firstAnon,
+  };
 }
 
 export interface CmsCallout {
@@ -629,6 +1061,10 @@ export interface CmsExamSlot {
   targetLevel?: string;
   targetSpecialty?: string;
   roomNames?: string[];
+  ttRoomIds?: string[];
+  customRoomQuotas?: Record<string, number>;
+  dispatchMode?: "brassage" | "alphabetique" | "classe" | "specialite";
+  anonymatPrefix?: string;
   notes?: string;
 }
 
@@ -658,6 +1094,7 @@ export interface CmsCandidate {
   tableNumber?: string;
   anonymatNumber?: string;
   assignmentsByExam?: Record<string, CandidateExamAssignment>;
+  assignmentsBySlot?: Record<string, CandidateSlotAssignment>;
 }
 
 export interface CmsOfficialRule {
@@ -1420,12 +1857,35 @@ export function useCmsData() {
         (!examTitle || surv.examTitle?.trim().toLowerCase() !== examTitle)
     );
 
-    // 4. Cascade reset candidate room assignments for this specific exam
+    // 4. Cascade reset candidate room assignments for this specific exam & its slots
     const remainingCandidates = (data.candidates || []).map((c) => {
-      if (examTitle && c.examName?.trim().toLowerCase() === examTitle) {
-        return { ...c, roomName: "", tableNumber: "", anonymatNumber: "" };
+      const nextByExam = c.assignmentsByExam ? { ...c.assignmentsByExam } : undefined;
+      if (nextByExam) {
+        delete nextByExam[id];
       }
-      return c;
+      const nextBySlot = c.assignmentsBySlot ? { ...c.assignmentsBySlot } : undefined;
+      if (nextBySlot) {
+        Object.keys(nextBySlot).forEach((sId) => {
+          if (deletedSlotIds.has(sId) || nextBySlot[sId]?.examId === id) {
+            delete nextBySlot[sId];
+          }
+        });
+      }
+      if (examTitle && c.examName?.trim().toLowerCase() === examTitle) {
+        return {
+          ...c,
+          roomName: "",
+          tableNumber: "",
+          anonymatNumber: "",
+          ...(nextByExam ? { assignmentsByExam: nextByExam } : {}),
+          ...(nextBySlot ? { assignmentsBySlot: nextBySlot } : {}),
+        };
+      }
+      return {
+        ...c,
+        ...(nextByExam ? { assignmentsByExam: nextByExam } : {}),
+        ...(nextBySlot ? { assignmentsBySlot: nextBySlot } : {}),
+      };
     });
 
     // 5. Cascade delete callout cards linked to this exam title
@@ -1618,10 +2078,17 @@ export function useCmsData() {
   };
 
   const deleteExamSlot = (id: string) => {
+    const nextCandidates = (data.candidates || []).map((c) => {
+      if (!c.assignmentsBySlot || !c.assignmentsBySlot[id]) return c;
+      const nextBySlot = { ...c.assignmentsBySlot };
+      delete nextBySlot[id];
+      return { ...c, assignmentsBySlot: nextBySlot };
+    });
     const next: CmsData = {
       ...data,
       examSlots: (data.examSlots || []).filter((s) => s.id !== id),
       surveillances: (data.surveillances || []).filter((s) => s.slotId !== id),
+      candidates: nextCandidates,
     };
     saveCmsData(next);
     setData(next);

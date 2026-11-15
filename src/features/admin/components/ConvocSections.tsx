@@ -29,23 +29,11 @@ import {
   isCandidateTiersTemps,
   getCandidateAssignmentForExam,
   getCandidateMatchingSlots,
-  getCandidateSlotRoom,
+  getCandidateAssignmentForSlot,
+  summarizeCandidateConvocationLocation,
+  formatConvocationRoomAndTable,
+  formatConvocationTableNumber,
 } from "../../../shared/services/cms-store";
-
-// Helper to compute call time (-15 minutes)
-function getCallTime(startTime: string): string {
-  if (!startTime || !startTime.includes(":")) return startTime || "07h45";
-  const [hStr, mStr] = startTime.split(":");
-  let h = parseInt(hStr, 10);
-  let m = parseInt(mStr, 10);
-  if (isNaN(h) || isNaN(m)) return startTime;
-  m -= 15;
-  if (m < 0) {
-    m += 60;
-    h -= 1;
-  }
-  return `${String(h).padStart(2, "0")}h${String(m).padStart(2, "0")}`;
-}
 
 // Helper to compute Tiers-Temps end time (+1/3 time)
 function calcTTEndTime(startTime: string, durationMinutes: number): string {
@@ -201,7 +189,7 @@ export function ConvocElevesSection({
             🎓 Convocations des Candidats & Étiquettes de Table
           </h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            Génération conforme au calendrier d'épreuves de chaque examen, avec horaires d'appel, créneaux adaptés (tiers-temps) et affectations de salles.
+            Génération conforme au calendrier d&apos;épreuves de chaque examen, avec horaires d&apos;épreuves, créneaux adaptés (tiers-temps) et affectations de salles.
           </p>
         </div>
 
@@ -390,23 +378,22 @@ export function ConvocElevesSection({
                 examSlots
               );
               const isTT = isCandidateTiersTemps(candidate);
-              const uniqueSlotRooms = Array.from(
-                new Set(
-                  matchingSlots
-                    .map((slot) =>
-                      getCandidateSlotRoom(candidate, candResolvedExam, slot, examSlots, rooms)
-                    )
-                    .filter(Boolean)
-                )
+              const locationSummary = summarizeCandidateConvocationLocation(
+                candidate,
+                candResolvedExam,
+                matchingSlots,
+                examSlots,
+                rooms
               );
-              const primaryRoom =
-                candAssignment.roomName ||
-                (uniqueSlotRooms.length === 1 ? uniqueSlotRooms[0] : "");
+              const anonDisplay =
+                locationSummary.anonymatNumber ||
+                candAssignment.anonymatNumber ||
+                `LFJP-${String(idx + 101).padStart(4, "0")}`;
 
               return (
                 <div
                   key={candidate.id}
-                  className="bg-white rounded-2xl border border-slate-300 shadow-md p-6 sm:p-8 max-w-3xl mx-auto printable-content space-y-5 print:border-none print:shadow-none print:p-0 print:my-0 print:max-w-none print:w-full"
+                  className="bg-white rounded-2xl border border-slate-300 shadow-md p-6 sm:p-8 max-w-3xl mx-auto printable-content space-y-4 print:space-y-3 print:border-none print:shadow-none print:p-0 print:my-0 print:max-w-none print:w-full"
                   style={{ pageBreakAfter: idx < candidatesToPrint.length - 1 ? "always" : "auto" }}
                 >
                   {/* Individual Action Bar (Hidden on print) */}
@@ -478,19 +465,27 @@ export function ConvocElevesSection({
                       </p>
                     </div>
                     <div className="text-right">
-                      {primaryRoom ? (
+                      {locationSummary.hasMultipleLocations ? (
                         <>
                           <p className="text-[11px] text-slate-500 font-semibold">Salle d&apos;Examen :</p>
-                          <p className="text-sm font-black text-[#002060]">{primaryRoom}</p>
+                          <p className="text-xs font-black text-[#002060]">Voir tableau ci-dessous</p>
+                        </>
+                      ) : locationSummary.singleRoom ? (
+                        <>
+                          <p className="text-[11px] text-slate-500 font-semibold">Salle d&apos;Examen :</p>
+                          <p className="text-sm font-black text-[#002060]">{locationSummary.singleRoom}</p>
                         </>
                       ) : (
-                        <p className="text-[11px] text-slate-500 font-semibold">
-                          Repères Candidat :
-                        </p>
+                        <>
+                          <p className="text-[11px] text-slate-500 font-semibold">Salle d&apos;Examen :</p>
+                          <p className="text-xs font-bold text-slate-500">Non affecté</p>
+                        </>
                       )}
                       <p className="text-xs font-mono font-bold text-slate-800 mt-1">
-                        {candAssignment.tableNumber ? `Table N° ${candAssignment.tableNumber} • ` : ""}
-                        Anonymat : {candAssignment.anonymatNumber || `LFJP-${String(idx + 101).padStart(4, "0")}`}
+                        {!locationSummary.hasMultipleLocations && locationSummary.singleTable
+                          ? `Table ${formatConvocationTableNumber(locationSummary.singleTable)} • `
+                          : ""}
+                        Anonymat : {anonDisplay}
                       </p>
                     </div>
                   </div>
@@ -523,7 +518,6 @@ export function ConvocElevesSection({
                           <tr className="bg-slate-100 text-slate-700 font-bold">
                             <th className="p-2 border border-slate-300">Épreuve / Discipline</th>
                             <th className="p-2 border border-slate-300">Date</th>
-                            <th className="p-2 border border-slate-300">Appel</th>
                             <th className="p-2 border border-slate-300">Horaires</th>
                             <th className="p-2 border border-slate-300">Salle &amp; Table</th>
                           </tr>
@@ -531,17 +525,16 @@ export function ConvocElevesSection({
                         <tbody>
                           {matchingSlots.length === 0 ? (
                             <tr>
-                              <td colSpan={5} className="p-3 border border-slate-300 text-center text-slate-500 italic">
+                              <td colSpan={4} className="p-3 border border-slate-300 text-center text-slate-500 italic">
                                 Aucune épreuve correspondant à votre niveau ({candidate.className}) n&apos;est encore programmée pour &quot;{candExamName}&quot;.
                               </td>
                             </tr>
                           ) : (
                             matchingSlots.map((slot) => {
-                              const callTime = getCallTime(slot.startTime);
                               const endTimeDisplay = isTT
                                 ? slot.tiersTempsEndTime || calcTTEndTime(slot.startTime, slot.durationMinutes)
                                 : slot.endTime;
-                              const slotRoom = getCandidateSlotRoom(
+                              const slotAssign = getCandidateAssignmentForSlot(
                                 candidate,
                                 candResolvedExam,
                                 slot,
@@ -561,9 +554,6 @@ export function ConvocElevesSection({
                                   <td className="p-2 border border-slate-300 whitespace-nowrap">
                                     {slot.date}
                                   </td>
-                                  <td className="p-2 border border-slate-300 font-mono text-emerald-700 font-bold whitespace-nowrap">
-                                    {callTime}
-                                  </td>
                                   <td className="p-2 border border-slate-300 font-mono font-semibold whitespace-nowrap">
                                     {slot.startTime} - {endTimeDisplay}
                                     {isTT && (
@@ -572,12 +562,14 @@ export function ConvocElevesSection({
                                       </span>
                                     )}
                                   </td>
-                                  <td className="p-2 border border-slate-300 font-bold text-[#002060]">
-                                    {slotRoom || "À attribuer"}
-                                    {candAssignment.tableNumber && (
-                                      <span className="ml-1 font-normal text-slate-600">
-                                        (T.{candAssignment.tableNumber})
-                                      </span>
+                                  <td
+                                    className={`p-2 border border-slate-300 font-bold whitespace-nowrap ${
+                                      slotAssign.roomName ? "text-[#002060]" : "text-slate-400 italic font-medium"
+                                    }`}
+                                  >
+                                    {formatConvocationRoomAndTable(
+                                      slotAssign.roomName,
+                                      slotAssign.tableNumber
                                     )}
                                   </td>
                                 </tr>

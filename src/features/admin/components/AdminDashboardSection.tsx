@@ -113,6 +113,11 @@ export default function AdminDashboardSection({
         registerMobilizedRoom(assign?.roomName);
       });
     }
+    if (c.assignmentsBySlot) {
+      Object.values(c.assignmentsBySlot).forEach((assign) => {
+        registerMobilizedRoom(assign?.roomName);
+      });
+    }
   });
 
   const mobilizedRoomList = Array.from(mobilizedRoomMap.values());
@@ -167,6 +172,10 @@ export default function AdminDashboardSection({
       Boolean(
         c.assignmentsByExam &&
           Object.values(c.assignmentsByExam).some((a) => Boolean(a?.roomName?.trim()))
+      ) ||
+      Boolean(
+        c.assignmentsBySlot &&
+          Object.values(c.assignmentsBySlot).some((a) => Boolean(a?.roomName?.trim()))
       )
   );
   const assignedCandidatesCount = assignedCandidates.length;

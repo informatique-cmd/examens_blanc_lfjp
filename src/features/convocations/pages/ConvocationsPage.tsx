@@ -21,22 +21,11 @@ import {
   isCandidateTiersTemps,
   getCandidateAssignmentForExam,
   getCandidateMatchingSlots,
-  getCandidateSlotRoom,
+  getCandidateAssignmentForSlot,
+  summarizeCandidateConvocationLocation,
+  formatConvocationRoomAndTable,
+  formatConvocationTableNumber,
 } from "../../../shared/services/cms-store";
-
-function computeCallTime15(startTime: string): string {
-  if (!startTime || !startTime.includes(":")) return startTime || "07h45";
-  const [hStr, mStr] = startTime.split(":");
-  let h = parseInt(hStr, 10);
-  let m = parseInt(mStr, 10);
-  if (isNaN(h) || isNaN(m)) return startTime;
-  m -= 15;
-  if (m < 0) {
-    m += 60;
-    h -= 1;
-  }
-  return `${String(h).padStart(2, "0")}h${String(m).padStart(2, "0")}`;
-}
 
 function computeTTEndTime(startTime: string, durationMinutes: number): string {
   if (!startTime || !startTime.includes(":")) return "";
@@ -197,27 +186,28 @@ export default function ConvocationsPage() {
     }, 2000);
   };
 
-  // Real exam timetable strictly matching candidate's session, school level and optional specialty
-  const getExamScheduleForCandidate = (cand: CmsCandidate) => {
+  // Real exam timetable strictly matching candidate's session, school level and specialty (zero overlap)
+  const getExamScheduleAndLocation = (cand: CmsCandidate) => {
     const isTT = isCandidateTiersTemps(cand);
     const resolvedExam = resolveExamForCandidate(cand);
-    const assignment = getCandidateAssignmentForExam(
-      cand,
-      resolvedExam,
-      cmsData.examSlots || [],
-      cmsData.rooms
-    );
     const matchingSlots = getCandidateMatchingSlots(
       cand,
       resolvedExam,
       cmsData.examSlots || []
     );
+    const locationSummary = summarizeCandidateConvocationLocation(
+      cand,
+      resolvedExam,
+      matchingSlots,
+      cmsData.examSlots || [],
+      cmsData.rooms
+    );
 
-    return matchingSlots.map((slot) => {
+    const schedule = matchingSlots.map((slot) => {
       const endTimeDisplay = isTT
         ? slot.tiersTempsEndTime || computeTTEndTime(slot.startTime, slot.durationMinutes)
         : slot.endTime;
-      const slotRoom = getCandidateSlotRoom(
+      const slotAssign = getCandidateAssignmentForSlot(
         cand,
         resolvedExam,
         slot,
@@ -227,14 +217,15 @@ export default function ConvocationsPage() {
       return {
         discipline: slot.targetSpecialty ? `${slot.subject} (${slot.targetSpecialty})` : slot.subject,
         date: slot.date,
-        appel: computeCallTime15(slot.startTime),
         debut: slot.startTime,
         fin: isTT ? `${endTimeDisplay} (+1/3)` : endTimeDisplay,
-        salle: slotRoom || "À attribuer",
-        table: assignment.tableNumber ? `Table N° ${assignment.tableNumber}` : "Selon salle",
-        materiel: slot.notes || "Matériel réglementaire",
+        salle: slotAssign.roomName || "",
+        salleTable: formatConvocationRoomAndTable(slotAssign.roomName, slotAssign.tableNumber),
+        materiel: slot.notes || "",
       };
     });
+
+    return { schedule, locationSummary };
   };
 
   return (
@@ -464,12 +455,14 @@ export default function ConvocationsPage() {
                 cmsData.examSlots || [],
                 cmsData.rooms
               );
+              const { schedule, locationSummary } = getExamScheduleAndLocation(currentCandidate);
               return (
                 <CandidateConvocationSheet
                   candidate={currentCandidate}
                   resolvedExam={resolvedExam}
                   assignment={candAssign}
-                  schedule={getExamScheduleForCandidate(currentCandidate)}
+                  locationSummary={locationSummary}
+                  schedule={schedule}
                   schoolYear={cmsData.siteInfo.schoolYear || "2026-2027"}
                 />
               );
@@ -506,13 +499,15 @@ export default function ConvocationsPage() {
                 cmsData.examSlots || [],
                 cmsData.rooms
               );
+              const { schedule, locationSummary } = getExamScheduleAndLocation(cand);
               return (
                 <div key={cand.id} className="print:break-after-page mb-8 print:mb-0">
                   <CandidateConvocationSheet
                     candidate={cand}
                     resolvedExam={resolvedExam}
                     assignment={candAssign}
-                    schedule={getExamScheduleForCandidate(cand)}
+                    locationSummary={locationSummary}
+                    schedule={schedule}
                     schoolYear={cmsData.siteInfo.schoolYear || "2026-2027"}
                     batchIndex={idx + 1}
                     batchTotal={filteredCandidates.length}
@@ -751,14 +746,19 @@ interface CandidateConvocationSheetProps {
   candidate: CmsCandidate;
   resolvedExam?: CmsExam | null;
   assignment: { roomName: string; tableNumber: string; anonymatNumber: string };
+  locationSummary: {
+    singleRoom: string;
+    singleTable: string;
+    hasMultipleLocations: boolean;
+    anonymatNumber: string;
+  };
   schedule: Array<{
     discipline: string;
     date: string;
-    appel: string;
     debut: string;
     fin: string;
     salle: string;
-    table: string;
+    salleTable: string;
     materiel: string;
   }>;
   schoolYear: string;
@@ -770,17 +770,13 @@ function CandidateConvocationSheet({
   candidate,
   resolvedExam,
   assignment,
+  locationSummary,
   schedule,
   schoolYear,
   batchIndex,
   batchTotal,
 }: CandidateConvocationSheetProps) {
   const isTiersTemps = isCandidateTiersTemps(candidate);
-  const uniqueScheduleRooms = Array.from(
-    new Set(schedule.map((s) => s.salle).filter((r) => r && r !== "À attribuer"))
-  );
-  const primaryRoom =
-    assignment.roomName || (uniqueScheduleRooms.length === 1 ? uniqueScheduleRooms[0] : "");
 
   return (
     <div className="bg-white rounded-2xl border border-slate-300 p-6 sm:p-8 shadow-xs print:shadow-none print:border-none print:p-0 print:m-0 print:w-full text-slate-900 text-xs font-sans">
@@ -860,25 +856,25 @@ function CandidateConvocationSheet({
             </span>
             {resolvedExam?.period ? ` (${resolvedExam.period})` : ""}
           </div>
-          {(primaryRoom || assignment.tableNumber) && (
-            <div>
-              <span className="font-semibold">
-                {primaryRoom ? "Salle & Place : " : "Place attribuée : "}
-              </span>
-              <span className="font-bold text-[#002060]">
-                {primaryRoom}
-                {assignment.tableNumber
-                  ? primaryRoom
-                    ? ` (Table ${assignment.tableNumber})`
-                    : `Table N° ${assignment.tableNumber}`
-                  : ""}
-              </span>
-            </div>
-          )}
+          <div>
+            <span className="font-semibold">Salle &amp; Table : </span>
+            <span className="font-bold text-[#002060]">
+              {locationSummary.hasMultipleLocations
+                ? "Voir tableau ci-dessous"
+                : locationSummary.singleRoom
+                  ? formatConvocationRoomAndTable(
+                      locationSummary.singleRoom,
+                      locationSummary.singleTable
+                    )
+                  : locationSummary.singleTable
+                    ? `Table ${formatConvocationTableNumber(locationSummary.singleTable)}`
+                    : "Non affecté"}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Timetable Table */}
+      {/* Timetable Table (4 clean columns: Épreuve / Discipline, Date, Horaires, Salle & Table) */}
       <div className="mb-4">
         <p className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-2 flex items-center gap-1.5">
           <Calendar className="w-3.5 h-3.5 text-indigo-600" />
@@ -888,40 +884,41 @@ function CandidateConvocationSheet({
           <table className="print-a4-table w-full text-left border border-slate-300">
             <thead>
               <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300 text-[11px]">
+                <th className="p-2 border-r border-slate-300">Épreuve / Discipline</th>
                 <th className="p-2 border-r border-slate-300">Date</th>
-                <th className="p-2 border-r border-slate-300 text-center">Appel</th>
-                <th className="p-2 border-r border-slate-300 text-center">Épreuve</th>
-                <th className="p-2 border-r border-slate-300">Matière / Discipline</th>
-                <th className="p-2 border-r border-slate-300">Salle</th>
-                <th className="p-2 border-r border-slate-300">Place</th>
-                <th className="p-2">Matériel</th>
+                <th className="p-2 border-r border-slate-300 text-center">Horaires</th>
+                <th className="p-2">Salle &amp; Table</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 text-[11px]">
               {schedule.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-3 text-center text-slate-500 italic">
+                  <td colSpan={4} className="p-3 text-center text-slate-500 italic">
                     Aucune épreuve programmée pour votre niveau ({candidate.className}) sur cette session.
                   </td>
                 </tr>
               ) : (
                 schedule.map((slot, i) => (
                   <tr key={i} className="hover:bg-slate-50">
-                    <td className="p-2 font-semibold border-r border-slate-200 whitespace-nowrap">{slot.date}</td>
-                    <td className="p-2 text-center font-bold text-rose-700 border-r border-slate-200 whitespace-nowrap">
-                      {slot.appel}
+                    <td className="p-2 font-bold text-slate-900 border-r border-slate-200">
+                      <div>{slot.discipline}</div>
+                      {slot.materiel && (
+                        <div className="text-[10px] font-normal text-slate-500 mt-0.5">
+                          {slot.materiel}
+                        </div>
+                      )}
                     </td>
+                    <td className="p-2 font-semibold border-r border-slate-200 whitespace-nowrap">{slot.date}</td>
                     <td className="p-2 text-center font-mono font-medium border-r border-slate-200 whitespace-nowrap">
                       {slot.debut} - {slot.fin}
                     </td>
-                    <td className="p-2 font-bold text-slate-900 border-r border-slate-200">{slot.discipline}</td>
-                    <td className="p-2 font-semibold text-indigo-700 border-r border-slate-200 whitespace-nowrap">
-                      {slot.salle}
+                    <td
+                      className={`p-2 font-bold whitespace-nowrap ${
+                        slot.salle ? "text-[#002060]" : "text-slate-400 italic font-medium"
+                      }`}
+                    >
+                      {slot.salleTable}
                     </td>
-                    <td className="p-2 font-mono text-slate-700 border-r border-slate-200 whitespace-nowrap">
-                      {slot.table}
-                    </td>
-                    <td className="p-2 text-[10px] text-slate-500">{slot.materiel}</td>
                   </tr>
                 ))
               )}
@@ -937,7 +934,7 @@ function CandidateConvocationSheet({
           <span>Consignes Réglementaires Impératives aux Candidats</span>
         </p>
         <p>
-          <strong>1. Présentation obligatoire :</strong> Vous devez impérativement vous présenter à l&apos;heure d&apos;appel indiquée (15 minutes avant le début des épreuves), muni(e) de la présente convocation et d&apos;une pièce d&apos;identité officielle avec photographie récente (carte d&apos;identité, passeport ou carnet de correspondance).
+          <strong>1. Présentation obligatoire :</strong> Vous devez impérativement vous présenter 15 minutes avant le début des épreuves, muni(e) de la présente convocation et d&apos;une pièce d&apos;identité officielle avec photographie récente (carte d&apos;identité, passeport ou carnet de correspondance).
         </p>
         <p>
           <strong>2. Appareils électroniques strictement interdits :</strong> Les téléphones portables, montres connectées, écouteurs et tout dispositif connecté doivent être éteints dès l&apos;entrée dans le centre et rangés au fond du sac. Toute possession d&apos;un appareil connecté en cours d&apos;épreuve est assimilée à une tentative de fraude.
