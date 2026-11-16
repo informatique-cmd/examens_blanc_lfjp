@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-13T13:17:46.898Z",
+  "updatedAt": "2026-11-16T00:59:19.024Z",
   "siteInfo": {
     "title": "Lycée Français Jacques Prévert",
     "subtitle": "Lycée Français Jacques Prévert de Saly, Sénégal • Réseau AEFE",
@@ -111,24 +111,6 @@
         "Terminale (Baccalauréat)",
         "1ère (Baccalauréat EAF)"
       ]
-    },
-    {
-      "title": "TEST",
-      "examType": "Examen Blanc",
-      "targetLevel": "3ème (DNB Collège), 2nde (Seconde), Terminale (Baccalauréat)",
-      "targetLevels": [
-        "3ème (DNB Collège)",
-        "2nde (Seconde)",
-        "Terminale (Baccalauréat)"
-      ],
-      "period": "Avril 2026",
-      "startsAt": "2026-11-13",
-      "endsAt": "2026-11-13",
-      "description": "",
-      "status": "Prévu",
-      "isPublished": true,
-      "id": "exam-1794569437221",
-      "dispatchMode": "specialite"
     }
   ],
   "examSlots": [
@@ -346,24 +328,6 @@
       ],
       "notes": "",
       "id": "slot-1794491460539"
-    },
-    {
-      "examId": "exam-1794569437221",
-      "examTitle": "TEST",
-      "subject": "français",
-      "date": "2026-11-13",
-      "startTime": "08:00",
-      "endTime": "09:30",
-      "durationMinutes": 90,
-      "tiersTempsEndTime": "10:00",
-      "tiersTempsDurationMinutes": 120,
-      "targetLevel": "3ème (DNB Collège)",
-      "targetSpecialty": "",
-      "roomNames": [
-        "S7 ARTS"
-      ],
-      "notes": "",
-      "id": "slot-1794569644302"
     }
   ],
   "rooms": [
@@ -1270,36 +1234,6 @@
       "timeSlot": "14:00 - 15:00",
       "teacherName": "Mme D'AQUINO Roselyne",
       "mission": "Surveillant relais (14:00 - 15:00)"
-    },
-    {
-      "id": "surv-full-1794569680206-05ap",
-      "examTitle": "TEST",
-      "slotId": "slot-1794569644302",
-      "roomName": "S7 ARTS",
-      "date": "2026-11-13",
-      "timeSlot": "08:00 - 09:30",
-      "teacherName": "Mme DABLIN Lorraine",
-      "mission": "Surveillant titulaire (plein créneau)"
-    },
-    {
-      "id": "surv-renfort-1794569690493-5wam",
-      "examTitle": "TEST",
-      "slotId": "slot-1794569644302",
-      "roomName": "Renfort",
-      "date": "2026-11-13",
-      "timeSlot": "08:00 - 09:30",
-      "teacherName": "M. Ba Abdallahi (AED / Vie Scolaire)",
-      "mission": "Surveillant de renfort & couloir"
-    },
-    {
-      "id": "surv-renfort-1794569693766-ke2p",
-      "examTitle": "TEST",
-      "slotId": "slot-1794569644302",
-      "roomName": "Renfort",
-      "date": "2026-11-13",
-      "timeSlot": "08:00 - 09:30",
-      "teacherName": "M. Ngaide Moudir (AED / Vie Scolaire)",
-      "mission": "Surveillant de renfort & couloir"
     }
   ],
   "candidates": [
