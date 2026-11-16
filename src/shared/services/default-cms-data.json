@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-16T13:18:55.335Z",
+  "updatedAt": "2026-11-16T13:35:33.871Z",
   "siteInfo": {
     "title": "Lycée Français Jacques Prévert",
     "subtitle": "Lycée Français Jacques Prévert de Saly, Sénégal • Réseau AEFE",
@@ -131,7 +131,14 @@
         "S4"
       ],
       "notes": "",
-      "id": "slot-1794213028409"
+      "id": "slot-1794213028409",
+      "customRoomQuotas": {
+        "room-1794212490400-20-f2vj": 15,
+        "room-1794212490400-23-ytv1": 15,
+        "room-1794212490400-24-graj": 15,
+        "room-1794212490400-25-gwd3": 15
+      },
+      "ttRoomIds": []
     },
     {
       "examTitle": "Examens blancs - décembre 2026",
@@ -1243,18 +1250,13 @@
       "firstName": "Julie",
       "className": "TERMINALE1",
       "examName": "Examens blancs - décembre 2026",
-      "roomName": "S1",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "1",
-      "anonymatNumber": "EXAM-0101",
-      "assignmentsByExam": {
-        "exam-1794212893090": {
-          "roomName": "S1",
-          "tableNumber": "1",
-          "anonymatNumber": "EXAM-0101"
-        }
-      }
+      "tableNumber": "",
+      "anonymatNumber": "",
+      "assignmentsByExam": {},
+      "assignmentsBySlot": {}
     },
     {
       "id": "cand-1794212480530-27-m16h",
@@ -1477,12 +1479,30 @@
       "lastName": "DIAKHABY",
       "firstName": "Safia",
       "className": "TERMINALE2",
-      "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "",
+      "examName": "Examens blancs - décembre 2026",
+      "roomName": "S2",
       "convocationTime": "07h45",
-      "accommodation": "PAP",
-      "tableNumber": "",
-      "anonymatNumber": ""
+      "accommodation": "",
+      "tableNumber": "1",
+      "anonymatNumber": "EXAM-TT001",
+      "assignmentsByExam": {
+        "exam-1794212893090": {
+          "roomName": "S2",
+          "tableNumber": "1",
+          "anonymatNumber": "EXAM-TT001"
+        }
+      },
+      "assignmentsBySlot": {
+        "slot-1794213028409": {
+          "roomName": "S2",
+          "tableNumber": "1",
+          "anonymatNumber": "EXAM-TT001",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794213028409"
+        }
+      },
+      "specialty": "",
+      "isTiersTemps": false
     },
     {
       "id": "cand-1794212480530-11-iois",
@@ -1597,12 +1617,30 @@
       "lastName": "FALL",
       "firstName": "Cheikh Saliou Mbacké",
       "className": "TERMINALE2",
-      "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "",
+      "examName": "Examens blancs - décembre 2026",
+      "roomName": "S2",
       "convocationTime": "07h45",
-      "accommodation": "PPRE (Remobilisation Travail)",
-      "tableNumber": "",
-      "anonymatNumber": ""
+      "accommodation": "",
+      "tableNumber": "2",
+      "anonymatNumber": "EXAM-TT002",
+      "assignmentsByExam": {
+        "exam-1794212893090": {
+          "roomName": "S2",
+          "tableNumber": "2",
+          "anonymatNumber": "EXAM-TT002"
+        }
+      },
+      "assignmentsBySlot": {
+        "slot-1794213028409": {
+          "roomName": "S2",
+          "tableNumber": "2",
+          "anonymatNumber": "EXAM-TT002",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794213028409"
+        }
+      },
+      "specialty": "",
+      "isTiersTemps": false
     },
     {
       "id": "cand-1794212480530-16-c9mo",
@@ -1717,12 +1755,28 @@
       "lastName": "KERDUDO",
       "firstName": "Zeina",
       "className": "TERMINALE2",
-      "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "",
+      "examName": "Examens blancs - décembre 2026",
+      "roomName": "S2",
       "convocationTime": "07h45",
       "accommodation": "PAP",
-      "tableNumber": "",
-      "anonymatNumber": ""
+      "tableNumber": "3",
+      "anonymatNumber": "EXAM-TT003",
+      "assignmentsByExam": {
+        "exam-1794212893090": {
+          "roomName": "S2",
+          "tableNumber": "3",
+          "anonymatNumber": "EXAM-TT003"
+        }
+      },
+      "assignmentsBySlot": {
+        "slot-1794213028409": {
+          "roomName": "S2",
+          "tableNumber": "3",
+          "anonymatNumber": "EXAM-TT003",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794213028409"
+        }
+      }
     },
     {
       "id": "cand-1794212480530-21-welc",
@@ -1789,24 +1843,56 @@
       "lastName": "MBOUP",
       "firstName": "Amy",
       "className": "TERMINALE2",
-      "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "",
+      "examName": "Examens blancs - décembre 2026",
+      "roomName": "S2",
       "convocationTime": "07h45",
       "accommodation": "Tiers-temps (+1/3)",
-      "tableNumber": "",
-      "anonymatNumber": ""
+      "tableNumber": "4",
+      "anonymatNumber": "EXAM-TT004",
+      "assignmentsByExam": {
+        "exam-1794212893090": {
+          "roomName": "S2",
+          "tableNumber": "4",
+          "anonymatNumber": "EXAM-TT004"
+        }
+      },
+      "assignmentsBySlot": {
+        "slot-1794213028409": {
+          "roomName": "S2",
+          "tableNumber": "4",
+          "anonymatNumber": "EXAM-TT004",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794213028409"
+        }
+      }
     },
     {
       "id": "cand-1794212480530-24-lpld",
       "lastName": "SARR",
       "firstName": "Sokhna Faty",
       "className": "TERMINALE1",
-      "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "",
+      "examName": "Examens blancs - décembre 2026",
+      "roomName": "S2",
       "convocationTime": "07h45",
       "accommodation": "PAP",
-      "tableNumber": "",
-      "anonymatNumber": ""
+      "tableNumber": "5",
+      "anonymatNumber": "EXAM-TT005",
+      "assignmentsByExam": {
+        "exam-1794212893090": {
+          "roomName": "S2",
+          "tableNumber": "5",
+          "anonymatNumber": "EXAM-TT005"
+        }
+      },
+      "assignmentsBySlot": {
+        "slot-1794213028409": {
+          "roomName": "S2",
+          "tableNumber": "5",
+          "anonymatNumber": "EXAM-TT005",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794213028409"
+        }
+      }
     },
     {
       "id": "cand-1794212480530-50-59h4",
@@ -1825,12 +1911,28 @@
       "lastName": "SAVI",
       "firstName": "Loris Tahirou",
       "className": "TERMINALE1",
-      "examName": "DNB Blanc / Bac Blanc",
-      "roomName": "",
+      "examName": "Examens blancs - décembre 2026",
+      "roomName": "S2",
       "convocationTime": "07h45",
       "accommodation": "PAP",
-      "tableNumber": "",
-      "anonymatNumber": ""
+      "tableNumber": "6",
+      "anonymatNumber": "EXAM-TT006",
+      "assignmentsByExam": {
+        "exam-1794212893090": {
+          "roomName": "S2",
+          "tableNumber": "6",
+          "anonymatNumber": "EXAM-TT006"
+        }
+      },
+      "assignmentsBySlot": {
+        "slot-1794213028409": {
+          "roomName": "S2",
+          "tableNumber": "6",
+          "anonymatNumber": "EXAM-TT006",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794213028409"
+        }
+      }
     },
     {
       "id": "cand-1794212480530-51-ibgk",
