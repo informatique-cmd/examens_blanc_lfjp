@@ -723,7 +723,7 @@ export function ConvocElevesSection({
                   </div>
 
                   {/* Student Info Card */}
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-2 gap-4 text-xs print-avoid-break">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-4 text-xs print-avoid-break">
                     <div>
                       <p className="text-[11px] text-slate-500 font-semibold">Candidat(e) :</p>
                       <p className="text-sm font-black text-slate-900">
@@ -784,7 +784,7 @@ export function ConvocElevesSection({
                         {candResolvedExam?.period ? ` (${candResolvedExam.period})` : ""}
                       </span>
                     </p>
-                    <div className="print-table-wrap">
+                    <div className="print-table-wrap overflow-x-auto">
                       <table className="print-a4-table w-full text-left border-collapse border border-slate-300 text-xs">
                         <thead>
                           <tr className="bg-slate-100 text-slate-700 font-bold">
@@ -914,7 +914,7 @@ export function ConvocElevesSection({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-3.5 print:gap-2.5">
                   {roomItems.map((item, idx) => {
                     const tableDisp = item.tableNumber
                       ? formatConvocationTableNumber(item.tableNumber)
@@ -945,7 +945,7 @@ export function ConvocElevesSection({
                         </div>
 
                         {/* Body: Anonymat + Identity + Exam Details */}
-                        <div className="p-3 space-y-2 text-xs">
+                        <div className="p-3 print:p-2.5 space-y-2 print:space-y-1.5 text-xs">
                           <div className="flex items-start justify-between gap-2 border-b border-dashed border-slate-200 pb-2">
                             <div className="min-w-0">
                               <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
@@ -1272,7 +1272,7 @@ export function ConvocProfsSection({
                     Aucun créneau de surveillance n&apos;est actuellement affecté à cet enseignant pour la sélection.
                   </p>
                 ) : (
-                  <div className="print-table-wrap">
+                  <div className="print-table-wrap overflow-x-auto">
                     <table className="print-a4-table w-full text-left border-collapse border border-slate-300 text-xs">
                       <thead>
                         <tr className="bg-slate-100 text-slate-700 font-bold">

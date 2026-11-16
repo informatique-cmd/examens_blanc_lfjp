@@ -562,7 +562,9 @@ export default function OrganizationSection({
       if (customRoomCapacities[key] !== undefined && customRoomCapacities[key] > 0) {
         return customRoomCapacities[key];
       }
-      for (const sl of activeSlots) {
+      const ownerSlots = activeSlots.filter((sl) => getRoomIdsForSlot(sl).includes(room.id));
+      const slotsToCheck = ownerSlots.length > 0 ? ownerSlots : activeSlots;
+      for (const sl of slotsToCheck) {
         const q = sl.customRoomQuotas?.[room.id];
         if (q !== undefined && q > 0) return q;
       }
@@ -572,7 +574,7 @@ export default function OrganizationSection({
       }
       return room.capacity || 24;
     },
-    [customRoomCapacities, scopeKey, activeSlots, selectedExam]
+    [customRoomCapacities, scopeKey, activeSlots, getRoomIdsForSlot, selectedExam]
   );
 
   // Build updated candidate record for a target slot (or exam)

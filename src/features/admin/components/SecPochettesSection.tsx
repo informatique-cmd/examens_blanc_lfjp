@@ -24,6 +24,7 @@ import {
   computeTiersTempsEndTimeColon,
   formatConvocationTableNumber,
   surveillancesTimeOverlap,
+  cleanSupervisorName,
 } from "../../../shared/services/cms-store";
 
 interface SecPochettesSectionProps {
@@ -479,7 +480,11 @@ export default function SecPochettesSection({
         ) : (
           roomPackets.map((packet, packetIdx) => {
             const uniqueSupervisors = Array.from(
-              new Set(packet.surveillants.map((s) => `${s.teacherName} (${s.timeSlot})`))
+              new Set(
+                packet.surveillants.map(
+                  (s) => `${cleanSupervisorName(s.teacherName) || s.teacherName} (${s.timeSlot})`
+                )
+              )
             );
 
             return (
@@ -574,7 +579,7 @@ export default function SecPochettesSection({
                       </span>
                     </div>
 
-                    <div className="print-table-wrap">
+                    <div className="print-table-wrap overflow-x-auto">
                       <table className="print-a4-table w-full text-left text-xs border border-slate-300 border-collapse">
                         <thead>
                           <tr className="bg-slate-100 border-b border-slate-300 text-slate-800 font-bold">
@@ -654,7 +659,7 @@ export default function SecPochettesSection({
                     </div>
 
                     {/* Bottom Signatures for Surveillants */}
-                    <div className="grid grid-cols-2 gap-6 pt-3 border-t border-slate-200 text-xs print-avoid-break">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-4 sm:gap-6 pt-3 border-t border-slate-200 text-xs print-avoid-break">
                       <div className="border border-slate-200 rounded-lg p-3 h-24 flex flex-col justify-between">
                         <p className="font-bold text-slate-800">Nom &amp; Signature du Surveillant 1 :</p>
                         <div className="border-b border-dashed border-slate-300" />
@@ -722,7 +727,7 @@ export default function SecPochettesSection({
                       PROCÈS-VERBAL DE DÉROULEMENT D&apos;ÉPREUVE (PV DE SALLE)
                     </h3>
 
-                    <div className="grid grid-cols-2 gap-4 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-4 bg-slate-50 border border-slate-200 rounded-xl p-4 print-avoid-break">
                       <div className="space-y-1">
                         <p>
                           <strong>Salle :</strong> {packet.room.name} {packet.isTTRoom ? "(Tiers-Temps +1/3)" : "(Standard)"}
@@ -731,14 +736,14 @@ export default function SecPochettesSection({
                           <strong>Date :</strong> {packet.dateDisplay || new Date().toLocaleDateString("fr-FR")}
                         </p>
                         <p>
-                          <strong>Horaire :</strong> {packet.timeRangeDisplay || "—"}
+                          <strong>Horaire officiel :</strong> {packet.timeRangeDisplay || "—"}
                         </p>
                         <p>
                           <strong>Surveillants :</strong>{" "}
                           {uniqueSupervisors.length > 0 ? uniqueSupervisors.join(", ") : "____________________"}
                         </p>
                       </div>
-                      <div className="space-y-1 text-right tabular-nums">
+                      <div className="space-y-1 sm:text-right print:text-right tabular-nums">
                         <p>
                           <strong>Candidats inscrits :</strong> {packet.rows.length}
                         </p>
@@ -754,12 +759,40 @@ export default function SecPochettesSection({
                       </div>
                     </div>
 
+                    {/* Horaires officiels d'ouverture des plis & remise des copies */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 print:grid-cols-3 gap-3 border border-slate-300 rounded-xl p-3 bg-white print-avoid-break">
+                      <div className="border-b sm:border-b-0 sm:border-r print:border-b-0 print:border-r border-slate-200 pb-2 sm:pb-0 sm:pr-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          Heure d&apos;ouverture des plis
+                        </p>
+                        <p className="font-mono font-bold text-sm text-[#0F2A56] mt-1.5">
+                          _____ h _____
+                        </p>
+                      </div>
+                      <div className="border-b sm:border-b-0 sm:border-r print:border-b-0 print:border-r border-slate-200 pb-2 sm:pb-0 sm:pr-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          Heure effective de début
+                        </p>
+                        <p className="font-mono font-bold text-sm text-[#0F2A56] mt-1.5">
+                          _____ h _____
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          Heure de remise des copies
+                        </p>
+                        <p className="font-mono font-bold text-sm text-[#0F2A56] mt-1.5">
+                          _____ h _____
+                        </p>
+                      </div>
+                    </div>
+
                     {packet.subjectCounts.length > 0 && (
-                      <div className="border border-slate-200 rounded-xl p-3 bg-white">
+                      <div className="border border-slate-200 rounded-xl p-3 bg-white print-avoid-break">
                         <p className="font-bold text-[#0F2A56] mb-1.5">
                           Répartition des sujets &amp; copies par discipline dans cette salle :
                         </p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 print:grid-cols-3 gap-2">
                           {packet.subjectCounts.map((sc) => (
                             <div
                               key={sc.subject}
@@ -775,16 +808,56 @@ export default function SecPochettesSection({
                       </div>
                     )}
 
-                    <div className="border border-slate-300 rounded-xl p-3 space-y-2">
-                      <p className="font-bold">
-                        Observations &amp; Incidents constatés (ouverture des enveloppes, retards, malaise, fraude) :
+                    {/* Relevé nominatif des Absences & Retards */}
+                    <div className="border border-slate-300 rounded-xl p-3 space-y-2 bg-white print-avoid-break">
+                      <p className="font-bold text-[#0F2A56]">
+                        Absences &amp; Retards signalés (à compléter en salle) :
                       </p>
-                      <div className="h-28 border border-dashed border-slate-200 rounded p-2 text-slate-400">
-                        R.A.S. — Ouverture et déroulement conformes au règlement.
+                      <div className="print-table-wrap overflow-x-auto">
+                        <table className="print-a4-table w-full text-left text-[11px] border border-slate-200 border-collapse">
+                          <thead>
+                            <tr className="bg-slate-100 text-slate-700 font-bold">
+                              <th className="p-1.5 border border-slate-200 w-16 text-center">Table</th>
+                              <th className="p-1.5 border border-slate-200">Nom &amp; Prénom du Candidat</th>
+                              <th className="p-1.5 border border-slate-200 w-24 text-center">Statut</th>
+                              <th className="p-1.5 border border-slate-200 w-24 text-center">Heure</th>
+                              <th className="p-1.5 border border-slate-200">Observation / Motif</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[0, 1, 2].map((lineIdx) => (
+                              <tr key={lineIdx} className="h-7">
+                                <td className="p-1.5 border border-slate-200" />
+                                <td className="p-1.5 border border-slate-200" />
+                                <td className="p-1.5 border border-slate-200 text-[10px] text-slate-400 text-center">
+                                  ☐ Abs / ☐ Ret
+                                </td>
+                                <td className="p-1.5 border border-slate-200 text-center text-slate-400 font-mono">
+                                  __h__
+                                </td>
+                                <td className="p-1.5 border border-slate-200" />
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6 pt-4">
+                    <div className="border border-slate-300 rounded-xl p-3 space-y-2 print-avoid-break">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="font-bold text-[#0F2A56]">
+                          Observations &amp; Incidents constatés (enveloppes, sortie anticipée, malaise, fraude, matériel) :
+                        </p>
+                        <span className="text-[11px] font-semibold text-slate-600">
+                          ☐ R.A.S. (Déroulement conforme)
+                        </span>
+                      </div>
+                      <div className="h-24 border border-dashed border-slate-300 rounded p-2 text-slate-400">
+                        Consigner ici tout incident ou remarque particulière...
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-6 pt-3 print-avoid-break">
                       <div>
                         <p className="font-bold">Signatures des surveillants :</p>
                         <div className="h-20 border-b border-slate-400" />

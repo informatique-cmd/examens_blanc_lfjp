@@ -1152,7 +1152,7 @@ export default function HomePage() {
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
                     Calendrier et Horaires des Épreuves du Candidat :
                   </h3>
-                  <div className="print-table-wrap border border-slate-300 rounded-xl overflow-hidden">
+                  <div className="print-table-wrap overflow-x-auto border border-slate-300 rounded-xl">
                     <table className="print-a4-table w-full text-xs text-left">
                       <thead className="bg-[#002060] text-white text-[11px] uppercase tracking-wider">
                         <tr>
@@ -1939,7 +1939,7 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="print-table-wrap border border-slate-300 rounded-xl overflow-hidden">
+                <div className="print-table-wrap overflow-x-auto border border-slate-300 rounded-xl">
                   <table className="print-a4-table w-full text-xs text-left">
                     <thead className="bg-[#0F2A56] text-white text-[11px] uppercase tracking-wider">
                       <tr>

@@ -30,6 +30,7 @@ import {
   getShortLevelBadge,
   cleanSupervisorName,
   isRenfortSurveillance,
+  isRoomMarkedTiersTemps,
 } from "../../../shared/services/cms-store";
 import { OFFICIAL_LFJP_PLANNING_SESSIONS } from "../../../shared/data/official-lfjp-planning";
 
@@ -993,11 +994,18 @@ export default function CreneauxSection({
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                           {(slot.roomNames || []).map((roomName) => {
                             const roomSurvs = getRoomSurveillances(slot, roomName);
-                            const isTTRoom =
-                              roomName.toLowerCase().includes("tt") ||
-                              roomName.toLowerCase().includes("tiers") ||
-                              roomName.toLowerCase().includes("s5") ||
-                              roomName.toLowerCase().includes("s6");
+                            const roomObj = rooms.find(
+                              (r) => r.name.trim().toLowerCase() === roomName.trim().toLowerCase()
+                            );
+                            const parentExam = exams.find(
+                              (ex) =>
+                                ex.id === slot.examId ||
+                                ex.title.trim().toLowerCase() === (slot.examTitle || "").trim().toLowerCase()
+                            );
+                            const isTTRoom = roomObj
+                              ? isRoomMarkedTiersTemps(roomObj, [slot], parentExam)
+                              : roomName.toLowerCase().includes("tt") ||
+                                roomName.toLowerCase().includes("tiers");
                             const formKey = `${slot.id}_${roomName}`;
                             const customForm = customSubSlotForms[formKey] || {
                               startTime: slot.startTime,
@@ -1109,7 +1117,7 @@ export default function CreneauxSection({
                                             >
                                               <option value={surv.teacherName}>{surv.teacherName}</option>
                                               {customRenfortList.length > 0 && (
-                                                <optgroup label="⭐ Surveillants de renfort & externes">
+                                                <optgroup label="⭐ Surveillants renfort & externes">
                                                   {customRenfortList.map((name) => {
                                                     if (name === surv.teacherName) return null;
                                                     return (
