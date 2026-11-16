@@ -26,6 +26,7 @@ import {
   formatConvocationRoomAndTable,
   formatConvocationTableNumber,
   consolidateTeacherSurveillances,
+  isRenfortSurveillance,
 } from "../../../shared/services/cms-store";
 
 function computeTTEndTime(startTime: string, durationMinutes: number): string {
@@ -662,21 +663,40 @@ export default function ConvocationsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {teacherSurveillances.map((s) => (
-                    <tr key={s.id} className="hover:bg-slate-50/50">
-                      <td className="p-2 font-medium border-r border-slate-200 whitespace-nowrap tabular-nums">{s.date}</td>
-                      <td className="p-2 font-semibold text-indigo-700 border-r border-slate-200 whitespace-nowrap tabular-nums">
-                        {s.timeSlot}
-                      </td>
-                      <td className="p-2 border-r border-slate-200">
-                        <div className="font-semibold text-slate-900">{s.subjects.join(" • ")}</div>
-                        <div className="text-[10px] text-slate-500">{s.examTitle}</div>
-                      </td>
-                      <td className="p-2 font-medium border-r border-slate-200">{s.teacherName}</td>
-                      <td className="p-2 font-semibold text-slate-900 border-r border-slate-200">{s.roomName}</td>
-                      <td className="p-2 text-slate-600">{s.mission || "Surveillance principale"}</td>
-                    </tr>
-                  ))}
+                  {teacherSurveillances.map((s) => {
+                    const isRenfort = s.isRenfort || isRenfortSurveillance(s);
+                    return (
+                      <tr key={s.id} className="hover:bg-slate-50/50">
+                        <td className="p-2 font-medium border-r border-slate-200 whitespace-nowrap tabular-nums">{s.date}</td>
+                        <td className="p-2 font-semibold text-indigo-700 border-r border-slate-200 whitespace-nowrap tabular-nums">
+                          {s.timeSlot}
+                        </td>
+                        <td className="p-2 border-r border-slate-200">
+                          <div className="font-semibold text-slate-900">{s.subjects.join(" • ")}</div>
+                          <div className="text-[10px] text-slate-500">{s.examTitle}</div>
+                        </td>
+                        <td className="p-2 font-medium border-r border-slate-200">{s.teacherName}</td>
+                        <td className="p-2 font-semibold text-slate-900 border-r border-slate-200 whitespace-nowrap">
+                          {isRenfort ? (
+                            <span className="px-2 py-0.5 rounded bg-purple-100 border border-purple-300 text-purple-900 font-extrabold text-[11px]">
+                              Salle Renfort
+                            </span>
+                          ) : (
+                            s.roomName
+                          )}
+                        </td>
+                        <td className="p-2 text-slate-600">
+                          {isRenfort ? (
+                            <span className="px-2 py-0.5 rounded bg-purple-50 border border-purple-200 text-purple-800 font-bold text-[10px]">
+                              {s.mission || "Renfort / Couloir"}
+                            </span>
+                          ) : (
+                            s.mission || "Surveillance principale"
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -478,6 +478,25 @@ export interface ConsolidatedTeacherSurveillance {
   teacherName: string;
   subjects: string[];
   rawIds: string[];
+  isRenfort?: boolean;
+}
+
+export function isRenfortSurveillance(
+  s: Pick<CmsSurveillance, "roomName" | "mission">
+): boolean {
+  const room = (s.roomName || "").trim().toLowerCase();
+  const mission = (s.mission || "").trim().toLowerCase();
+  if (
+    room === "renfort" ||
+    room === "salle renfort" ||
+    /\b(renfort|couloir|remplacant|remplaçant)\b/i.test(room)
+  ) {
+    return true;
+  }
+  if (/\b(renfort|couloir|remplacant|remplaçant)\b/i.test(mission)) {
+    return true;
+  }
+  return false;
 }
 
 export function consolidateTeacherSurveillances(
@@ -487,10 +506,14 @@ export function consolidateTeacherSurveillances(
   const map = new Map<string, ConsolidatedTeacherSurveillance>();
 
   for (const s of survs) {
+    const isRenfort = isRenfortSurveillance(s);
+    const displayRoomName = isRenfort ? "Salle Renfort" : s.roomName;
+
     const matchedSlot = examSlots.find(
       (sl) =>
         (s.slotId && sl.id === s.slotId) ||
-        (sl.date === s.date &&
+        (!isRenfort &&
+          sl.date === s.date &&
           (!s.examTitle || sl.examTitle.trim().toLowerCase() === s.examTitle.trim().toLowerCase()) &&
           (sl.roomNames || []).some(
             (rn) => rn.trim().toLowerCase() === (s.roomName || "").trim().toLowerCase()
@@ -499,7 +522,7 @@ export function consolidateTeacherSurveillances(
     );
 
     const parallelSlotsInRoom =
-      s.roomName && s.roomName !== "Renfort"
+      s.roomName && !isRenfort
         ? examSlots.filter(
             (sl) =>
               sl.date === s.date &&
@@ -524,24 +547,27 @@ export function consolidateTeacherSurveillances(
       ].filter(Boolean))
     );
 
-    const key = `${s.date}::${s.timeSlot}::${s.roomName}::${(s.examTitle || "").trim().toLowerCase()}::${(s.teacherName || "").trim().toLowerCase()}`;
+    const key = `${s.date}::${s.timeSlot}::${displayRoomName}::${(s.examTitle || "").trim().toLowerCase()}::${(s.teacherName || "").trim().toLowerCase()}`;
     const existing = map.get(key);
     if (existing) {
       subjectNames.forEach((subj) => {
         if (!existing.subjects.includes(subj)) existing.subjects.push(subj);
       });
+      if (isRenfort) existing.isRenfort = true;
       existing.rawIds.push(s.id);
     } else {
+      const fallbackSubject = isRenfort ? "Renfort / Couloir (Toutes salles)" : "Épreuve écrite";
       map.set(key, {
         id: s.id,
         examTitle: s.examTitle,
         date: s.date,
         timeSlot: s.timeSlot,
-        roomName: s.roomName,
-        mission: s.mission || "Surveillant titulaire",
+        roomName: displayRoomName,
+        mission: s.mission || (isRenfort ? "Renfort / Couloir" : "Surveillant titulaire"),
         teacherName: s.teacherName,
-        subjects: subjectNames.length > 0 ? subjectNames : ["Épreuve écrite"],
+        subjects: subjectNames.length > 0 ? subjectNames : [fallbackSubject],
         rawIds: [s.id],
+        isRenfort,
       });
     }
   }

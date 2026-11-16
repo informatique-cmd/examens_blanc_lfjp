@@ -34,6 +34,7 @@ import {
   formatConvocationRoomAndTable,
   formatConvocationTableNumber,
   consolidateTeacherSurveillances,
+  isRenfortSurveillance,
   isRoomMarkedTiersTemps,
   computeTiersTempsEndTimeColon,
 } from "../../../shared/services/cms-store";
@@ -1266,30 +1267,41 @@ export function ConvocProfsSection({
                         </tr>
                       </thead>
                       <tbody>
-                        {consolidatedSurvs.map((s) => (
-                          <tr key={s.id} className="hover:bg-slate-50">
-                            <td className="p-2 border border-slate-300 font-bold">{s.examTitle}</td>
-                            <td className="p-2 border border-slate-300 font-semibold text-slate-900">
-                              {s.subjects.join(" • ")}
-                            </td>
-                            <td className="p-2 border border-slate-300 whitespace-nowrap tabular-nums">{s.date}</td>
-                            <td className="p-2 border border-slate-300 font-mono font-bold text-[#002060] whitespace-nowrap tabular-nums">
-                              {s.timeSlot}
-                            </td>
-                            <td className="p-2 border border-slate-300 font-bold">{s.roomName}</td>
-                            <td className="p-2 border border-slate-300">
-                              <span
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  s.mission?.toLowerCase().includes("renfort")
-                                    ? "bg-purple-100 text-purple-800"
-                                    : "bg-emerald-100 text-emerald-800"
-                                }`}
-                              >
-                                {s.mission || "Surveillant titulaire"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {consolidatedSurvs.map((s) => {
+                          const isRenfort = s.isRenfort || isRenfortSurveillance(s);
+                          return (
+                            <tr key={s.id} className="hover:bg-slate-50">
+                              <td className="p-2 border border-slate-300 font-bold">{s.examTitle}</td>
+                              <td className="p-2 border border-slate-300 font-semibold text-slate-900">
+                                {s.subjects.join(" • ")}
+                              </td>
+                              <td className="p-2 border border-slate-300 whitespace-nowrap tabular-nums">{s.date}</td>
+                              <td className="p-2 border border-slate-300 font-mono font-bold text-[#002060] whitespace-nowrap tabular-nums">
+                                {s.timeSlot}
+                              </td>
+                              <td className="p-2 border border-slate-300 font-bold whitespace-nowrap">
+                                {isRenfort ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300 font-extrabold text-[11px]">
+                                    Salle Renfort
+                                  </span>
+                                ) : (
+                                  s.roomName
+                                )}
+                              </td>
+                              <td className="p-2 border border-slate-300">
+                                {isRenfort ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                    {s.mission || "Renfort / Couloir"}
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                    {s.mission || "Surveillant titulaire"}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

@@ -139,6 +139,7 @@ export default function OrganizationSection({
   const setSelectedDate = (date: string) => {
     const examKey = selectedExam?.id || "__all__";
     setSelectedDateByExam((prev) => ({ ...prev, [examKey]: date }));
+    setCheckedSlotIdsByExamDate((prev) => ({ ...prev, [`${examKey}::${date}`]: [] }));
     setShowAllSchoolRooms(false);
     setInspectingRoomName(null);
   };
@@ -148,41 +149,28 @@ export default function OrganizationSection({
     return currentExamSlots.filter((s) => s.date === selectedDate);
   }, [currentExamSlots, selectedDate]);
 
-  const [selectedSlotByExamDate, setSelectedSlotByExamDate] = useState<Record<string, string>>({});
   const [checkedSlotIdsByExamDate, setCheckedSlotIdsByExamDate] = useState<Record<string, string[]>>({});
 
-  const selectedSlot: CmsExamSlot | null = useMemo(() => {
-    if (slotsForSelectedDate.length === 0) return null;
-    const key = `${selectedExam?.id || "__all__"}::${selectedDate}`;
-    const storedId = selectedSlotByExamDate[key];
-    return slotsForSelectedDate.find((s) => s.id === storedId) || slotsForSelectedDate[0];
-  }, [slotsForSelectedDate, selectedSlotByExamDate, selectedExam, selectedDate]);
-
-  // Multi-épreuve checked slots on the current date
+  // Multi-épreuve checked slots on the current date (0 checked by default)
   const checkedSlotIds = useMemo(() => {
     if (slotsForSelectedDate.length === 0) return [];
     const key = `${selectedExam?.id || "__all__"}::${selectedDate}`;
     const stored = checkedSlotIdsByExamDate[key];
-    if (Array.isArray(stored) && stored.length > 0) {
-      const validIds = stored.filter((id) => slotsForSelectedDate.some((s) => s.id === id));
-      if (validIds.length > 0) return validIds;
-    }
-    return selectedSlot ? [selectedSlot.id] : [slotsForSelectedDate[0].id];
-  }, [slotsForSelectedDate, checkedSlotIdsByExamDate, selectedExam, selectedDate, selectedSlot]);
+    if (!Array.isArray(stored)) return [];
+    return stored.filter((id) => slotsForSelectedDate.some((s) => s.id === id));
+  }, [slotsForSelectedDate, checkedSlotIdsByExamDate, selectedExam, selectedDate]);
 
   const activeSlots: CmsExamSlot[] = useMemo(() => {
     if (slotsForSelectedDate.length === 0) return [];
-    const list = slotsForSelectedDate.filter((s) => checkedSlotIds.includes(s.id));
-    if (list.length > 0) return list;
-    return selectedSlot ? [selectedSlot] : [];
-  }, [slotsForSelectedDate, checkedSlotIds, selectedSlot]);
+    return slotsForSelectedDate.filter((s) => checkedSlotIds.includes(s.id));
+  }, [slotsForSelectedDate, checkedSlotIds]);
 
-  const primarySlot: CmsExamSlot | null = activeSlots[0] || selectedSlot;
+  const hasSlotsButNoneChecked = currentExamSlots.length > 0 && activeSlots.length === 0;
+  const primarySlot: CmsExamSlot | null = activeSlots[0] || null;
   const isMultiSlotMode = activeSlots.length > 1;
 
   const setSelectedDispatchSlotId = (slotId: string) => {
     const key = `${selectedExam?.id || "__all__"}::${selectedDate}`;
-    setSelectedSlotByExamDate((prev) => ({ ...prev, [key]: slotId }));
     setCheckedSlotIdsByExamDate((prev) => ({ ...prev, [key]: [slotId] }));
     setShowAllSchoolRooms(false);
     setInspectingRoomName(null);
@@ -192,15 +180,15 @@ export default function OrganizationSection({
     const key = `${selectedExam?.id || "__all__"}::${selectedDate}`;
     const current = checkedSlotIds;
     const exists = current.includes(slotId);
-    if (exists && current.length <= 1) {
-      // Keep at least one slot checked so workspace stays valid
-      return;
-    }
     const next = exists ? current.filter((id) => id !== slotId) : [...current, slotId];
     setCheckedSlotIdsByExamDate((prev) => ({ ...prev, [key]: next }));
-    if (next.length > 0) {
-      setSelectedSlotByExamDate((prev) => ({ ...prev, [key]: next[0] }));
-    }
+    setShowAllSchoolRooms(false);
+    setInspectingRoomName(null);
+  };
+
+  const handleUncheckAllDateSlots = () => {
+    const key = `${selectedExam?.id || "__all__"}::${selectedDate}`;
+    setCheckedSlotIdsByExamDate((prev) => ({ ...prev, [key]: [] }));
     setShowAllSchoolRooms(false);
     setInspectingRoomName(null);
   };
@@ -300,6 +288,7 @@ export default function OrganizationSection({
 
   // Deduplicated selected room IDs across ALL active checked slots
   const selectedRoomIds = useMemo(() => {
+    if (hasSlotsButNoneChecked) return [];
     if (activeSlots.length > 0) {
       const idSet = new Set<string>();
       activeSlots.forEach((slot) => {
@@ -320,10 +309,11 @@ export default function OrganizationSection({
       (s.roomNames || []).forEach((rn) => matchedNames.add(rn.trim().toLowerCase()));
     });
     return rooms.filter((r) => matchedNames.has(r.name.trim().toLowerCase())).map((r) => r.id);
-  }, [activeSlots, getRoomIdsForSlot, rooms, selectedExam, examRoomMap, currentExamSlots]);
+  }, [hasSlotsButNoneChecked, activeSlots, getRoomIdsForSlot, rooms, selectedExam, examRoomMap, currentExamSlots]);
 
   // Deduplicated TT room IDs across ALL active checked slots
   const ttRoomIds = useMemo(() => {
+    if (hasSlotsButNoneChecked) return [];
     if (activeSlots.length > 0) {
       const ttSet = new Set<string>();
       activeSlots.forEach((slot) => {
@@ -351,7 +341,7 @@ export default function OrganizationSection({
     return rooms
       .filter((r) => selectedRoomIds.includes(r.id) && isRoomMarkedTiersTemps(r, [], selectedExam))
       .map((r) => r.id);
-  }, [activeSlots, getRoomIdsForSlot, getTTRoomIdsForSlot, rooms, selectedRoomIds, slotTTRoomMap, selectedExam, examTTRoomMap]);
+  }, [hasSlotsButNoneChecked, activeSlots, getRoomIdsForSlot, getTTRoomIdsForSlot, rooms, selectedRoomIds, slotTTRoomMap, selectedExam, examTTRoomMap]);
 
   // Score and pick the most logical slot within activeSlots for a given candidate
   const pickBestSlotForCandidate = useCallback(
@@ -451,6 +441,7 @@ export default function OrganizationSection({
   // Deduplicated eligible candidates across active checked slots (filtered strictly by level & specialty, never duplicated)
   const slotEligibleAllCandidates = useMemo(() => {
     if (!selectedExam) return candidates;
+    if (hasSlotsButNoneChecked) return [];
     if (activeSlots.length > 0) {
       return candidates.filter((c) => {
         if (activeSlots.some((s) => Boolean(c.assignmentsBySlot?.[s.id]?.roomName))) {
@@ -472,7 +463,7 @@ export default function OrganizationSection({
       }
       return isCandidateMatchingLevel(c.className, levels);
     });
-  }, [candidates, selectedExam, activeSlots]);
+  }, [candidates, selectedExam, activeSlots, hasSlotsButNoneChecked]);
 
   // Candidates targeted for dispatch (excluding only those already assigned in OTHER external parallel slots)
   const targetCandidates = useMemo(() => {
@@ -814,6 +805,10 @@ export default function OrganizationSection({
 
   // Main algorithm to dispatch deduplicated candidates across checked slot(s) into deduplicated Standard & TT rooms
   const handleRunDispatch = () => {
+    if (hasSlotsButNoneChecked) {
+      alert("Veuillez cocher au moins une épreuve ci-dessus avant de lancer le brassage.");
+      return;
+    }
     if (targetCandidates.length === 0) {
       alert(
         activeSlots.length > 0
@@ -1357,6 +1352,10 @@ export default function OrganizationSection({
   };
 
   const handleResetDispatch = () => {
+    if (hasSlotsButNoneChecked) {
+      alert("Veuillez cocher au moins une épreuve ci-dessus avant de réinitialiser.");
+      return;
+    }
     if (slotEligibleAllCandidates.length === 0) {
       alert("Aucun élève à réinitialiser pour ce créneau.");
       return;
@@ -2069,6 +2068,13 @@ export default function OrganizationSection({
                       type="button"
                       onClick={() => {
                         setSelectedExamId(exam.id);
+                        setCheckedSlotIdsByExamDate((prev) => {
+                          const next = { ...prev };
+                          Object.keys(next).forEach((k) => {
+                            if (k.startsWith(`${exam.id}::`)) delete next[k];
+                          });
+                          return next;
+                        });
                         setShowAllSchoolRooms(false);
                         setInspectingRoomName(null);
                       }}
@@ -2139,15 +2145,16 @@ export default function OrganizationSection({
                   <div className="flex items-center gap-2">
                     <select
                       aria-label="Basculer rapidement vers une épreuve"
-                      value={selectedSlot?.id || ""}
+                      value={activeSlots.length === 1 ? activeSlots[0].id : ""}
                       onChange={(e) => {
+                        if (!e.target.value) return;
                         const target = currentExamSlots.find((s) => s.id === e.target.value);
                         if (target) {
                           const examKey = selectedExam.id;
                           setSelectedDateByExam((prev) => ({ ...prev, [examKey]: target.date }));
-                          setSelectedSlotByExamDate((prev) => ({
+                          setCheckedSlotIdsByExamDate((prev) => ({
                             ...prev,
-                            [`${examKey}::${target.date}`]: target.id,
+                            [`${examKey}::${target.date}`]: [target.id],
                           }));
                           setShowAllSchoolRooms(false);
                           setInspectingRoomName(null);
@@ -2155,6 +2162,7 @@ export default function OrganizationSection({
                       }}
                       className="px-3 py-1.5 text-xs font-semibold border border-slate-300 rounded-lg bg-slate-50 text-slate-800 focus:ring-2 focus:ring-blue-500 max-w-xs"
                     >
+                      <option value="">-- Choisir rapidement une épreuve --</option>
                       {currentExamSlots.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.date} • {s.startTime}-{s.endTime} • {s.subject}
@@ -2211,8 +2219,19 @@ export default function OrganizationSection({
                   {/* 2B. Épreuves du jour sélectionné (Multi-sélection par cases à cocher) */}
                   <div className="space-y-2">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                        Épreuve(s) / Créneau(x) du {formatDisplayDateFr(selectedDate)} ({checkedSlotIds.length} cochée{checkedSlotIds.length > 1 ? "s" : ""} / {slotsForSelectedDate.length}) :
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex flex-wrap items-center gap-2">
+                        <span>
+                          Épreuve(s) / Créneau(x) du {formatDisplayDateFr(selectedDate)}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded font-mono text-[10px] font-extrabold tabular-nums ${
+                            checkedSlotIds.length === 0
+                              ? "bg-amber-100 text-amber-900 border border-amber-200"
+                              : "bg-blue-100 text-[#0F2A56] border border-blue-200"
+                          }`}
+                        >
+                          {checkedSlotIds.length} COCHÉE{checkedSlotIds.length > 1 ? "S" : ""} / {slotsForSelectedDate.length}
+                        </span>
                       </p>
                       <div className="flex flex-wrap items-center gap-1.5">
                         {primarySlot && slotsForSelectedDate.length > 1 && (
@@ -2225,7 +2244,7 @@ export default function OrganizationSection({
                             Regrouper même créneau horaire
                           </button>
                         )}
-                        {slotsForSelectedDate.length > 1 && (
+                        {slotsForSelectedDate.length > 1 && checkedSlotIds.length < slotsForSelectedDate.length && (
                           <button
                             type="button"
                             onClick={handleCheckAllDateSlots}
@@ -2241,6 +2260,15 @@ export default function OrganizationSection({
                             className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 text-[11px] font-semibold transition cursor-pointer"
                           >
                             1 seule épreuve
+                          </button>
+                        )}
+                        {checkedSlotIds.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleUncheckAllDateSlots}
+                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 text-[11px] font-semibold transition cursor-pointer"
+                          >
+                            Tout décocher
                           </button>
                         )}
                       </div>
@@ -2362,7 +2390,14 @@ export default function OrganizationSection({
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
             <div className="text-xs text-slate-600 space-y-1">
               <div>
-                {activeSlots.length > 1 ? (
+                {hasSlotsButNoneChecked ? (
+                  <span className="text-amber-800 font-semibold flex items-center gap-1.5">
+                    <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span>
+                      Aucune épreuve cochée pour le {formatDisplayDateFr(selectedDate)} — Cochez une ou plusieurs épreuves ci-dessus pour traiter ses salles et candidats.
+                    </span>
+                  </span>
+                ) : activeSlots.length > 1 ? (
                   <>
                     Sélection groupée ({activeSlots.length} épreuves) :{" "}
                     <strong className="text-[#0F2A56]">
@@ -2409,8 +2444,9 @@ export default function OrganizationSection({
             <div className="flex flex-wrap items-center gap-2 self-end lg:self-auto shrink-0">
               <button
                 type="button"
+                disabled={hasSlotsButNoneChecked}
                 onClick={handleResetDispatch}
-                className="px-3.5 py-2 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-700 font-semibold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 disabled:opacity-45 disabled:cursor-not-allowed text-rose-700 font-semibold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
                 title="Efface les attributions des épreuves sélectionnées et remet les salles à zéro"
               >
                 <RotateCcw className="h-4 w-4 text-rose-600" />
@@ -2419,13 +2455,16 @@ export default function OrganizationSection({
                     ? `Réinitialiser les ${activeSlots.length} épreuves`
                     : primarySlot
                       ? "Réinitialiser cette épreuve"
-                      : "Réinitialiser cet examen"}
+                      : hasSlotsButNoneChecked
+                        ? "Réinitialiser la sélection"
+                        : "Réinitialiser cet examen"}
                 </span>
               </button>
               <button
                 type="button"
+                disabled={hasSlotsButNoneChecked}
                 onClick={handleRunDispatch}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-45 disabled:cursor-not-allowed text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
               >
                 <Sparkles className="h-4 w-4" />
                 <span>Lancer le Brassage ({targetCandidates.length} élèves)</span>
@@ -2609,6 +2648,18 @@ export default function OrganizationSection({
 
           {/* Salles Mobilisées & Jauges Standard / Tiers-Temps */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6 space-y-5">
+            {hasSlotsButNoneChecked ? (
+              <div className="p-8 text-center bg-slate-50/80 border-2 border-dashed border-slate-200 rounded-2xl space-y-2.5">
+                <Calendar className="h-9 w-9 text-[#0F2A56]/60 mx-auto" />
+                <p className="text-sm font-bold text-slate-900">
+                  Aucune épreuve cochée sur la journée du {formatDisplayDateFr(selectedDate)}
+                </p>
+                <p className="text-xs text-slate-600 max-w-lg mx-auto leading-relaxed">
+                  Veuillez cocher au moins une épreuve ci-dessus (étape 2) pour afficher ses salles mobilisées, ajuster les quotas Standard / Tiers-Temps et lancer la répartition des candidats.
+                </p>
+              </div>
+            ) : (
+              <>
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <div>
                 <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
@@ -2972,6 +3023,8 @@ export default function OrganizationSection({
                 </div>
               ))}
             </div>
+            )}
+              </>
             )}
           </div>
         </div>

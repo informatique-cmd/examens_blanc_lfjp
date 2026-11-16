@@ -40,6 +40,7 @@ import {
   formatConvocationRoomAndTable,
   formatConvocationTableNumber,
   consolidateTeacherSurveillances,
+  isRenfortSurveillance,
   parseTimeRangeMinutes,
 } from "../../../shared/services/cms-store";
 
@@ -1717,34 +1718,50 @@ export default function HomePage() {
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200">
-                                {activeTeacherSurvs.map((surv) => (
-                                  <tr key={surv.id} className="hover:bg-slate-50">
-                                    <td className="py-2.5 px-3 whitespace-nowrap">
-                                      <div className="font-mono font-bold text-[#0F2A56] tabular-nums">
-                                        {surv.date}
-                                      </div>
-                                      <div className="font-mono text-[11px] font-semibold text-slate-700 tabular-nums">
-                                        {surv.timeSlot}
-                                      </div>
-                                    </td>
-                                    <td className="py-2.5 px-3 whitespace-nowrap">
-                                      <span className="px-2 py-0.5 rounded bg-blue-50 border border-blue-200 text-[#0F2A56] font-bold text-[11px]">
-                                        {surv.roomName}
-                                      </span>
-                                    </td>
-                                    <td className="py-2.5 px-3">
-                                      <div className="font-bold text-slate-900 text-xs">
-                                        {surv.subjects.join(" / ")}
-                                      </div>
-                                      <div className="text-[10px] text-slate-500 mt-0.5">
-                                        {surv.examTitle} •{" "}
-                                        <span className="font-semibold text-emerald-700">
-                                          {surv.mission}
-                                        </span>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ))}
+                                {activeTeacherSurvs.map((surv) => {
+                                  const isRenfort = surv.isRenfort || isRenfortSurveillance(surv);
+                                  return (
+                                    <tr key={surv.id} className="hover:bg-slate-50">
+                                      <td className="py-2.5 px-3 whitespace-nowrap">
+                                        <div className="font-mono font-bold text-[#0F2A56] tabular-nums">
+                                          {surv.date}
+                                        </div>
+                                        <div className="font-mono text-[11px] font-semibold text-slate-700 tabular-nums">
+                                          {surv.timeSlot}
+                                        </div>
+                                      </td>
+                                      <td className="py-2.5 px-3 whitespace-nowrap">
+                                        {isRenfort ? (
+                                          <span className="px-2 py-0.5 rounded bg-purple-100 border border-purple-300 text-purple-900 font-extrabold text-[11px] inline-block">
+                                            Salle Renfort
+                                          </span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 rounded bg-blue-50 border border-blue-200 text-[#0F2A56] font-bold text-[11px]">
+                                            {surv.roomName}
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="py-2.5 px-3">
+                                        <div className="font-bold text-slate-900 text-xs">
+                                          {surv.subjects.join(" / ")}
+                                        </div>
+                                        <div className="text-[10px] text-slate-500 mt-0.5 flex flex-wrap items-center gap-1">
+                                          <span>{surv.examTitle}</span>
+                                          <span>•</span>
+                                          {isRenfort ? (
+                                            <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200 font-bold">
+                                              {surv.mission || "Renfort / Couloir"}
+                                            </span>
+                                          ) : (
+                                            <span className="font-semibold text-emerald-700">
+                                              {surv.mission}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
@@ -1919,28 +1936,43 @@ export default function HomePage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white">
-                      {missionSurvs.map((surv) => (
-                        <tr key={surv.id}>
-                          <td className="py-2 px-2.5 font-medium text-slate-700">
-                            {surv.examTitle}
-                          </td>
-                          <td className="py-2 px-2.5 font-semibold text-slate-900 whitespace-nowrap tabular-nums">
-                            {surv.date}
-                          </td>
-                          <td className="py-2 px-2.5 font-mono font-bold text-[#0F2A56] whitespace-nowrap tabular-nums">
-                            {surv.timeSlot}
-                          </td>
-                          <td className="py-2 px-2.5 font-bold text-slate-800">
-                            {surv.subjects.join(" / ")}
-                          </td>
-                          <td className="py-2 px-2.5 font-bold text-[#0F2A56] whitespace-nowrap">
-                            {surv.roomName}
-                          </td>
-                          <td className="py-2 px-2.5 text-slate-700">
-                            {surv.mission}
-                          </td>
-                        </tr>
-                      ))}
+                      {missionSurvs.map((surv) => {
+                        const isRenfort = surv.isRenfort || isRenfortSurveillance(surv);
+                        return (
+                          <tr key={surv.id}>
+                            <td className="py-2 px-2.5 font-medium text-slate-700">
+                              {surv.examTitle}
+                            </td>
+                            <td className="py-2 px-2.5 font-semibold text-slate-900 whitespace-nowrap tabular-nums">
+                              {surv.date}
+                            </td>
+                            <td className="py-2 px-2.5 font-mono font-bold text-[#0F2A56] whitespace-nowrap tabular-nums">
+                              {surv.timeSlot}
+                            </td>
+                            <td className="py-2 px-2.5 font-bold text-slate-800">
+                              {surv.subjects.join(" / ")}
+                            </td>
+                            <td className="py-2 px-2.5 font-bold text-[#0F2A56] whitespace-nowrap">
+                              {isRenfort ? (
+                                <span className="px-2 py-0.5 rounded bg-purple-100 border border-purple-300 text-purple-900 font-extrabold text-[11px]">
+                                  Salle Renfort
+                                </span>
+                              ) : (
+                                surv.roomName
+                              )}
+                            </td>
+                            <td className="py-2 px-2.5 text-slate-700">
+                              {isRenfort ? (
+                                <span className="px-2 py-0.5 rounded bg-purple-50 border border-purple-200 text-purple-800 font-bold text-[10px]">
+                                  {surv.mission || "Renfort / Couloir"}
+                                </span>
+                              ) : (
+                                surv.mission
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
