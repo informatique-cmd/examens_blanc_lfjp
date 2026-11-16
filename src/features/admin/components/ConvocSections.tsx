@@ -35,6 +35,8 @@ import {
   formatConvocationTableNumber,
   consolidateTeacherSurveillances,
   isRenfortSurveillance,
+  cleanSupervisorName,
+  formatSupervisorMissionLabel,
   isRoomMarkedTiersTemps,
   computeTiersTempsEndTimeColon,
 } from "../../../shared/services/cms-store";
@@ -1009,27 +1011,32 @@ export function ConvocProfsSection({
   const [printScope, setPrintScope] = useState<"single" | "all">("single");
   const [selectedExamTitle, setSelectedExamTitle] = useState<string>("all");
 
-  // Merge regular teachers with any manual surveillants de renfort present in surveillances
+  // Merge regular teachers with any manual surveillants renfort present in surveillances
   const allSupervisors = useMemo(() => {
     const list: Array<CmsTeacher & { isRenfort?: boolean }> = [...teachers];
     const existingNames = new Set(
-      teachers.map((t) => `${t.lastName} ${t.firstName}`.toLowerCase())
+      teachers.map((t) => `${t.lastName} ${t.firstName}`.toLowerCase().trim())
     );
 
     surveillances.forEach((s) => {
-      const cleanName = s.teacherName.replace(/^(M\.|Mme|Mlle)\s+/i, "").trim().toLowerCase();
+      const cleanedFull = cleanSupervisorName(s.teacherName);
+      const baseName = cleanedFull.replace(/^(madame|monsieur|mme|m\.|mlle)\s+/i, "").trim();
+      const baseLower = baseName.toLowerCase();
+      if (!baseLower) return;
+
       const isExisting = Array.from(existingNames).some(
-        (n) => n.includes(cleanName) || cleanName.includes(n)
+        (n) => n.includes(baseLower) || baseLower.includes(n)
       );
-      if (!isExisting && s.teacherName) {
-        existingNames.add(cleanName);
+      if (!isExisting) {
+        existingNames.add(baseLower);
+        const isFemale = /^(mme|madame|mlle)\b/i.test(s.teacherName);
         list.push({
-          id: `renfort-${cleanName.replace(/\s+/g, "-")}`,
-          civility: s.teacherName.toLowerCase().startsWith("mme") ? "Madame" : "Monsieur",
-          lastName: s.teacherName.replace(/^(M\.|Mme|Mlle)\s+/i, ""),
-          firstName: "(Renfort)",
-          subject: "Surveillant de renfort & couloir",
-          email: `${cleanName.replace(/\s+/g, ".")}@lfjpsaly.org`,
+          id: `renfort-${baseLower.replace(/\s+/g, "-")}`,
+          civility: isFemale ? "Madame" : "Monsieur",
+          lastName: baseName,
+          firstName: "",
+          subject: "Surveillant renfort",
+          email: `${baseLower.replace(/\s+/g, ".")}@lfjpsaly.org`,
           isRenfort: true,
         });
       }
@@ -1148,11 +1155,17 @@ export function ConvocProfsSection({
               onChange={(e) => setSelectedTeacherId(e.target.value)}
               className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white max-w-xs font-medium"
             >
-              {allSupervisors.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.civility === "Madame" ? "Mme" : "M."} {t.lastName} {t.firstName} ({t.subject})
-                </option>
-              ))}
+              {allSupervisors.map((t) => {
+                const cleanLast = cleanSupervisorName(t.lastName);
+                const cleanFirst = cleanSupervisorName(t.firstName);
+                const labelName = [cleanLast, cleanFirst].filter(Boolean).join(" ");
+                const displaySubj = t.isRenfort ? "Surveillant renfort" : t.subject;
+                return (
+                  <option key={t.id} value={t.id}>
+                    {t.civility === "Madame" ? "Mme" : "M."} {labelName} ({displaySubj})
+                  </option>
+                );
+              })}
             </select>
           </div>
         )}
@@ -1161,12 +1174,17 @@ export function ConvocProfsSection({
       {/* Render Mission Orders */}
       <div className="space-y-8">
         {teachersToPrint.map((teacher, idx) => {
+          const cleanLast = cleanSupervisorName(teacher.lastName);
+          const cleanFirst = cleanSupervisorName(teacher.firstName);
+          const displayHeaderName = [cleanFirst, cleanLast.toUpperCase()].filter(Boolean).join(" ");
+          const displayTopName = [cleanLast.toUpperCase(), cleanFirst].filter(Boolean).join(" ");
+          const displaySubject = teacher.isRenfort ? "Surveillant renfort" : teacher.subject;
+
           const rawTeacherSurvs = surveillances.filter((s) => {
+            const cleanSurvTeacher = cleanSupervisorName(s.teacherName).toLowerCase();
             const matchesTeacher =
-              s.teacherName.toLowerCase().includes(teacher.lastName.toLowerCase()) ||
-              (teacher.firstName &&
-                teacher.firstName !== "(Renfort)" &&
-                s.teacherName.toLowerCase().includes(teacher.firstName.toLowerCase()));
+              (cleanLast && cleanSurvTeacher.includes(cleanLast.toLowerCase())) ||
+              (cleanFirst && cleanSurvTeacher.includes(cleanFirst.toLowerCase()));
             if (!matchesTeacher) return false;
             if (selectedExamTitle !== "all") {
               return (s.examTitle || "").trim().toLowerCase() === selectedExamTitle.trim().toLowerCase();
@@ -1184,13 +1202,13 @@ export function ConvocProfsSection({
               {/* Individual Print Button (Hidden on print) */}
               <div className="flex items-center justify-between pb-2 border-b border-slate-100 print:hidden text-xs">
                 <span className="text-slate-600 font-medium">
-                  Personnel {idx + 1}/{teachersToPrint.length} : <strong className="text-slate-900">{teacher.civility} {teacher.lastName.toUpperCase()} {teacher.firstName}</strong> ({teacher.subject})
+                  Personnel {idx + 1}/{teachersToPrint.length} : <strong className="text-slate-900">{teacher.civility} {displayTopName}</strong> ({displaySubject})
                 </span>
                 <button
                   type="button"
                   onClick={() => handlePrint(teacher)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold transition border border-amber-200 cursor-pointer"
-                  title={`Imprimer uniquement l'ordre de mission de ${teacher.firstName} ${teacher.lastName}`}
+                  title={`Imprimer uniquement l'ordre de mission de ${displayHeaderName}`}
                 >
                   <Printer className="h-3.5 w-3.5 text-amber-700" />
                   <span>Imprimer cet ordre de mission</span>
@@ -1235,9 +1253,9 @@ export function ConvocProfsSection({
                 <div>
                   <p className="text-[11px] text-slate-500 font-semibold">Personnel Convoqué :</p>
                   <p className="text-sm font-black text-slate-900">
-                    {teacher.civility} {teacher.firstName} {teacher.lastName.toUpperCase()}
+                    {teacher.civility} {displayHeaderName}
                   </p>
-                  <p className="text-xs text-slate-600 mt-1">Discipline / Fonction : <strong>{teacher.subject}</strong></p>
+                  <p className="text-xs text-slate-600 mt-1">Discipline / Fonction : <strong>{displaySubject}</strong></p>
                 </div>
                 <div className="text-right">
                   <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px] tabular-nums">
@@ -1279,19 +1297,26 @@ export function ConvocProfsSection({
                               <td className="p-2 border border-slate-300 font-mono font-bold text-[#002060] whitespace-nowrap tabular-nums">
                                 {s.timeSlot}
                               </td>
-                              <td className="p-2 border border-slate-300 font-bold whitespace-nowrap">
+                              <td className="p-2 border border-slate-300 font-bold">
                                 {isRenfort ? (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300 font-extrabold text-[11px]">
-                                    Salle Renfort
-                                  </span>
+                                  <div className="space-y-0.5">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded bg-purple-100 text-purple-900 border border-purple-300 font-extrabold text-[11px] whitespace-nowrap">
+                                      Salle Renfort
+                                    </span>
+                                    {s.renfortRooms && s.renfortRooms.length > 0 && (
+                                      <div className="text-[10px] font-medium text-slate-600 leading-tight">
+                                        ({s.renfortRooms.join(", ")})
+                                      </div>
+                                    )}
+                                  </div>
                                 ) : (
                                   s.roomName
                                 )}
                               </td>
                               <td className="p-2 border border-slate-300">
                                 {isRenfort ? (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                                    {s.mission || "Renfort / Couloir"}
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200 whitespace-nowrap">
+                                    {formatSupervisorMissionLabel(s.mission, true)}
                                   </span>
                                 ) : (
                                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">

@@ -20,6 +20,8 @@ import {
   isCandidateTiersTemps,
   getExamTargetLevels,
   formatTargetLevelsSummary,
+  cleanSupervisorName,
+  isRenfortSurveillance,
   type CmsCandidate,
   type CmsRoom,
   type CmsTeacher,
@@ -135,10 +137,9 @@ export default function AdminDashboardSection({
 
   (surveillances || []).forEach((s) => {
     if (s.teacherName && s.teacherName.trim()) {
-      const name = s.teacherName.trim();
+      const name = cleanSupervisorName(s.teacherName) || s.teacherName.trim();
       const isRenfort =
-        s.roomName === "Renfort" ||
-        Boolean(s.mission?.toLowerCase().includes("renfort")) ||
+        isRenfortSurveillance(s) ||
         !teachers.some(
           (t) =>
             `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`

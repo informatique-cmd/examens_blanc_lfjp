@@ -186,7 +186,7 @@ export const scheduleData: ScheduleData = {
         shifts: [["Mme DRAME", "Mme CHABERT"], ["Mme DRAME", "Mme MICHON-GUILLAUME"], ["Mme DRAME", "Mme PEREZ"]],
       },
       { room: "SALLE 1", shifts: [["Mme DIADIO"], ["M. DIANDY"], ["M. DAVID"]] },
-      { room: "Couloir et soutien", shifts: [["M. FALL B."], ["M. THOMAS"], []] },
+      { room: "Renfort et soutien", shifts: [["M. FALL B."], ["M. THOMAS"], []] },
     ],
   },
 };

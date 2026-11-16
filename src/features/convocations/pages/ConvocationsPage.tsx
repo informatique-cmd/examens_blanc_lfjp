@@ -27,6 +27,8 @@ import {
   formatConvocationTableNumber,
   consolidateTeacherSurveillances,
   isRenfortSurveillance,
+  cleanSupervisorName,
+  formatSupervisorMissionLabel,
 } from "../../../shared/services/cms-store";
 
 function computeTTEndTime(startTime: string, durationMinutes: number): string {
@@ -223,12 +225,42 @@ export default function ConvocationsPage() {
     return filteredCandidates[0] || null;
   }, [selectedCandidateId, filteredCandidates]);
 
+  // Distinct cleaned supervisor names for Enseignant mode (teachers + renfort personnel)
+  const supervisorOptions = useMemo(() => {
+    const list: Array<{ value: string; label: string }> = cmsData.teachers.map((t) => ({
+      value: t.lastName,
+      label: `${t.civility === "Madame" ? "Mme" : "M."} ${t.firstName} ${t.lastName} (${t.subject})`,
+    }));
+    const existingLower = new Set(
+      cmsData.teachers.map((t) => `${t.lastName} ${t.firstName}`.toLowerCase())
+    );
+    cmsData.surveillances.forEach((s) => {
+      const cleanedFull = cleanSupervisorName(s.teacherName);
+      const base = cleanedFull.replace(/^(madame|monsieur|mme|m\.|mlle)\s+/i, "").trim();
+      const baseLower = base.toLowerCase();
+      if (!baseLower) return;
+      const exists = Array.from(existingLower).some(
+        (n) => n.includes(baseLower) || baseLower.includes(n)
+      );
+      if (!exists) {
+        existingLower.add(baseLower);
+        const civ = /^(mme|madame|mlle)\b/i.test(s.teacherName) ? "Mme" : "M.";
+        list.push({
+          value: base,
+          label: `${civ} ${base} (Surveillant renfort)`,
+        });
+      }
+    });
+    return list;
+  }, [cmsData.teachers, cmsData.surveillances]);
+
   // Teacher surveillances (filtered by teacher and exam, consolidated by physical room × time window)
   const teacherSurveillances = useMemo(() => {
     const raw = cmsData.surveillances.filter((s) => {
+      const cleanName = cleanSupervisorName(s.teacherName).toLowerCase();
       const matchTeacher =
         selectedTeacherName === "all" ||
-        s.teacherName.toLowerCase().includes(selectedTeacherName.toLowerCase());
+        cleanName.includes(selectedTeacherName.toLowerCase());
       const matchExam =
         selectedExam === "all" ||
         (s.examTitle || "").trim().toLowerCase() === selectedExam.trim().toLowerCase();
@@ -470,10 +502,10 @@ export default function ConvocationsPage() {
                   onChange={(e) => setSelectedTeacherName(e.target.value)}
                   className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="all">Tous les professeurs ({cmsData.teachers.length})</option>
-                  {cmsData.teachers.map((t) => (
-                    <option key={t.id} value={`${t.lastName}`}>
-                      {t.civility === "Madame" ? "Mme" : "M."} {t.firstName} {t.lastName} ({t.subject})
+                  <option value="all">Tous les surveillants ({supervisorOptions.length})</option>
+                  {supervisorOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
                     </option>
                   ))}
                 </select>
@@ -675,20 +707,27 @@ export default function ConvocationsPage() {
                           <div className="font-semibold text-slate-900">{s.subjects.join(" • ")}</div>
                           <div className="text-[10px] text-slate-500">{s.examTitle}</div>
                         </td>
-                        <td className="p-2 font-medium border-r border-slate-200">{s.teacherName}</td>
-                        <td className="p-2 font-semibold text-slate-900 border-r border-slate-200 whitespace-nowrap">
+                        <td className="p-2 font-medium border-r border-slate-200">{cleanSupervisorName(s.teacherName) || s.teacherName}</td>
+                        <td className="p-2 font-semibold text-slate-900 border-r border-slate-200">
                           {isRenfort ? (
-                            <span className="px-2 py-0.5 rounded bg-purple-100 border border-purple-300 text-purple-900 font-extrabold text-[11px]">
-                              Salle Renfort
-                            </span>
+                            <div className="space-y-0.5">
+                              <span className="px-2 py-0.5 rounded bg-purple-100 border border-purple-300 text-purple-900 font-extrabold text-[11px] inline-block whitespace-nowrap">
+                                Salle Renfort
+                              </span>
+                              {s.renfortRooms && s.renfortRooms.length > 0 && (
+                                <div className="text-[10px] font-medium text-slate-600 leading-tight">
+                                  ({s.renfortRooms.join(", ")})
+                                </div>
+                              )}
+                            </div>
                           ) : (
                             s.roomName
                           )}
                         </td>
                         <td className="p-2 text-slate-600">
                           {isRenfort ? (
-                            <span className="px-2 py-0.5 rounded bg-purple-50 border border-purple-200 text-purple-800 font-bold text-[10px]">
-                              {s.mission || "Renfort / Couloir"}
+                            <span className="px-2 py-0.5 rounded bg-purple-50 border border-purple-200 text-purple-800 font-bold text-[10px] whitespace-nowrap">
+                              {formatSupervisorMissionLabel(s.mission, true)}
                             </span>
                           ) : (
                             s.mission || "Surveillance principale"

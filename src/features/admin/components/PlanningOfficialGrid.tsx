@@ -197,7 +197,7 @@ export default function PlanningOfficialGrid({
               <li>Présence requise au secrétariat 20 minutes avant l'appel pour retirer la pochette d'examen.</li>
               <li>Émargement individuel obligatoire de chaque candidat sur la feuille certifiée.</li>
               <li>Pour les relais de surveillance (créneaux scindés), la passation s'effectue directement en salle.</li>
-              <li>Les surveillants de renfort veillent aux couloirs et à l'acheminement des copies à la loge.</li>
+              <li>Les surveillants renfort veillent à la fluidité des déplacements et à l'acheminement des copies à la loge.</li>
             </ul>
           </div>
 

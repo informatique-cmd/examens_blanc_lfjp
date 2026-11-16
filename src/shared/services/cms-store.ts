@@ -479,6 +479,28 @@ export interface ConsolidatedTeacherSurveillance {
   subjects: string[];
   rawIds: string[];
   isRenfort?: boolean;
+  renfortRooms?: string[];
+}
+
+export function cleanSupervisorName(rawName?: string): string {
+  if (!rawName) return "";
+  return rawName
+    .replace(
+      /\(\s*(?:renfort|aed(?:\s*\/\s*vie\s*scolaire)?|vie\s*scolaire|cpe|externe|vacataire|personnel\s+administratif|surveillant(?:\s+externe)?|secr[eé]tariat(?:\s+d'examen)?|direction)[^)]*\)/gi,
+      ""
+    )
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+export function formatSupervisorMissionLabel(mission?: string, isRenfort?: boolean): string {
+  if (
+    isRenfort ||
+    (mission && /\b(renfort|couloir|remplacant|remplaçant)\b/i.test(mission))
+  ) {
+    return "Surveillant renfort";
+  }
+  return (mission || "Surveillant titulaire").trim();
 }
 
 export function isRenfortSurveillance(
@@ -508,6 +530,8 @@ export function consolidateTeacherSurveillances(
   for (const s of survs) {
     const isRenfort = isRenfortSurveillance(s);
     const displayRoomName = isRenfort ? "Salle Renfort" : s.roomName;
+    const cleanedTeacherName = cleanSupervisorName(s.teacherName) || s.teacherName;
+    const formattedMission = formatSupervisorMissionLabel(s.mission, isRenfort);
 
     const matchedSlot = examSlots.find(
       (sl) =>
@@ -540,34 +564,75 @@ export function consolidateTeacherSurveillances(
           )
         : [];
 
+    const overlappingSlotsForRenfort = isRenfort
+      ? examSlots.filter(
+          (sl) =>
+            sl.date === s.date &&
+            (!s.examTitle ||
+              sl.examTitle.trim().toLowerCase() === s.examTitle.trim().toLowerCase()) &&
+            surveillancesTimeOverlap(
+              sl.date,
+              `${sl.startTime} - ${sl.tiersTempsEndTime || sl.endTime}`,
+              s.date,
+              s.timeSlot
+            )
+        )
+      : [];
+
     const subjectNames = Array.from(
-      new Set([
-        ...(matchedSlot ? [matchedSlot.subject] : []),
-        ...parallelSlotsInRoom.map((sl) => sl.subject),
-      ].filter(Boolean))
+      new Set(
+        [
+          ...(matchedSlot ? [matchedSlot.subject] : []),
+          ...parallelSlotsInRoom.map((sl) => sl.subject),
+          ...(!matchedSlot ? overlappingSlotsForRenfort.map((sl) => sl.subject) : []),
+        ].filter(Boolean)
+      )
     );
 
-    const key = `${s.date}::${s.timeSlot}::${displayRoomName}::${(s.examTitle || "").trim().toLowerCase()}::${(s.teacherName || "").trim().toLowerCase()}`;
+    const rawRenfortRooms = isRenfort
+      ? matchedSlot && Array.isArray(matchedSlot.roomNames) && matchedSlot.roomNames.length > 0
+        ? matchedSlot.roomNames
+        : overlappingSlotsForRenfort.flatMap((sl) => sl.roomNames || [])
+      : [];
+
+    const renfortRooms = Array.from(
+      new Set(
+        rawRenfortRooms
+          .map((rn) => rn.trim())
+          .filter((rn) => Boolean(rn) && rn.toLowerCase() !== "renfort")
+      )
+    ).sort((a, b) => a.localeCompare(b, "fr", { numeric: true, sensitivity: "base" }));
+
+    const key = `${s.date}::${s.timeSlot}::${displayRoomName}::${(s.examTitle || "").trim().toLowerCase()}::${cleanedTeacherName.toLowerCase()}`;
     const existing = map.get(key);
     if (existing) {
       subjectNames.forEach((subj) => {
         if (!existing.subjects.includes(subj)) existing.subjects.push(subj);
       });
-      if (isRenfort) existing.isRenfort = true;
+      if (isRenfort) {
+        existing.isRenfort = true;
+        existing.mission = "Surveillant renfort";
+        if (renfortRooms.length > 0) {
+          existing.renfortRooms = Array.from(
+            new Set([...(existing.renfortRooms || []), ...renfortRooms])
+          ).sort((a, b) => a.localeCompare(b, "fr", { numeric: true, sensitivity: "base" }));
+        }
+      }
       existing.rawIds.push(s.id);
     } else {
-      const fallbackSubject = isRenfort ? "Renfort / Couloir (Toutes salles)" : "Épreuve écrite";
+      const fallbackSubject = isRenfort ? "Surveillance renfort" : "Épreuve écrite";
       map.set(key, {
         id: s.id,
         examTitle: s.examTitle,
         date: s.date,
         timeSlot: s.timeSlot,
         roomName: displayRoomName,
-        mission: s.mission || (isRenfort ? "Renfort / Couloir" : "Surveillant titulaire"),
-        teacherName: s.teacherName,
+        mission: formattedMission,
+        teacherName: cleanedTeacherName,
         subjects: subjectNames.length > 0 ? subjectNames : [fallbackSubject],
         rawIds: [s.id],
         isRenfort,
+        renfortRooms: isRenfort ? renfortRooms : undefined,
       });
     }
   }

@@ -28,6 +28,8 @@ import {
   DEFAULT_SCHOOL_LEVELS,
   getExamTargetLevels,
   getShortLevelBadge,
+  cleanSupervisorName,
+  isRenfortSurveillance,
 } from "../../../shared/services/cms-store";
 import { OFFICIAL_LFJP_PLANNING_SESSIONS } from "../../../shared/data/official-lfjp-planning";
 
@@ -147,10 +149,11 @@ export default function CreneauxSection({
       teachers.map((t) => `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`.toLowerCase())
     );
     const fromSurvs = surveillances
-      .map((s) => s.teacherName?.trim())
+      .map((s) => cleanSupervisorName(s.teacherName))
       .filter((name) => Boolean(name) && !teacherNames.has(name.toLowerCase()));
 
-    return Array.from(new Set([...storedCustomRenforts, ...fromSurvs])).filter(Boolean);
+    const cleanedStored = storedCustomRenforts.map((n) => cleanSupervisorName(n)).filter(Boolean);
+    return Array.from(new Set([...cleanedStored, ...fromSurvs])).filter(Boolean);
   }, [teachers, surveillances, storedCustomRenforts]);
 
   // Modal state for manual surveillant addition (renfort ou externe)
@@ -175,14 +178,8 @@ export default function CreneauxSection({
       return;
     }
 
-    const effectiveRole =
-      manualRenfortRole === "Autre"
-        ? manualRenfortCustomRole.trim()
-        : manualRenfortRole.trim();
-
-    const fullName = `${manualRenfortCivility} ${manualRenfortName.trim()}${
-      effectiveRole ? ` (${effectiveRole})` : ""
-    }`;
+    const cleanedInput = cleanSupervisorName(manualRenfortName.trim());
+    const fullName = `${manualRenfortCivility} ${cleanedInput}`.trim();
 
     handleAddRenfort(manualRenfortModalSlot, fullName);
 
@@ -393,9 +390,10 @@ export default function CreneauxSection({
     onShowNotification(`Sous-créneau ${startTime} - ${endTime} ajouté pour ${roomName}.`);
   };
 
-  // Add Renfort teacher (couloir & secrétariat d'examen)
+  // Add Renfort supervisor (appui salles & secrétariat d'examen)
   const handleAddRenfort = (slot: CmsExamSlot, teacherName: string) => {
     if (!teacherName) return;
+    const cleanedName = cleanSupervisorName(teacherName) || teacherName.trim();
     const renfortSurv: CmsSurveillance = {
       id: `surv-renfort-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       examTitle: slot.examTitle,
@@ -403,8 +401,8 @@ export default function CreneauxSection({
       roomName: "Renfort",
       date: slot.date,
       timeSlot: `${slot.startTime} - ${slot.endTime}`,
-      teacherName,
-      mission: "Surveillant de renfort & couloir",
+      teacherName: cleanedName,
+      mission: "Surveillant renfort",
     };
 
     if (onSetSurveillances) {
@@ -412,7 +410,7 @@ export default function CreneauxSection({
     } else if (onAddSurveillance) {
       onAddSurveillance(renfortSurv);
     }
-    onShowNotification(`Surveillant de renfort (${teacherName}) ajouté.`);
+    onShowNotification(`Surveillant renfort (${cleanedName}) ajouté.`);
   };
 
   // Load official PDF schedule from attached document
@@ -466,8 +464,8 @@ export default function CreneauxSection({
           roomName: "Renfort",
           date: session.date,
           timeSlot: `${session.startTime} - ${session.endTime}`,
-          teacherName: session.renfort,
-          mission: "Surveillant de renfort & couloir",
+          teacherName: cleanSupervisorName(session.renfort) || session.renfort,
+          mission: "Surveillant renfort",
         });
       }
     });
@@ -1308,15 +1306,15 @@ export default function CreneauxSection({
                         </div>
                         )}
 
-                        {/* RENFORT POSTE (Couloir & Secrétariat) */}
+                        {/* RENFORT POSTE */}
                         <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div className="space-y-0.5">
                             <h5 className="font-bold text-xs text-indigo-950 flex items-center gap-1.5">
                               <Shield className="h-4 w-4 text-indigo-600" />
-                              <span>Surveillants de Renfort & Couloir ({slot.subject})</span>
+                              <span>Surveillants Renfort ({slot.subject})</span>
                             </h5>
                             <p className="text-[11px] text-slate-500">
-                              Enseignants volants chargés du contrôle des couloirs, sorties d'élèves et approvisionnement des pochettes d'examen.
+                              Personnels mobilisés en renfort, gestion des sorties d&apos;élèves et approvisionnement des pochettes d&apos;examen.
                             </p>
                           </div>
 
@@ -1324,7 +1322,7 @@ export default function CreneauxSection({
                             {surveillances
                               .filter(
                                 (s) =>
-                                  s.roomName === "Renfort" &&
+                                  isRenfortSurveillance(s) &&
                                   ((slot.id && s.slotId === slot.id) ||
                                     (s.date === slot.date && s.timeSlot.includes(slot.startTime)))
                               )
@@ -1333,12 +1331,12 @@ export default function CreneauxSection({
                                   key={renfort.id}
                                   className="px-3 py-1 rounded-xl bg-white border border-indigo-200 text-indigo-950 font-bold text-xs flex items-center gap-1.5 shadow-2xs"
                                 >
-                                  <span>{renfort.teacherName}</span>
+                                  <span>{cleanSupervisorName(renfort.teacherName) || renfort.teacherName}</span>
                                   <button
                                     type="button"
                                     onClick={() => {
                                       onDeleteSurveillance?.(renfort.id);
-                                      onShowNotification("Renfort retiré.");
+                                      onShowNotification("Surveillant renfort retiré.");
                                     }}
                                     className="text-slate-400 hover:text-rose-600 transition"
                                   >
@@ -1362,16 +1360,16 @@ export default function CreneauxSection({
                                 className="px-3 py-1.5 rounded-xl border border-indigo-300 bg-white text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-indigo-500 shadow-2xs"
                               >
                                 <option value="" disabled>
-                                  + Ajouter un surveillant de renfort...
+                                  + Ajouter un surveillant renfort...
                                 </option>
                                 <option value="__MANUAL_ADD__" className="font-bold text-indigo-700 bg-indigo-50">
                                   ✍️ + Saisie manuelle (AED, externe, vie scolaire...)
                                 </option>
                                 {customRenfortList.length > 0 && (
-                                  <optgroup label="⭐ Surveillants de renfort & externes enregistrés">
+                                  <optgroup label="⭐ Surveillants renfort & externes enregistrés">
                                     {customRenfortList.map((name) => (
                                       <option key={name} value={name}>
-                                        {name}
+                                        {cleanSupervisorName(name) || name}
                                       </option>
                                     ))}
                                   </optgroup>
@@ -1788,7 +1786,7 @@ export default function CreneauxSection({
                   <option value="CPE">CPE</option>
                   <option value="Direction">Direction</option>
                   <option value="Secrétariat d'examen">Secrétariat d'examen</option>
-                  <option value="Renfort couloir">Renfort couloir</option>
+                  <option value="Surveillant renfort">Surveillant renfort</option>
                   <option value="Autre">Autre (personnalisé)...</option>
                 </select>
                 {manualRenfortRole === "Autre" && (
@@ -1806,7 +1804,7 @@ export default function CreneauxSection({
               {customRenfortList.length > 0 && (
                 <div className="pt-2 border-t border-slate-100">
                   <p className="text-[11px] font-bold text-slate-500 mb-1.5">
-                    Ou réutiliser un surveillant de renfort déjà saisi :
+                    Ou réutiliser un surveillant renfort déjà saisi :
                   </p>
                   <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-1.5 bg-slate-50 rounded-xl border border-slate-200">
                     {customRenfortList.map((name) => (
@@ -1820,7 +1818,7 @@ export default function CreneauxSection({
                         className="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-slate-800 font-semibold text-[11px] transition shadow-2xs flex items-center gap-1 cursor-pointer"
                         title="Affecter ce surveillant directement à ce créneau"
                       >
-                        <span>{name}</span>
+                        <span>{cleanSupervisorName(name) || name}</span>
                         <span className="text-indigo-600 font-bold">+</span>
                       </button>
                     ))}

@@ -41,6 +41,8 @@ import {
   formatConvocationTableNumber,
   consolidateTeacherSurveillances,
   isRenfortSurveillance,
+  cleanSupervisorName,
+  formatSupervisorMissionLabel,
   parseTimeRangeMinutes,
 } from "../../../shared/services/cms-store";
 
@@ -346,9 +348,9 @@ export default function HomePage() {
     }
 
     for (const surv of consolidatedAllSurveillances) {
-      const rawName = (surv.teacherName || "").trim();
-      if (!rawName) continue;
-      const cleaned = rawName.replace(/^(madame|monsieur|mme|m\.)\s+/i, "").trim();
+      const cleanedDisplay = cleanSupervisorName(surv.teacherName) || (surv.teacherName || "").trim();
+      if (!cleanedDisplay) continue;
+      const cleaned = cleanedDisplay.replace(/^(madame|monsieur|mme|m\.)\s+/i, "").trim();
       const cleanedNorm = normalizeSearchStr(cleaned);
       const matchedExisting = Array.from(byNormKey.values()).find((entry) => {
         if (!entry.teacher) return entry.key === cleanedNorm;
@@ -361,10 +363,16 @@ export default function HomePage() {
         );
       });
       if (!matchedExisting) {
-        byNormKey.set(cleanedNorm || normalizeSearchStr(rawName), {
-          key: cleanedNorm || normalizeSearchStr(rawName),
-          displayName: rawName,
-          subject: "Personnel / Surveillant",
+        const civilityPrefix = /^(mme|madame|mlle)\b/i.test(cleanedDisplay)
+          ? "Madame"
+          : /^(m\.|monsieur)\b/i.test(cleanedDisplay)
+            ? "Monsieur"
+            : "";
+        const formattedName = civilityPrefix ? `${civilityPrefix} ${cleaned.toUpperCase()}` : cleanedDisplay;
+        byNormKey.set(cleanedNorm || normalizeSearchStr(cleanedDisplay), {
+          key: cleanedNorm || normalizeSearchStr(cleanedDisplay),
+          displayName: formattedName,
+          subject: surv.isRenfort ? "Surveillant renfort" : "Personnel / Surveillant",
         });
       }
     }
@@ -389,7 +397,8 @@ export default function HomePage() {
       ) {
         return false;
       }
-      const sNorm = normalizeSearchStr(s.teacherName).replace(/^(madame|monsieur|mme|m\.)\s+/i, "").trim();
+      const cleanS = cleanSupervisorName(s.teacherName);
+      const sNorm = normalizeSearchStr(cleanS).replace(/^(madame|monsieur|mme|m\.)\s+/i, "").trim();
       if (teacherEntry.teacher) {
         const ln = normalizeSearchStr(teacherEntry.teacher.lastName);
         const fn = normalizeSearchStr(teacherEntry.teacher.firstName);
@@ -399,7 +408,7 @@ export default function HomePage() {
           (ln.length > 2 && sNorm.includes(ln) && (!fn || sNorm.includes(fn.slice(0, 3))))
         );
       }
-      return sNorm === teacherEntry.key || normalizeSearchStr(s.teacherName) === normalizeSearchStr(teacherEntry.displayName);
+      return sNorm === teacherEntry.key || normalizeSearchStr(cleanS) === normalizeSearchStr(teacherEntry.displayName);
     });
   };
 
@@ -1730,13 +1739,20 @@ export default function HomePage() {
                                           {surv.timeSlot}
                                         </div>
                                       </td>
-                                      <td className="py-2.5 px-3 whitespace-nowrap">
+                                      <td className="py-2.5 px-3">
                                         {isRenfort ? (
-                                          <span className="px-2 py-0.5 rounded bg-purple-100 border border-purple-300 text-purple-900 font-extrabold text-[11px] inline-block">
-                                            Salle Renfort
-                                          </span>
+                                          <div className="space-y-0.5">
+                                            <span className="px-2 py-0.5 rounded bg-purple-100 border border-purple-300 text-purple-900 font-extrabold text-[11px] inline-block whitespace-nowrap">
+                                              Salle Renfort
+                                            </span>
+                                            {surv.renfortRooms && surv.renfortRooms.length > 0 && (
+                                              <div className="text-[10px] font-medium text-slate-600 leading-tight">
+                                                ({surv.renfortRooms.join(", ")})
+                                              </div>
+                                            )}
+                                          </div>
                                         ) : (
-                                          <span className="px-2 py-0.5 rounded bg-blue-50 border border-blue-200 text-[#0F2A56] font-bold text-[11px]">
+                                          <span className="px-2 py-0.5 rounded bg-blue-50 border border-blue-200 text-[#0F2A56] font-bold text-[11px] whitespace-nowrap">
                                             {surv.roomName}
                                           </span>
                                         )}
@@ -1750,7 +1766,7 @@ export default function HomePage() {
                                           <span>•</span>
                                           {isRenfort ? (
                                             <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200 font-bold">
-                                              {surv.mission || "Renfort / Couloir"}
+                                              {formatSupervisorMissionLabel(surv.mission, true)}
                                             </span>
                                           ) : (
                                             <span className="font-semibold text-emerald-700">
@@ -1952,19 +1968,26 @@ export default function HomePage() {
                             <td className="py-2 px-2.5 font-bold text-slate-800">
                               {surv.subjects.join(" / ")}
                             </td>
-                            <td className="py-2 px-2.5 font-bold text-[#0F2A56] whitespace-nowrap">
+                            <td className="py-2 px-2.5 font-bold text-[#0F2A56]">
                               {isRenfort ? (
-                                <span className="px-2 py-0.5 rounded bg-purple-100 border border-purple-300 text-purple-900 font-extrabold text-[11px]">
-                                  Salle Renfort
-                                </span>
+                                <div className="space-y-0.5">
+                                  <span className="px-2 py-0.5 rounded bg-purple-100 border border-purple-300 text-purple-900 font-extrabold text-[11px] inline-block whitespace-nowrap">
+                                    Salle Renfort
+                                  </span>
+                                  {surv.renfortRooms && surv.renfortRooms.length > 0 && (
+                                    <div className="text-[10px] font-medium text-slate-600 leading-tight">
+                                      ({surv.renfortRooms.join(", ")})
+                                    </div>
+                                  )}
+                                </div>
                               ) : (
                                 surv.roomName
                               )}
                             </td>
                             <td className="py-2 px-2.5 text-slate-700">
                               {isRenfort ? (
-                                <span className="px-2 py-0.5 rounded bg-purple-50 border border-purple-200 text-purple-800 font-bold text-[10px]">
-                                  {surv.mission || "Renfort / Couloir"}
+                                <span className="px-2 py-0.5 rounded bg-purple-50 border border-purple-200 text-purple-800 font-bold text-[10px] whitespace-nowrap">
+                                  {formatSupervisorMissionLabel(surv.mission, true)}
                                 </span>
                               ) : (
                                 surv.mission

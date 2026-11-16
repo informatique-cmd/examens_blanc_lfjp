@@ -675,7 +675,7 @@ export default function OralEafExam202605Page() {
                     <span className="font-semibold text-slate-900">Référente organisation :</span> Mme Brouillat, CPE.
                   </li>
                   <li>
-                    <span className="font-semibold text-slate-900">Surveillance des couloirs :</span> non prévue.
+                    <span className="font-semibold text-slate-900">Surveillance renfort :</span> non prévue.
                   </li>
                   <li>
                     <span className="font-semibold text-slate-900">Documents d'évaluation :</span> aucun document à
