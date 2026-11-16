@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import defaultCmsDataJson from "./default-cms-data.json";
 import { type HomeCalloutCategory } from "../../features/home/constants";
 
@@ -988,6 +988,152 @@ export function getCandidateMatchingSlots(
 }
 
 /**
+ * Distributes `totalCount` candidates evenly across `roomList` without exceeding
+ * each room's quota unless `totalCount` exceeds the sum of all room quotas.
+ */
+export function computeBalancedRoomTargets(
+  roomList: CmsRoom[],
+  totalCount: number,
+  getQuota: (room: CmsRoom) => number
+): number[] {
+  const n = roomList.length;
+  if (n === 0 || totalCount <= 0) return new Array(n).fill(0);
+  const quotas = roomList.map((r) => Math.max(0, getQuota(r)));
+  const targets = new Array(n).fill(0);
+  let remaining = totalCount;
+
+  while (remaining > 0) {
+    let minLoad = Infinity;
+    for (let i = 0; i < n; i++) {
+      if (targets[i] < quotas[i] && targets[i] < minLoad) {
+        minLoad = targets[i];
+      }
+    }
+    if (!Number.isFinite(minLoad)) break;
+    let progressed = false;
+    for (let i = 0; i < n && remaining > 0; i++) {
+      if (targets[i] < quotas[i] && targets[i] === minLoad) {
+        targets[i]++;
+        remaining--;
+        progressed = true;
+      }
+    }
+    if (!progressed) break;
+  }
+
+  let idx = 0;
+  while (remaining > 0) {
+    targets[idx % n]++;
+    remaining--;
+    idx++;
+  }
+
+  return targets;
+}
+
+/**
+ * Scores how well a given exam slot matches a candidate's profile (Tiers-Temps,
+ * specialty vs Tronc Commun, and optional shared-room TT role).
+ */
+export function scoreSlotForCandidateProfile(
+  cand: CmsCandidate,
+  slot: CmsExamSlot,
+  opts: { isRoomTTInSlot?: boolean; slotHasAnyTTRoom?: boolean } = {}
+): number {
+  let score = 0;
+  const isCandTT = isCandidateTiersTemps(cand);
+  const slotMentionsTT = /\b(tiers[\s-]*temps|tt)\b/i.test(slot.subject || "");
+
+  if (opts.isRoomTTInSlot !== undefined) {
+    if (isCandTT && opts.isRoomTTInSlot) score += 150;
+    else if (!isCandTT && opts.isRoomTTInSlot) score -= 150;
+  }
+
+  if (isCandTT) {
+    if (slotMentionsTT) score += 200;
+    else if (opts.slotHasAnyTTRoom) score += 60;
+  } else {
+    if (slotMentionsTT) score -= 500;
+  }
+
+  const candSpecsNorm = normalizeSpecText(
+    [cand.specialty || "", ...(Array.isArray(cand.options) ? cand.options : [])].join(" ")
+  );
+  const slotIsExplicitTC = isSlotExplicitTroncCommun(slot);
+  const { hasExplicitSpec, tokens } = extractSlotSpecialtyTokens(slot);
+
+  if (candSpecsNorm) {
+    if (hasExplicitSpec && tokens.some((tok) => candidateHasSpecialtyToken(candSpecsNorm, tok))) {
+      score += 300;
+    } else if (hasExplicitSpec) {
+      score += 100;
+    } else if (slotIsExplicitTC) {
+      score += 30;
+    }
+  } else {
+    if (slotIsExplicitTC) score += 50;
+    else if (!hasExplicitSpec) score += 20;
+  }
+
+  if (cand.assignmentsBySlot?.[slot.id]?.roomName) {
+    score += 10;
+  }
+
+  return score;
+}
+
+/**
+ * Resolves the exact owner slot in `candidateSlots` for a candidate placed in `roomId`.
+ * - If a single slot owns `roomId`, returns that slot strictly.
+ * - If multiple slots share `roomId`, picks the best-matching slot for the candidate's profile.
+ */
+export function resolveOwnerSlotForRoomAndCandidate(
+  roomId: string,
+  cand: CmsCandidate,
+  exam: Pick<CmsExam, "id" | "title" | "targetLevel" | "targetLevels"> | null | undefined,
+  candidateSlots: CmsExamSlot[],
+  getSlotRoomIds: (slot: CmsExamSlot) => string[],
+  getSlotTTRoomIds: (slot: CmsExamSlot, slotRoomIds: string[]) => string[]
+): CmsExamSlot | null {
+  if (candidateSlots.length === 0) return null;
+
+  const owners = roomId
+    ? candidateSlots.filter((sl) => getSlotRoomIds(sl).includes(roomId))
+    : [];
+
+  if (owners.length === 1) {
+    return owners[0];
+  }
+
+  const poolBase = owners.length > 1 ? owners : candidateSlots;
+  const eligible = poolBase.filter((sl) =>
+    isCandidateEligibleForSlot(cand, exam, sl, {
+      ignoreExistingAssignment: true,
+      allowMissingSpecialty: true,
+    })
+  );
+  const pool = eligible.length > 0 ? eligible : poolBase;
+
+  let best = pool[0];
+  let bestScore = -Infinity;
+
+  for (const sl of pool) {
+    const sRooms = getSlotRoomIds(sl);
+    const sTT = getSlotTTRoomIds(sl, sRooms);
+    const sc = scoreSlotForCandidateProfile(cand, sl, {
+      isRoomTTInSlot: roomId ? sTT.includes(roomId) : undefined,
+      slotHasAnyTTRoom: sTT.length > 0,
+    });
+    if (sc > bestScore) {
+      bestScore = sc;
+      best = sl;
+    }
+  }
+
+  return best;
+}
+
+/**
  * Formats a table number cleanly (e.g. "4" -> "04").
  */
 export function formatConvocationTableNumber(tableNumber?: string): string {
@@ -1808,10 +1954,22 @@ export const HOME_CALLOUT_ENTRIES: HomeCalloutEntry[] = ${JSON.stringify(
  */
 export function useCmsData() {
   const [data, setData] = useState<CmsData>(() => getCmsData());
+  const dataRef = useRef<CmsData>(data);
+  dataRef.current = data;
+
+  const commitUpdate = (updater: (curr: CmsData) => CmsData): CmsData => {
+    const next = updater(dataRef.current);
+    dataRef.current = next;
+    saveCmsData(next);
+    setData(next);
+    return next;
+  };
 
   useEffect(() => {
     const handleUpdate = () => {
-      setData(getCmsData());
+      const fresh = getCmsData();
+      dataRef.current = fresh;
+      setData(fresh);
     };
 
     window.addEventListener(CMS_EVENT_NAME, handleUpdate);
@@ -1882,7 +2040,9 @@ export function useCmsData() {
         }
 
         saveCmsData(remote, true, true);
-        setData(getCmsData());
+        const synced = getCmsData();
+        dataRef.current = synced;
+        setData(synced);
       } catch (err) {
         console.warn("Could not sync remote cms-data.json", err);
       }
@@ -2119,12 +2279,10 @@ export function useCmsData() {
   };
 
   const updateExam = (id: string, updates: Partial<CmsExam>) => {
-    const next: CmsData = {
-      ...data,
-      exams: data.exams.map((e) => (e.id === id ? { ...e, ...updates } : e)),
-    };
-    saveCmsData(next);
-    setData(next);
+    commitUpdate((curr) => ({
+      ...curr,
+      exams: curr.exams.map((e) => (e.id === id ? { ...e, ...updates } : e)),
+    }));
   };
 
   const deleteExam = (id: string) => {
@@ -2332,12 +2490,12 @@ export function useCmsData() {
   };
 
   const setCandidates = (newCandidates: CmsCandidate[]) => {
-    const next: CmsData = {
-      ...data,
+    commitUpdate((curr) => ({
+      ...curr,
       candidates: newCandidates,
       updatedAt: new Date().toISOString(),
       siteInfo: {
-        ...data.siteInfo,
+        ...curr.siteInfo,
         pendingDeployment: {
           savedAt: new Date().toISOString(),
           savedBy: "Import Pronote",
@@ -2347,55 +2505,48 @@ export function useCmsData() {
           summary: `${newCandidates.length} élèves importés`,
         },
       },
-    };
-    saveCmsData(next);
-    setData(next);
+    }));
   };
 
   // Exam Slots
   const addExamSlot = (item: Omit<CmsExamSlot, "id">) => {
     const newItem: CmsExamSlot = { ...item, id: `slot-${Date.now()}` };
-    const next: CmsData = { ...data, examSlots: [...(data.examSlots || []), newItem] };
-    saveCmsData(next);
-    setData(next);
+    commitUpdate((curr) => ({
+      ...curr,
+      examSlots: [...(curr.examSlots || []), newItem],
+    }));
   };
 
   const updateExamSlot = (id: string, updates: Partial<CmsExamSlot>) => {
-    const next: CmsData = {
-      ...data,
-      examSlots: (data.examSlots || []).map((s) => (s.id === id ? { ...s, ...updates } : s)),
-    };
-    saveCmsData(next);
-    setData(next);
+    commitUpdate((curr) => ({
+      ...curr,
+      examSlots: (curr.examSlots || []).map((s) => (s.id === id ? { ...s, ...updates } : s)),
+    }));
   };
 
   const deleteExamSlot = (id: string) => {
-    const nextCandidates = (data.candidates || []).map((c) => {
-      if (!c.assignmentsBySlot || !c.assignmentsBySlot[id]) return c;
-      const nextBySlot = { ...c.assignmentsBySlot };
-      delete nextBySlot[id];
-      return { ...c, assignmentsBySlot: nextBySlot };
+    commitUpdate((curr) => {
+      const nextCandidates = (curr.candidates || []).map((c) => {
+        if (!c.assignmentsBySlot || !c.assignmentsBySlot[id]) return c;
+        const nextBySlot = { ...c.assignmentsBySlot };
+        delete nextBySlot[id];
+        return { ...c, assignmentsBySlot: nextBySlot };
+      });
+      return {
+        ...curr,
+        examSlots: (curr.examSlots || []).filter((s) => s.id !== id),
+        surveillances: (curr.surveillances || []).filter((s) => s.slotId !== id),
+        candidates: nextCandidates,
+      };
     });
-    const next: CmsData = {
-      ...data,
-      examSlots: (data.examSlots || []).filter((s) => s.id !== id),
-      surveillances: (data.surveillances || []).filter((s) => s.slotId !== id),
-      candidates: nextCandidates,
-    };
-    saveCmsData(next);
-    setData(next);
   };
 
   const setExamSlots = (newSlots: CmsExamSlot[]) => {
-    const next: CmsData = { ...data, examSlots: newSlots };
-    saveCmsData(next);
-    setData(next);
+    commitUpdate((curr) => ({ ...curr, examSlots: newSlots }));
   };
 
   const setSurveillances = (newSurvs: CmsSurveillance[]) => {
-    const next: CmsData = { ...data, surveillances: newSurvs };
-    saveCmsData(next);
-    setData(next);
+    commitUpdate((curr) => ({ ...curr, surveillances: newSurvs }));
   };
 
   const setRooms = (newRooms: CmsRoom[]) => {

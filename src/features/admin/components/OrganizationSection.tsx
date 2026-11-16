@@ -47,6 +47,8 @@ import {
   isRoomMarkedTiersTemps,
   teacherMatchesSlotSubjects,
   formatMinutesToColon,
+  computeBalancedRoomTargets,
+  resolveOwnerSlotForRoomAndCandidate,
 } from "../../../shared/services/cms-store";
 
 type DispatchMode = "brassage" | "alphabetique" | "classe" | "specialite";
@@ -258,11 +260,16 @@ export default function OrganizationSection({
       if (slotRoomMap[slot.id] !== undefined) {
         return slotRoomMap[slot.id];
       }
-      const names = new Set<string>((slot.roomNames || []).map((rn) => rn.trim().toLowerCase()));
-      candidates.forEach((c) => {
-        const rm = c.assignmentsBySlot?.[slot.id]?.roomName;
-        if (rm) names.add(rm.trim().toLowerCase());
-      });
+      const explicitNames = (slot.roomNames || [])
+        .map((rn) => rn.trim().toLowerCase())
+        .filter(Boolean);
+      const names = new Set<string>(explicitNames);
+      if (names.size === 0) {
+        candidates.forEach((c) => {
+          const rm = c.assignmentsBySlot?.[slot.id]?.roomName;
+          if (rm) names.add(rm.trim().toLowerCase());
+        });
+      }
       return rooms.filter((r) => names.has(r.name.trim().toLowerCase())).map((r) => r.id);
     },
     [slotRoomMap, candidates, rooms]
@@ -346,49 +353,29 @@ export default function OrganizationSection({
   // Score and pick the most logical slot within activeSlots for a given candidate
   const pickBestSlotForCandidate = useCallback(
     (c: CmsCandidate, candidateSlots: CmsExamSlot[]): CmsExamSlot | null => {
-      if (candidateSlots.length === 0) return null;
-      const eligible = candidateSlots.filter((s) =>
-        isCandidateEligibleForSlot(c, selectedExam, s, {
-          ignoreExistingAssignment: true,
-          allowMissingSpecialty: true,
-        })
+      return resolveOwnerSlotForRoomAndCandidate(
+        "",
+        c,
+        selectedExam,
+        candidateSlots,
+        getRoomIdsForSlot,
+        getTTRoomIdsForSlot
       );
-      if (eligible.length === 0) return null;
-      if (eligible.length === 1) return eligible[0];
+    },
+    [selectedExam, getRoomIdsForSlot, getTTRoomIdsForSlot]
+  );
 
-      const isTT = isCandidateTiersTemps(c);
-      const candHasSpec = Boolean(
-        (c.specialty && c.specialty.trim()) || (Array.isArray(c.options) && c.options.length > 0)
+  // Strictly resolve the owner slot of a physical room (or best profile match if room is shared by multiple slots)
+  const pickOwnerSlotForRoomAndCandidate = useCallback(
+    (roomId: string, c: CmsCandidate, candidateSlots: CmsExamSlot[]): CmsExamSlot | null => {
+      return resolveOwnerSlotForRoomAndCandidate(
+        roomId,
+        c,
+        selectedExam,
+        candidateSlots,
+        getRoomIdsForSlot,
+        getTTRoomIdsForSlot
       );
-
-      let best = eligible[0];
-      let bestScore = -Infinity;
-
-      for (const sl of eligible) {
-        let score = 0;
-        const slotMentionsTT = /\b(tiers[\s-]*temps|tt)\b/i.test(sl.subject || "");
-        const slotRooms = getRoomIdsForSlot(sl);
-        const slotHasTTRoom = getTTRoomIdsForSlot(sl, slotRooms).length > 0;
-        const slotHasSpec = Boolean(sl.targetSpecialty && sl.targetSpecialty.trim());
-
-        if (isTT) {
-          if (slotMentionsTT) score += 200;
-          else if (slotHasTTRoom) score += 60;
-        } else {
-          if (slotMentionsTT) score -= 200;
-        }
-
-        if (candHasSpec && slotHasSpec) score += 100;
-        else if (!candHasSpec && !slotHasSpec) score += 20;
-
-        if (c.assignmentsBySlot?.[sl.id]?.roomName) score += 10;
-
-        if (score > bestScore) {
-          bestScore = score;
-          best = sl;
-        }
-      }
-      return best;
     },
     [selectedExam, getRoomIdsForSlot, getTTRoomIdsForSlot]
   );
@@ -530,15 +517,31 @@ export default function OrganizationSection({
     if (!roomObj) return;
 
     if (activeSlots.length > 0) {
-      activeSlots.forEach((slot) => {
-        const curIds = getRoomIdsForSlot(slot);
-        const nextIds = isAdding
-          ? Array.from(new Set([...curIds, roomId]))
-          : curIds.filter((id) => id !== roomId);
-        setSlotRoomMap((prev) => ({ ...prev, [slot.id]: nextIds }));
+      if (activeSlots.length === 1 || !isAdding) {
+        activeSlots.forEach((slot) => {
+          const curIds = getRoomIdsForSlot(slot);
+          if (!isAdding && !curIds.includes(roomId)) return;
+          const nextIds = isAdding
+            ? Array.from(new Set([...curIds, roomId]))
+            : curIds.filter((id) => id !== roomId);
+          setSlotRoomMap((prev) => ({ ...prev, [slot.id]: nextIds }));
+          const nextNames = rooms.filter((r) => nextIds.includes(r.id)).map((r) => r.name);
+          onUpdateExamSlot?.(slot.id, { roomNames: nextNames });
+        });
+      } else {
+        // Adding a new room while multiple slots are checked: attach only to the best-matching slot
+        const isRoomTT = isRoomMarkedTiersTemps(roomObj, activeSlots, selectedExam);
+        const targetSlot =
+          (isRoomTT
+            ? activeSlots.find((sl) => /\b(tiers[\s-]*temps|tt)\b/i.test(sl.subject || ""))
+            : activeSlots.find((sl) => !/\b(tiers[\s-]*temps|tt)\b/i.test(sl.subject || ""))) ||
+          activeSlots[0];
+        const curIds = getRoomIdsForSlot(targetSlot);
+        const nextIds = Array.from(new Set([...curIds, roomId]));
+        setSlotRoomMap((prev) => ({ ...prev, [targetSlot.id]: nextIds }));
         const nextNames = rooms.filter((r) => nextIds.includes(r.id)).map((r) => r.name);
-        onUpdateExamSlot?.(slot.id, { roomNames: nextNames });
-      });
+        onUpdateExamSlot?.(targetSlot.id, { roomNames: nextNames });
+      }
       return;
     }
 
@@ -622,7 +625,7 @@ export default function OrganizationSection({
     [selectedExam]
   );
 
-  // Toggle room as Tiers-Temps across checked slot(s) AND auto-assign TT students into TT rooms
+  // Toggle room as Tiers-Temps across slot(s) owning that room AND auto-assign TT students into TT rooms
   const handleToggleTTRoom = (roomId: string) => {
     if (!selectedExam) return;
     const turningOn = !ttRoomIds.includes(roomId);
@@ -633,10 +636,13 @@ export default function OrganizationSection({
     if (activeSlots.length > 0) {
       activeSlots.forEach((slot) => {
         const sRooms = getRoomIdsForSlot(slot);
+        if (!sRooms.includes(roomId)) return;
         const curSlotTT = getTTRoomIdsForSlot(slot, sRooms);
-        const nextSlotTT = turningOn
-          ? Array.from(new Set([...curSlotTT, roomId]))
-          : curSlotTT.filter((id) => id !== roomId);
+        const nextSlotTT = (
+          turningOn
+            ? Array.from(new Set([...curSlotTT, roomId]))
+            : curSlotTT.filter((id) => id !== roomId)
+        ).filter((id) => sRooms.includes(id));
         setSlotTTRoomMap((prev) => ({ ...prev, [slot.id]: nextSlotTT }));
         onUpdateExamSlot?.(slot.id, { ttRoomIds: nextSlotTT });
       });
@@ -660,40 +666,39 @@ export default function OrganizationSection({
       }
 
       const ttRoomList = activeTtRooms.length > 0 ? activeTtRooms : [toggledRoom];
-      let roomIdx = 0;
-      let tableNum = 1;
+      const targets = computeBalancedRoomTargets(ttRoomList, ttStudents.length, getRoomQuota);
       const assignmentMap = new Map<
         string,
         { roomName: string; tableNumber: string; anonymatNumber: string; slot: CmsExamSlot | null }
       >();
 
-      ttStudents.forEach((st, idx) => {
-        const destRoom = ttRoomList[roomIdx] || toggledRoom;
-        const limit = getRoomQuota(destRoom);
-        const existingAssign = getActiveAssignment(st);
-        const anon =
-          existingAssign.anonymatNumber ||
-          `${anonymatPrefix}TT${String(idx + 1).padStart(3, "0")}`;
-        const destSlot = activeSlots.length > 0 ? pickBestSlotForCandidate(st, activeSlots) : null;
+      let cursor = 0;
+      ttRoomList.forEach((destRoom, roomIdx) => {
+        const count = targets[roomIdx] || 0;
+        const slice = ttStudents.slice(cursor, cursor + count);
+        cursor += count;
+        slice.forEach((st, localIdx) => {
+          const existingAssign = getActiveAssignment(st);
+          const anon =
+            existingAssign.anonymatNumber ||
+            `${anonymatPrefix}TT${String(cursor - count + localIdx + 1).padStart(3, "0")}`;
+          const destSlot =
+            activeSlots.length > 0
+              ? pickOwnerSlotForRoomAndCandidate(destRoom.id, st, activeSlots)
+              : null;
 
-        assignmentMap.set(st.id, {
-          roomName: destRoom.name,
-          tableNumber: String(tableNum),
-          anonymatNumber: anon,
-          slot: destSlot,
+          assignmentMap.set(st.id, {
+            roomName: destRoom.name,
+            tableNumber: String(localIdx + 1),
+            anonymatNumber: anon,
+            slot: destSlot,
+          });
         });
-
-        tableNum++;
-        if (tableNum > limit && roomIdx < ttRoomList.length - 1) {
-          roomIdx++;
-          tableNum = 1;
-        }
       });
 
       const updatedCandidates = candidates.map((c) => {
         const assign = assignmentMap.get(c.id);
         if (!assign) return c;
-        // Clear any old assignment on other activeSlots before moving to TT slot
         let base = c;
         if (activeSlots.length > 0 && c.assignmentsBySlot) {
           const nextBySlot = { ...c.assignmentsBySlot };
@@ -783,6 +788,7 @@ export default function OrganizationSection({
       );
       const ttCount = assigned.filter((c) => isCandidateTiersTemps(c)).length;
       const quota = getRoomQuota(r);
+      const ownerSlots = activeSlots.filter((sl) => getRoomIdsForSlot(sl).includes(r.id));
       return {
         room: r,
         isMobilized,
@@ -791,6 +797,7 @@ export default function OrganizationSection({
         assignedCount: assigned.length,
         ttCount,
         fillRate: quota > 0 ? Math.round((assigned.length / quota) * 100) : 0,
+        ownerSlots,
       };
     });
   }, [
@@ -801,9 +808,11 @@ export default function OrganizationSection({
     ttRoomIds,
     showAllSchoolRooms,
     getRoomQuota,
+    activeSlots,
+    getRoomIdsForSlot,
   ]);
 
-  // Main algorithm to dispatch deduplicated candidates across checked slot(s) into deduplicated Standard & TT rooms
+  // Main algorithm to dispatch deduplicated candidates across checked slot(s) into each slot's owned Standard & TT rooms
   const handleRunDispatch = () => {
     if (hasSlotsButNoneChecked) {
       alert("Veuillez cocher au moins une épreuve ci-dessus avant de lancer le brassage.");
@@ -865,9 +874,40 @@ export default function OrganizationSection({
       return String(next);
     };
 
+    // Map each physical room ID -> owning slot(s) within activeSlots
+    const ownersByRoomId = new Map<string, CmsExamSlot[]>();
+    if (activeSlots.length > 0) {
+      selectedRooms.forEach((rm) => {
+        ownersByRoomId.set(
+          rm.id,
+          activeSlots.filter((sl) => getRoomIdsForSlot(sl).includes(rm.id))
+        );
+      });
+    }
+
+    const getAllowedRoomsForCandidate = (
+      student: CmsCandidate,
+      candidateRooms: CmsRoom[]
+    ): CmsRoom[] => {
+      if (activeSlots.length <= 1 || candidateRooms.length <= 1) {
+        return candidateRooms;
+      }
+      const allowed = candidateRooms.filter((rm) => {
+        const owners = ownersByRoomId.get(rm.id) || [];
+        if (owners.length === 0) return true;
+        return owners.some((sl) =>
+          isCandidateEligibleForSlot(student, selectedExam, sl, {
+            ignoreExistingAssignment: true,
+            allowMissingSpecialty: true,
+          })
+        );
+      });
+      return allowed.length > 0 ? allowed : candidateRooms;
+    };
+
     const applyStudentAssignment = (
       student: CmsCandidate,
-      roomName: string,
+      room: CmsRoom,
       anonymatNumber: string
     ): CmsCandidate => {
       // Clear any previous entry in activeSlots first so a candidate is never double-assigned across checked overlapping slots
@@ -878,168 +918,180 @@ export default function OrganizationSection({
         cleanedStudent = { ...student, assignmentsBySlot: nextBySlot };
       }
       const destSlot =
-        activeSlots.length > 0 ? pickBestSlotForCandidate(cleanedStudent, activeSlots) : null;
+        activeSlots.length > 0
+          ? pickOwnerSlotForRoomAndCandidate(room.id, cleanedStudent, activeSlots)
+          : null;
       return applyAssignmentToCandidateForSlot(
         cleanedStudent,
-        { roomName, tableNumber: takeNextTable(roomName), anonymatNumber },
+        { roomName: room.name, tableNumber: takeNextTable(room.name), anonymatNumber },
         destSlot
       );
     };
 
-    // 1. Prioritize Tiers-Temps students into TT room(s)
-    if (ttCandidates.length > 0) {
-      let currentTTRoomIdx = 0;
-      let countInCurrTT = 0;
+    // Track remaining capacity per room across pools
+    const remainingQuotaByRoomId: Record<string, number> = {};
+    selectedRooms.forEach((r) => {
+      remainingQuotaByRoomId[r.id] = getRoomQuota(r);
+    });
 
-      ttCandidates.sort((a, b) => a.lastName.localeCompare(b.lastName));
-      ttCandidates.forEach((student) => {
-        const room = finalTtRooms[currentTTRoomIdx] || selectedRooms[0];
-        const roomLimit = getRoomQuota(room);
-        if (countInCurrTT >= roomLimit && currentTTRoomIdx < finalTtRooms.length - 1) {
-          currentTTRoomIdx++;
-          countInCurrTT = 0;
-        }
-        const activeRoom = finalTtRooms[currentTTRoomIdx] || selectedRooms[0];
-        const existingAnon = getActiveAssignment(student).anonymatNumber;
-        const anon =
-          existingAnon || `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
-        updatedCandidates.push(applyStudentAssignment(student, activeRoom.name, anon));
-        countInCurrTT++;
-        globalAnonymatIndex++;
-      });
-    }
-
-    // 2. Dispatch Standard candidates respecting dispatchMode
-    const assignGroupedBlocks = (groups: CmsCandidate[][]) => {
-      if (finalStdRooms.length >= groups.length && groups.length > 1) {
-        let roomCursor = 0;
-        groups.forEach((group) => {
-          let countInRoom = 0;
-          group.forEach((student) => {
-            const room = finalStdRooms[roomCursor] || finalStdRooms[finalStdRooms.length - 1];
-            const limit = getRoomQuota(room);
-            if (countInRoom >= limit && roomCursor < finalStdRooms.length - 1) {
-              roomCursor++;
-              countInRoom = 0;
-            }
-            const activeRoom =
-              finalStdRooms[roomCursor] || finalStdRooms[finalStdRooms.length - 1];
-            const existingAnon = getActiveAssignment(student).anonymatNumber;
-            const anon =
-              existingAnon ||
-              `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
-            updatedCandidates.push(applyStudentAssignment(student, activeRoom.name, anon));
-            countInRoom++;
-            globalAnonymatIndex++;
-          });
-          if (roomCursor < finalStdRooms.length - 1) {
-            roomCursor++;
-          }
-        });
-      } else {
-        const flat = groups.flat();
-        let roomIdx = 0;
-        let countInRoom = 0;
-        flat.forEach((student) => {
-          const room = finalStdRooms[roomIdx] || selectedRooms[0];
-          const limit = getRoomQuota(room);
-          if (countInRoom >= limit && roomIdx < finalStdRooms.length - 1) {
-            roomIdx++;
-            countInRoom = 0;
-          }
-          const activeRoom = finalStdRooms[roomIdx] || selectedRooms[0];
+    const assignStudentListAcrossRooms = (
+      students: CmsCandidate[],
+      roomPool: CmsRoom[]
+    ) => {
+      if (students.length === 0 || roomPool.length === 0) return;
+      const targets = computeBalancedRoomTargets(
+        roomPool,
+        students.length,
+        (r) => remainingQuotaByRoomId[r.id] ?? getRoomQuota(r)
+      );
+      let cursor = 0;
+      roomPool.forEach((room, idx) => {
+        const takeCount = targets[idx] || 0;
+        const slice = students.slice(cursor, cursor + takeCount);
+        cursor += takeCount;
+        slice.forEach((student) => {
           const existingAnon = getActiveAssignment(student).anonymatNumber;
           const anon =
             existingAnon || `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
-          updatedCandidates.push(applyStudentAssignment(student, activeRoom.name, anon));
-          countInRoom++;
+          updatedCandidates.push(applyStudentAssignment(student, room, anon));
+          remainingQuotaByRoomId[room.id] = Math.max(0, (remainingQuotaByRoomId[room.id] || 0) - 1);
           globalAnonymatIndex++;
         });
-      }
+      });
     };
 
-    if (dispatchMode === "classe") {
-      const byClass = new Map<string, CmsCandidate[]>();
-      regularCandidates.forEach((c) => {
-        const key = (c.className || "Sans classe").trim();
-        if (!byClass.has(key)) byClass.set(key, []);
-        byClass.get(key)!.push(c);
-      });
-      const groups = Array.from(byClass.entries())
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([, list]) => list.sort((a, b) => a.lastName.localeCompare(b.lastName)));
-      assignGroupedBlocks(groups);
-    } else if (dispatchMode === "specialite") {
-      const bySpec = new Map<string, CmsCandidate[]>();
-      regularCandidates.forEach((c) => {
-        const spec =
-          (c.specialty || (Array.isArray(c.options) ? c.options.join(", ") : "") || "").trim() ||
-          "Tronc Commun / Générale";
-        if (!bySpec.has(spec)) bySpec.set(spec, []);
-        bySpec.get(spec)!.push(c);
-      });
-      const groups = Array.from(bySpec.entries())
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([, list]) => list.sort((a, b) => a.lastName.localeCompare(b.lastName)));
-      assignGroupedBlocks(groups);
-    } else {
-      let sortedRegular: CmsCandidate[] = [];
+    const orderRegularStudents = (list: CmsCandidate[]): CmsCandidate[] => {
       if (dispatchMode === "brassage") {
         const byClass: Record<string, CmsCandidate[]> = {};
-        regularCandidates.forEach((c) => {
+        list.forEach((c) => {
           const cls = c.className || "Standard";
           if (!byClass[cls]) byClass[cls] = [];
           byClass[cls].push(c);
         });
-
         Object.keys(byClass).forEach((k) => {
           byClass[k].sort((a, b) => a.lastName.localeCompare(b.lastName));
         });
-
-        const classKeys = Object.keys(byClass);
+        const classKeys = Object.keys(byClass).sort((a, b) => a.localeCompare(b));
+        const interleaved: CmsCandidate[] = [];
         let hasMore = true;
         let index = 0;
         while (hasMore) {
           hasMore = false;
           classKeys.forEach((k) => {
             if (byClass[k][index]) {
-              sortedRegular.push(byClass[k][index]);
+              interleaved.push(byClass[k][index]);
               hasMore = true;
             }
           });
           index++;
         }
-      } else {
-        sortedRegular = [...regularCandidates].sort((a, b) =>
-          a.lastName.localeCompare(b.lastName)
-        );
+        return interleaved;
       }
+      return [...list].sort((a, b) => a.lastName.localeCompare(b.lastName));
+    };
 
-      let currentStdRoomIdx = 0;
-      let countInStdRoom = 0;
-
-      sortedRegular.forEach((student) => {
-        const room = finalStdRooms[currentStdRoomIdx] || selectedRooms[0];
-        const roomLimit = getRoomQuota(room);
-        if (countInStdRoom >= roomLimit && currentStdRoomIdx < finalStdRooms.length - 1) {
-          currentStdRoomIdx++;
-          countInStdRoom = 0;
-        }
-        const activeRoom = finalStdRooms[currentStdRoomIdx] || selectedRooms[0];
-        const existingAnon = getActiveAssignment(student).anonymatNumber;
-        const anon =
-          existingAnon || `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
-        updatedCandidates.push(applyStudentAssignment(student, activeRoom.name, anon));
-        countInStdRoom++;
-        globalAnonymatIndex++;
+    // 1. Prioritize Tiers-Temps students into TT room(s), respecting owner slot eligibility
+    if (ttCandidates.length > 0) {
+      const sortedTT = [...ttCandidates].sort((a, b) => a.lastName.localeCompare(b.lastName));
+      const ttPools = new Map<string, { rooms: CmsRoom[]; students: CmsCandidate[] }>();
+      sortedTT.forEach((student) => {
+        const allowedTT = getAllowedRoomsForCandidate(student, finalTtRooms);
+        const key = allowedTT.map((r) => r.id).join(",");
+        if (!ttPools.has(key)) ttPools.set(key, { rooms: allowedTT, students: [] });
+        ttPools.get(key)!.students.push(student);
       });
+      Array.from(ttPools.values())
+        .sort((a, b) => a.rooms.length - b.rooms.length)
+        .forEach(({ rooms: poolRooms, students }) => {
+          assignStudentListAcrossRooms(students, poolRooms);
+        });
     }
 
-    if (activeSlots.length > 0) {
+    // 2. Dispatch Standard candidates respecting per-room slot eligibility, dispatchMode & balanced room targets
+    if (regularCandidates.length > 0) {
+      const stdPools = new Map<string, { rooms: CmsRoom[]; students: CmsCandidate[] }>();
+      regularCandidates.forEach((student) => {
+        const allowedStd = getAllowedRoomsForCandidate(student, finalStdRooms);
+        const key = allowedStd.map((r) => r.id).join(",");
+        if (!stdPools.has(key)) stdPools.set(key, { rooms: allowedStd, students: [] });
+        stdPools.get(key)!.students.push(student);
+      });
+
+      const orderedPools = Array.from(stdPools.values()).sort(
+        (a, b) => a.rooms.length - b.rooms.length
+      );
+
+      for (const { rooms: poolRooms, students } of orderedPools) {
+        if (dispatchMode === "classe" || dispatchMode === "specialite") {
+          const byGroup = new Map<string, CmsCandidate[]>();
+          students.forEach((c) => {
+            const key =
+              dispatchMode === "classe"
+                ? (c.className || "Sans classe").trim()
+                : (
+                    c.specialty ||
+                    (Array.isArray(c.options) ? c.options.join(", ") : "") ||
+                    ""
+                  ).trim() || "Tronc Commun / Générale";
+            if (!byGroup.has(key)) byGroup.set(key, []);
+            byGroup.get(key)!.push(c);
+          });
+
+          const groups = Array.from(byGroup.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([, list]) => list.sort((a, b) => a.lastName.localeCompare(b.lastName)));
+
+          if (poolRooms.length >= groups.length && groups.length > 1) {
+            // Allocate at least 1 room per group, distributing extra rooms to larger groups so every room is utilized
+            const roomCounts = new Array(groups.length).fill(1);
+            let extra = poolRooms.length - groups.length;
+            while (extra > 0) {
+              let bestIdx = 0;
+              let bestRatio = -1;
+              groups.forEach((g, idx) => {
+                const ratio = g.length / roomCounts[idx];
+                if (ratio > bestRatio) {
+                  bestRatio = ratio;
+                  bestIdx = idx;
+                }
+              });
+              roomCounts[bestIdx]++;
+              extra--;
+            }
+
+            let roomCursor = 0;
+            groups.forEach((group, idx) => {
+              const cnt = roomCounts[idx];
+              const groupRooms = poolRooms.slice(roomCursor, roomCursor + cnt);
+              roomCursor += cnt;
+              assignStudentListAcrossRooms(group, groupRooms);
+            });
+          } else {
+            assignStudentListAcrossRooms(groups.flat(), poolRooms);
+          }
+        } else {
+          assignStudentListAcrossRooms(orderRegularStudents(students), poolRooms);
+        }
+      }
+    }
+
+    if (activeSlots.length === 1) {
+      const sl = activeSlots[0];
+      onUpdateExamSlot?.(sl.id, {
+        roomNames: selectedRooms.map((r) => r.name),
+        ttRoomIds,
+        anonymatPrefix,
+        dispatchMode,
+      });
+    } else if (activeSlots.length > 1) {
+      // Preserve each slot's own roomNames & ttRoomIds so room-to-slot ownership stays intact
       activeSlots.forEach((sl) => {
+        const sRoomIds = getRoomIdsForSlot(sl);
+        const sRoomNames = rooms.filter((r) => sRoomIds.includes(r.id)).map((r) => r.name);
+        const sTTRoomIds = getTTRoomIdsForSlot(sl, sRoomIds).filter((id) => sRoomIds.includes(id));
         onUpdateExamSlot?.(sl.id, {
-          roomNames: selectedRooms.map((r) => r.name),
-          ttRoomIds,
+          roomNames: sRoomNames,
+          ttRoomIds: sTTRoomIds,
           anonymatPrefix,
           dispatchMode,
         });
@@ -1230,28 +1282,25 @@ export default function OrganizationSection({
       };
 
       if (slotTT.length > 0) {
-        let ttRoomIdx = 0;
-        let ttCountInRoom = 0;
-        slotTT.forEach((student) => {
-          const rm = finalTtRooms[ttRoomIdx] || slotRooms[0];
-          const limit = getSlotRoomLimit(rm);
-          if (ttCountInRoom >= limit && ttRoomIdx < finalTtRooms.length - 1) {
-            ttRoomIdx++;
-            ttCountInRoom = 0;
-          }
-          const activeRm = finalTtRooms[ttRoomIdx] || slotRooms[0];
-          const existingAnon =
-            student.assignmentsBySlot?.[slot.id]?.anonymatNumber ||
-            student.anonymatNumber ||
-            `${slotPrefix}${String(anonIdx).padStart(4, "0")}`;
-          recordSlotAssign(
-            student,
-            activeRm.name,
-            takeWindowTable(slot.date, slot.startTime, activeRm.name),
-            existingAnon
-          );
-          ttCountInRoom++;
-          anonIdx++;
+        const ttTargets = computeBalancedRoomTargets(finalTtRooms, slotTT.length, getSlotRoomLimit);
+        let ttCursor = 0;
+        finalTtRooms.forEach((activeRm, idx) => {
+          const takeCount = ttTargets[idx] || 0;
+          const slice = slotTT.slice(ttCursor, ttCursor + takeCount);
+          ttCursor += takeCount;
+          slice.forEach((student) => {
+            const existingAnon =
+              student.assignmentsBySlot?.[slot.id]?.anonymatNumber ||
+              student.anonymatNumber ||
+              `${slotPrefix}${String(anonIdx).padStart(4, "0")}`;
+            recordSlotAssign(
+              student,
+              activeRm.name,
+              takeWindowTable(slot.date, slot.startTime, activeRm.name),
+              existingAnon
+            );
+            anonIdx++;
+          });
         });
       }
 
@@ -1288,7 +1337,7 @@ export default function OrganizationSection({
         Object.keys(byClass).forEach((k) =>
           byClass[k].sort((a, b) => a.lastName.localeCompare(b.lastName))
         );
-        const keys = Object.keys(byClass);
+        const keys = Object.keys(byClass).sort((a, b) => a.localeCompare(b));
         let more = true;
         let idx = 0;
         while (more) {
@@ -1305,28 +1354,25 @@ export default function OrganizationSection({
         orderedStd = [...slotReg].sort((a, b) => a.lastName.localeCompare(b.lastName));
       }
 
-      let stdRoomIdx = 0;
-      let stdCountInRoom = 0;
-      orderedStd.forEach((student) => {
-        const rm = finalStdRooms[stdRoomIdx] || slotRooms[0];
-        const limit = getSlotRoomLimit(rm);
-        if (stdCountInRoom >= limit && stdRoomIdx < finalStdRooms.length - 1) {
-          stdRoomIdx++;
-          stdCountInRoom = 0;
-        }
-        const activeRm = finalStdRooms[stdRoomIdx] || slotRooms[0];
-        const existingAnon =
-          student.assignmentsBySlot?.[slot.id]?.anonymatNumber ||
-          student.anonymatNumber ||
-          `${slotPrefix}${String(anonIdx).padStart(4, "0")}`;
-        recordSlotAssign(
-          student,
-          activeRm.name,
-          takeWindowTable(slot.date, slot.startTime, activeRm.name),
-          existingAnon
-        );
-        stdCountInRoom++;
-        anonIdx++;
+      const stdTargets = computeBalancedRoomTargets(finalStdRooms, orderedStd.length, getSlotRoomLimit);
+      let stdCursor = 0;
+      finalStdRooms.forEach((activeRm, idx) => {
+        const takeCount = stdTargets[idx] || 0;
+        const slice = orderedStd.slice(stdCursor, stdCursor + takeCount);
+        stdCursor += takeCount;
+        slice.forEach((student) => {
+          const existingAnon =
+            student.assignmentsBySlot?.[slot.id]?.anonymatNumber ||
+            student.anonymatNumber ||
+            `${slotPrefix}${String(anonIdx).padStart(4, "0")}`;
+          recordSlotAssign(
+            student,
+            activeRm.name,
+            takeWindowTable(slot.date, slot.startTime, activeRm.name),
+            existingAnon
+          );
+          anonIdx++;
+        });
       });
 
       onUpdateExamSlot?.(slot.id, {
@@ -1548,7 +1594,7 @@ export default function OrganizationSection({
       nextTable++;
     });
 
-    const examTitle = selectedExam?.title || "Examen Blanc";
+    const destRoomObj = rooms.find((r) => r.name === manualTargetRoomName);
     const updated = candidates.map((c, idx) => {
       const assignedTable = selectedOrderMap.get(c.id);
       if (!assignedTable) return c;
@@ -1561,7 +1607,10 @@ export default function OrganizationSection({
         activeSlots.forEach((s) => delete nextBySlot[s.id]);
         base = { ...c, assignmentsBySlot: nextBySlot };
       }
-      const destSlot = activeSlots.length > 0 ? pickBestSlotForCandidate(base, activeSlots) : null;
+      const destSlot =
+        activeSlots.length > 0
+          ? pickOwnerSlotForRoomAndCandidate(destRoomObj?.id || "", base, activeSlots)
+          : null;
       return applyAssignmentToCandidateForSlot(
         base,
         {
@@ -1573,17 +1622,18 @@ export default function OrganizationSection({
       );
     });
 
-    const destRoomObj = rooms.find((r) => r.name === manualTargetRoomName);
     if (activeSlots.length > 0 && destRoomObj && !selectedRoomIds.includes(destRoomObj.id)) {
-      activeSlots.forEach((sl) => {
-        const curIds = getRoomIdsForSlot(sl);
-        if (!curIds.includes(destRoomObj.id)) {
-          const nextMobilized = [...curIds, destRoomObj.id];
-          setSlotRoomMap((prev) => ({ ...prev, [sl.id]: nextMobilized }));
-          const nextNames = rooms.filter((r) => nextMobilized.includes(r.id)).map((r) => r.name);
-          onUpdateExamSlot?.(sl.id, { roomNames: nextNames });
-        }
-      });
+      const targetSlot =
+        (isRoomMarkedTiersTemps(destRoomObj, activeSlots, selectedExam)
+          ? activeSlots.find((sl) => /\b(tiers[\s-]*temps|tt)\b/i.test(sl.subject || ""))
+          : activeSlots[0]) || activeSlots[0];
+      const curIds = getRoomIdsForSlot(targetSlot);
+      if (!curIds.includes(destRoomObj.id)) {
+        const nextMobilized = [...curIds, destRoomObj.id];
+        setSlotRoomMap((prev) => ({ ...prev, [targetSlot.id]: nextMobilized }));
+        const nextNames = rooms.filter((r) => nextMobilized.includes(r.id)).map((r) => r.name);
+        onUpdateExamSlot?.(targetSlot.id, { roomNames: nextNames });
+      }
     } else if (selectedExam && destRoomObj && !selectedRoomIds.includes(destRoomObj.id)) {
       const nextMobilized = [...selectedRoomIds, destRoomObj.id];
       setExamRoomMap((prev) => ({ ...prev, [selectedExam.id]: nextMobilized }));
@@ -1592,7 +1642,7 @@ export default function OrganizationSection({
 
     onSetCandidates(updated);
     onShowNotification(
-      `✅ ${selectedObjects.length} élève(s) affecté(s) dans ${manualTargetRoomName}${primarySlot ? ` (${activeSlots.map((s) => s.subject).join(", ")})` : ` pour "${examTitle}"`}.`
+      `✅ ${selectedObjects.length} élève(s) affecté(s) dans ${manualTargetRoomName}${primarySlot ? ` (${activeSlots.map((s) => s.subject).join(", ")})` : ` pour "${selectedExam?.title || "Examen Blanc"}"`}.`
     );
     setIsManualAssignOpen(false);
     setManualSelectedIds([]);
@@ -2791,7 +2841,7 @@ export default function OrganizationSection({
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {roomBreakdown.map(({ room, isMobilized, isTT, assignedCount, ttCount, fillRate, quota }) => (
+              {roomBreakdown.map(({ room, isMobilized, isTT, assignedCount, ttCount, fillRate, quota, ownerSlots }) => (
                 <div
                   key={room.id}
                   className={`p-4 rounded-xl border-2 transition space-y-3 ${
@@ -2817,6 +2867,19 @@ export default function OrganizationSection({
                       Cap. {room.capacity} pl.
                     </span>
                   </div>
+
+                  {isMultiSlotMode && isMobilized && ownerSlots.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1">
+                      {ownerSlots.map((os) => (
+                        <span
+                          key={os.id}
+                          className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-[#0F2A56] border border-blue-200 font-semibold"
+                        >
+                          {os.subject}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Standard vs Tiers-Temps Switch */}
                   {isMobilized && (
@@ -2886,7 +2949,8 @@ export default function OrganizationSection({
                                   [key]: safeVal,
                                 }));
                                 if (activeSlots.length > 0) {
-                                  activeSlots.forEach((sl) => {
+                                  const slotsToUpdate = ownerSlots.length > 0 ? ownerSlots : activeSlots;
+                                  slotsToUpdate.forEach((sl) => {
                                     onUpdateExamSlot?.(sl.id, {
                                       customRoomQuotas: {
                                         ...(sl.customRoomQuotas || {}),
