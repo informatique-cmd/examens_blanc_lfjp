@@ -25,6 +25,7 @@ import {
   summarizeCandidateConvocationLocation,
   formatConvocationRoomAndTable,
   formatConvocationTableNumber,
+  consolidateTeacherSurveillances,
 } from "../../../shared/services/cms-store";
 
 function computeTTEndTime(startTime: string, durationMinutes: number): string {
@@ -50,6 +51,7 @@ export default function ConvocationsPage() {
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>("");
   const [selectedTeacherName, setSelectedTeacherName] = useState<string>("all");
   const [selectedRoomName, setSelectedRoomName] = useState<string>("all");
+  const [selectedEmargementSlotId, setSelectedEmargementSlotId] = useState<string>("all");
 
 
 
@@ -103,9 +105,30 @@ export default function ConvocationsPage() {
     [activeExamObj, cmsData.exams]
   );
 
-  // Filtered candidates (respects exam, class, room when emargement, and search query)
+  const emargementSlots = useMemo(() => {
+    const slots = cmsData.examSlots || [];
+    const filtered = activeExamObj
+      ? slots.filter(
+          (s) =>
+            s.examId === activeExamObj.id ||
+            (s.examTitle || "").trim().toLowerCase() === activeExamObj.title.trim().toLowerCase()
+        )
+      : slots;
+    return [...filtered].sort(
+      (a, b) =>
+        (a.date || "").localeCompare(b.date || "") ||
+        (a.startTime || "").localeCompare(b.startTime || "")
+    );
+  }, [cmsData.examSlots, activeExamObj]);
+
+  const activeEmargementSlot = useMemo(() => {
+    if (selectedEmargementSlotId === "all") return null;
+    return emargementSlots.find((s) => s.id === selectedEmargementSlotId) || null;
+  }, [emargementSlots, selectedEmargementSlotId]);
+
+  // Filtered candidates (respects exam, class, slot+room when emargement, and search query)
   const filteredCandidates = useMemo(() => {
-    return cmsData.candidates.filter((cand) => {
+    const list = cmsData.candidates.filter((cand) => {
       const matchClass = selectedClass === "all" || cand.className === selectedClass;
       let matchExam = true;
       if (activeExamObj) {
@@ -120,12 +143,27 @@ export default function ConvocationsPage() {
       }
 
       const resolvedExam = resolveExamForCandidate(cand);
-      const assignment = getCandidateAssignmentForExam(
-        cand,
-        resolvedExam,
-        cmsData.examSlots || [],
-        cmsData.rooms
-      );
+      const assignment =
+        viewMode === "emargement" && activeEmargementSlot
+          ? getCandidateAssignmentForSlot(
+              cand,
+              resolvedExam,
+              activeEmargementSlot,
+              cmsData.examSlots || [],
+              cmsData.rooms
+            )
+          : getCandidateAssignmentForExam(
+              cand,
+              resolvedExam,
+              cmsData.examSlots || [],
+              cmsData.rooms
+            );
+
+      const matchSlot =
+        viewMode !== "emargement" ||
+        !activeEmargementSlot ||
+        Boolean(cand.assignmentsBySlot?.[activeEmargementSlot.id]?.roomName) ||
+        getCandidateMatchingSlots(cand, resolvedExam, [activeEmargementSlot]).length > 0;
 
       const matchRoom =
         viewMode !== "emargement" ||
@@ -140,9 +178,40 @@ export default function ConvocationsPage() {
         assignment.roomName.toLowerCase().includes(q) ||
         cand.className.toLowerCase().includes(q);
 
-      return matchClass && matchExam && matchRoom && matchQuery;
+      return matchClass && matchExam && matchSlot && matchRoom && matchQuery;
     });
-  }, [cmsData.candidates, cmsData.examSlots, cmsData.rooms, selectedClass, selectedExam, activeExamObj, resolveExamForCandidate, selectedRoomName, viewMode, searchQuery]);
+
+    if (viewMode === "emargement") {
+      return [...list].sort((a, b) => {
+        const examA = resolveExamForCandidate(a);
+        const examB = resolveExamForCandidate(b);
+        const assignA = activeEmargementSlot
+          ? getCandidateAssignmentForSlot(a, examA, activeEmargementSlot, cmsData.examSlots || [], cmsData.rooms)
+          : getCandidateAssignmentForExam(a, examA, cmsData.examSlots || [], cmsData.rooms);
+        const assignB = activeEmargementSlot
+          ? getCandidateAssignmentForSlot(b, examB, activeEmargementSlot, cmsData.examSlots || [], cmsData.rooms)
+          : getCandidateAssignmentForExam(b, examB, cmsData.examSlots || [], cmsData.rooms);
+        const tA = parseInt(assignA.tableNumber || "9999", 10) || 9999;
+        const tB = parseInt(assignB.tableNumber || "9999", 10) || 9999;
+        if (tA !== tB) return tA - tB;
+        return a.lastName.localeCompare(b.lastName);
+      });
+    }
+
+    return list;
+  }, [
+    cmsData.candidates,
+    cmsData.examSlots,
+    cmsData.rooms,
+    selectedClass,
+    selectedExam,
+    activeExamObj,
+    resolveExamForCandidate,
+    activeEmargementSlot,
+    selectedRoomName,
+    viewMode,
+    searchQuery,
+  ]);
 
   // Selected candidate object (default to first matching)
   const currentCandidate = useMemo(() => {
@@ -153,20 +222,19 @@ export default function ConvocationsPage() {
     return filteredCandidates[0] || null;
   }, [selectedCandidateId, filteredCandidates]);
 
-  // Teacher surveillances (filtered by teacher and exam when selected)
+  // Teacher surveillances (filtered by teacher and exam, consolidated by physical room × time window)
   const teacherSurveillances = useMemo(() => {
-    return cmsData.surveillances
-      .filter((s) => {
-        const matchTeacher =
-          selectedTeacherName === "all" ||
-          s.teacherName.toLowerCase().includes(selectedTeacherName.toLowerCase());
-        const matchExam =
-          selectedExam === "all" ||
-          (s.examTitle || "").trim().toLowerCase() === selectedExam.trim().toLowerCase();
-        return matchTeacher && matchExam;
-      })
-      .sort((a, b) => a.date.localeCompare(b.date) || a.timeSlot.localeCompare(b.timeSlot));
-  }, [cmsData.surveillances, selectedTeacherName, selectedExam]);
+    const raw = cmsData.surveillances.filter((s) => {
+      const matchTeacher =
+        selectedTeacherName === "all" ||
+        s.teacherName.toLowerCase().includes(selectedTeacherName.toLowerCase());
+      const matchExam =
+        selectedExam === "all" ||
+        (s.examTitle || "").trim().toLowerCase() === selectedExam.trim().toLowerCase();
+      return matchTeacher && matchExam;
+    });
+    return consolidateTeacherSurveillances(raw, cmsData.examSlots || []);
+  }, [cmsData.surveillances, cmsData.examSlots, selectedTeacherName, selectedExam]);
 
   // Print triggered with personalized file naming for PDF download
   const handlePrint = () => {
@@ -413,6 +481,21 @@ export default function ConvocationsPage() {
           ) : (
             <>
               <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 font-medium">Créneau :</span>
+                <select
+                  value={selectedEmargementSlotId}
+                  onChange={(e) => setSelectedEmargementSlotId(e.target.value)}
+                  className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[260px]"
+                >
+                  <option value="all">Tous les créneaux</option>
+                  {emargementSlots.map((sl) => (
+                    <option key={sl.id} value={sl.id}>
+                      {sl.date} • {sl.startTime}-{sl.endTime} : {sl.subject}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-500 font-medium">Salle :</span>
                 <select
                   value={selectedRoomName}
@@ -579,29 +662,21 @@ export default function ConvocationsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {teacherSurveillances.map((s) => {
-                    const matchingSlot = (cmsData.examSlots || []).find(
-                      (sl) =>
-                        sl.id === s.slotId ||
-                        (sl.date === s.date &&
-                          sl.examTitle.trim().toLowerCase() === s.examTitle.trim().toLowerCase())
-                    );
-                    return (
-                      <tr key={s.id} className="hover:bg-slate-50/50">
-                        <td className="p-2 font-medium border-r border-slate-200 whitespace-nowrap">{s.date}</td>
-                        <td className="p-2 font-semibold text-indigo-700 border-r border-slate-200 whitespace-nowrap">
-                          {s.timeSlot}
-                        </td>
-                        <td className="p-2 border-r border-slate-200">
-                          <div className="font-semibold text-slate-900">{matchingSlot?.subject || "Épreuve écrite"}</div>
-                          <div className="text-[10px] text-slate-500">{s.examTitle}</div>
-                        </td>
-                        <td className="p-2 font-medium border-r border-slate-200">{s.teacherName}</td>
-                        <td className="p-2 font-semibold text-slate-900 border-r border-slate-200">{s.roomName}</td>
-                        <td className="p-2 text-slate-600">{s.mission || "Surveillance principale"}</td>
-                      </tr>
-                    );
-                  })}
+                  {teacherSurveillances.map((s) => (
+                    <tr key={s.id} className="hover:bg-slate-50/50">
+                      <td className="p-2 font-medium border-r border-slate-200 whitespace-nowrap tabular-nums">{s.date}</td>
+                      <td className="p-2 font-semibold text-indigo-700 border-r border-slate-200 whitespace-nowrap tabular-nums">
+                        {s.timeSlot}
+                      </td>
+                      <td className="p-2 border-r border-slate-200">
+                        <div className="font-semibold text-slate-900">{s.subjects.join(" • ")}</div>
+                        <div className="text-[10px] text-slate-500">{s.examTitle}</div>
+                      </td>
+                      <td className="p-2 font-medium border-r border-slate-200">{s.teacherName}</td>
+                      <td className="p-2 font-semibold text-slate-900 border-r border-slate-200">{s.roomName}</td>
+                      <td className="p-2 text-slate-600">{s.mission || "Surveillance principale"}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -659,43 +734,58 @@ export default function ConvocationsPage() {
               <table className="print-a4-table w-full text-left text-xs border border-slate-300">
                 <thead>
                   <tr className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-300">
-                    <th className="p-2 border-r border-slate-300 w-12 text-center">Place</th>
-                    <th className="p-2 border-r border-slate-300">Nom du Candidat</th>
-                    <th className="p-2 border-r border-slate-300">Prénom</th>
-                    <th className="p-2 border-r border-slate-300 w-24">Classe</th>
-                    <th className="p-2 border-r border-slate-300 w-24">Aménag.</th>
-                    <th className="p-2 border-r border-slate-300 w-16 text-center">Identité</th>
+                    <th className="p-2 border-r border-slate-300 w-12 text-center">Table</th>
+                    <th className="p-2 border-r border-slate-300 w-24 text-center">N° Anonymat</th>
+                    <th className="p-2 border-r border-slate-300">Nom &amp; Prénom</th>
+                    <th className="p-2 border-r border-slate-300 w-20">Classe</th>
+                    <th className="p-2 border-r border-slate-300">Épreuve / Spécialité</th>
+                    <th className="p-2 border-r border-slate-300 w-20 text-center">Aménag.</th>
                     <th className="p-2 w-36 text-center">Signature</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {filteredCandidates.map((cand, idx) => {
                     const resolvedExam = resolveExamForCandidate(cand);
-                    const assign = getCandidateAssignmentForExam(
-                      cand,
-                      resolvedExam,
-                      cmsData.examSlots || [],
-                      cmsData.rooms
-                    );
+                    const assign = activeEmargementSlot
+                      ? getCandidateAssignmentForSlot(
+                          cand,
+                          resolvedExam,
+                          activeEmargementSlot,
+                          cmsData.examSlots || [],
+                          cmsData.rooms
+                        )
+                      : getCandidateAssignmentForExam(
+                          cand,
+                          resolvedExam,
+                          cmsData.examSlots || [],
+                          cmsData.rooms
+                        );
+                    const subjectLabel = activeEmargementSlot
+                      ? activeEmargementSlot.targetSpecialty
+                        ? `${activeEmargementSlot.subject} (${activeEmargementSlot.targetSpecialty})`
+                        : activeEmargementSlot.subject
+                      : cand.specialty
+                        ? `${resolvedExam?.title || "Épreuve"} (${cand.specialty})`
+                        : resolvedExam?.title || cand.examName || "Épreuve écrite";
                     return (
                       <tr key={cand.id} className="h-10">
-                        <td className="p-2 text-center font-bold text-slate-700 border-r border-slate-200">
-                          {assign.tableNumber || String(idx + 1).padStart(2, "0")}
+                        <td className="p-2 text-center font-bold font-mono text-[#0F2A56] border-r border-slate-200 tabular-nums">
+                          {assign.tableNumber ? formatConvocationTableNumber(assign.tableNumber) : String(idx + 1).padStart(2, "0")}
                         </td>
-                        <td className="p-2 font-bold text-slate-900 border-r border-slate-200 uppercase">
-                          {cand.lastName}
+                        <td className="p-2 text-center font-mono text-[11px] text-slate-700 border-r border-slate-200 tabular-nums">
+                          {assign.anonymatNumber || `A-${idx + 101}`}
                         </td>
-                        <td className="p-2 font-medium text-slate-700 border-r border-slate-200">
-                          {cand.firstName}
+                        <td className="p-2 font-bold text-slate-900 border-r border-slate-200">
+                          <span className="uppercase">{cand.lastName}</span> {cand.firstName}
                         </td>
                         <td className="p-2 font-semibold text-indigo-700 border-r border-slate-200">
                           {cand.className}
                         </td>
-                        <td className="p-2 text-[10px] text-slate-600 border-r border-slate-200">
-                          {cand.accommodation || "Standard"}
+                        <td className="p-2 text-[11px] font-medium text-slate-800 border-r border-slate-200">
+                          {subjectLabel}
                         </td>
-                        <td className="p-2 text-center border-r border-slate-200">
-                          <div className="w-4 h-4 border border-slate-400 mx-auto rounded-xs" />
+                        <td className="p-2 text-[10px] text-center text-slate-600 border-r border-slate-200">
+                          {isCandidateTiersTemps(cand) ? "1/3 Temps" : "Standard"}
                         </td>
                         <td className="p-2 text-center border-slate-200">
                           <div className="h-6" />
@@ -708,18 +798,22 @@ export default function ConvocationsPage() {
             </div>
 
             {/* Summary Box */}
-            <div className="mt-8 grid grid-cols-3 gap-4 border border-slate-300 rounded-lg p-3 text-xs bg-slate-50">
+            <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 border border-slate-300 rounded-lg p-3 text-xs bg-slate-50">
               <div>
-                <p className="text-slate-500 text-[10px] uppercase font-bold">Nombre d'inscrits</p>
-                <p className="text-base font-bold text-slate-900">{filteredCandidates.length}</p>
+                <p className="text-slate-500 text-[10px] uppercase font-bold">Nombre d&apos;inscrits</p>
+                <p className="text-base font-bold text-slate-900 tabular-nums">{filteredCandidates.length}</p>
               </div>
               <div>
                 <p className="text-slate-500 text-[10px] uppercase font-bold">Nombre de présents</p>
                 <p className="text-base font-bold text-emerald-600">__________</p>
               </div>
               <div>
-                <p className="text-slate-500 text-[10px] uppercase font-bold">Nombre d'absents</p>
+                <p className="text-slate-500 text-[10px] uppercase font-bold">Nombre d&apos;absents</p>
                 <p className="text-base font-bold text-rose-600">__________</p>
+              </div>
+              <div>
+                <p className="text-slate-500 text-[10px] uppercase font-bold">Copies remises</p>
+                <p className="text-base font-bold text-[#0F2A56]">__________</p>
               </div>
             </div>
 

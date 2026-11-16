@@ -33,6 +33,9 @@ import {
   summarizeCandidateConvocationLocation,
   formatConvocationRoomAndTable,
   formatConvocationTableNumber,
+  consolidateTeacherSurveillances,
+  isRoomMarkedTiersTemps,
+  computeTiersTempsEndTimeColon,
 } from "../../../shared/services/cms-store";
 
 // Helper to compute Tiers-Temps end time (+1/3 time)
@@ -73,6 +76,10 @@ export function ConvocElevesSection({
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>(candidates[0]?.id || "");
   const [selectedRoomFilter, setSelectedRoomFilter] = useState<string>("all");
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>("all");
+  // Cascade filters specifically for A4 Table Labels (Planche d'Étiquettes)
+  const [labelDateFilter, setLabelDateFilter] = useState<string>("all");
+  const [labelSlotFilter, setLabelSlotFilter] = useState<string>("all");
+  const [labelRoomFilter, setLabelRoomFilter] = useState<string>("all");
 
   const activeExam = useMemo(() => {
     if (!exams || exams.length === 0 || selectedExamTitle === "all") return null;
@@ -158,10 +165,195 @@ export function ConvocElevesSection({
     return base;
   }, [candidatesFilteredByExam, filterScope, selectedCandidateId, selectedRoomFilter, selectedClassFilter, getCandidateRoomInScope]);
 
+  // Slots scoped to selected exam for Table Labels cascade
+  const slotsInExam = useMemo(() => {
+    const base = !activeExam
+      ? examSlots
+      : examSlots.filter((s) => {
+          const titleNorm = activeExam.title.trim().toLowerCase();
+          return s.examId === activeExam.id || (s.examTitle || "").trim().toLowerCase() === titleNorm;
+        });
+    return [...base].sort(
+      (a, b) => (a.date || "").localeCompare(b.date || "") || (a.startTime || "").localeCompare(b.startTime || "")
+    );
+  }, [examSlots, activeExam]);
+
+  const labelDistinctDates = useMemo(() => {
+    return Array.from(new Set(slotsInExam.map((s) => s.date).filter(Boolean))).sort();
+  }, [slotsInExam]);
+
+  const labelDateSlots = useMemo(() => {
+    if (labelDateFilter === "all") return slotsInExam;
+    return slotsInExam.filter((s) => s.date === labelDateFilter);
+  }, [slotsInExam, labelDateFilter]);
+
+  const selectedLabelSlotObj = useMemo(() => {
+    if (labelSlotFilter === "all") return null;
+    return labelDateSlots.find((s) => s.id === labelSlotFilter) || null;
+  }, [labelDateSlots, labelSlotFilter]);
+
+  interface ResolvedTableLabelItem {
+    key: string;
+    candidate: CmsCandidate;
+    roomName: string;
+    tableNumber: string;
+    tableSortNum: number;
+    anonymatNumber: string;
+    subjectLabel: string;
+    dateLabel: string;
+    timeLabel: string;
+    isTT: boolean;
+  }
+
+  const allLabelItemsBeforeRoomFilter = useMemo<ResolvedTableLabelItem[]>(() => {
+    const items: ResolvedTableLabelItem[] = [];
+    const seenKeys = new Set<string>();
+
+    const buildFromSlot = (cand: CmsCandidate, examObj: CmsExam | null, slot: CmsExamSlot) => {
+      const assign = getCandidateAssignmentForSlot(cand, examObj, slot, examSlots, rooms);
+      const roomName = assign.roomName || "";
+      if (!roomName) return;
+      const key = `${cand.id}::${slot.id}::${roomName}`;
+      if (seenKeys.has(key)) return;
+      seenKeys.add(key);
+
+      const roomObj = rooms.find((r) => r.name.trim().toLowerCase() === roomName.trim().toLowerCase());
+      const isCandTT = isCandidateTiersTemps(cand);
+      const isRoomTT = roomObj ? isRoomMarkedTiersTemps(roomObj, [slot], examObj) : false;
+      const isTT = isCandTT || isRoomTT;
+      const ttEnd = computeTiersTempsEndTimeColon(slot.startTime, slot.durationMinutes, slot.tiersTempsEndTime);
+      const timeLabel = isTT && ttEnd ? `${slot.startTime} – ${ttEnd} (+1/3)` : `${slot.startTime} – ${slot.endTime}`;
+      const tbl = assign.tableNumber || "";
+      items.push({
+        key,
+        candidate: cand,
+        roomName,
+        tableNumber: tbl,
+        tableSortNum: parseInt(tbl || "9999", 10) || 9999,
+        anonymatNumber: assign.anonymatNumber || cand.anonymatNumber || "",
+        subjectLabel: slot.targetSpecialty ? `${slot.subject} (${slot.targetSpecialty})` : slot.subject,
+        dateLabel: slot.date || "",
+        timeLabel,
+        isTT,
+      });
+    };
+
+    if (selectedLabelSlotObj) {
+      candidatesFilteredByExam.forEach((cand) => {
+        const examObj = resolveExamForCandidate(cand);
+        const directSlotAssign = cand.assignmentsBySlot?.[selectedLabelSlotObj.id];
+        if (directSlotAssign?.roomName) {
+          buildFromSlot(cand, examObj, selectedLabelSlotObj);
+        } else {
+          const matched = getCandidateMatchingSlots(cand, examObj, [selectedLabelSlotObj]);
+          if (matched.length > 0) {
+            buildFromSlot(cand, examObj, selectedLabelSlotObj);
+          }
+        }
+      });
+    } else if (labelDateFilter !== "all" && labelDateSlots.length > 0) {
+      candidatesFilteredByExam.forEach((cand) => {
+        const examObj = resolveExamForCandidate(cand);
+        labelDateSlots.forEach((slot) => {
+          if (cand.assignmentsBySlot?.[slot.id]?.roomName) {
+            buildFromSlot(cand, examObj, slot);
+          }
+        });
+      });
+      // Fallback if no per-slot assignments saved yet on that date
+      if (items.length === 0) {
+        candidatesFilteredByExam.forEach((cand) => {
+          const examObj = resolveExamForCandidate(cand);
+          const matched = getCandidateMatchingSlots(cand, examObj, labelDateSlots);
+          if (matched.length > 0) {
+            buildFromSlot(cand, examObj, matched[0]);
+          }
+        });
+      }
+    } else {
+      candidatesFilteredByExam.forEach((cand, idx) => {
+        const examObj = resolveExamForCandidate(cand);
+        const examAssign = getCandidateAssignmentForExam(cand, examObj, examSlots, rooms);
+        const matched = getCandidateMatchingSlots(cand, examObj, examSlots);
+        const firstSlot = matched[0] || slotsInExam[0] || null;
+        const roomName = examAssign.roomName || "Salle non affectée";
+        const roomObj = rooms.find((r) => r.name.trim().toLowerCase() === roomName.trim().toLowerCase());
+        const isTT = isCandidateTiersTemps(cand) || (roomObj ? isRoomMarkedTiersTemps(roomObj, matched, examObj) : false);
+        const ttEnd = firstSlot
+          ? computeTiersTempsEndTimeColon(firstSlot.startTime, firstSlot.durationMinutes, firstSlot.tiersTempsEndTime)
+          : "";
+        const timeLabel = firstSlot
+          ? isTT && ttEnd
+            ? `${firstSlot.startTime} – ${ttEnd} (+1/3)`
+            : `${firstSlot.startTime} – ${firstSlot.endTime}`
+          : "";
+        const tbl = examAssign.tableNumber || String(idx + 1);
+        items.push({
+          key: `${cand.id}::overview`,
+          candidate: cand,
+          roomName,
+          tableNumber: tbl,
+          tableSortNum: parseInt(tbl || "9999", 10) || 9999,
+          anonymatNumber: examAssign.anonymatNumber || `LFJP-${String(idx + 101).padStart(4, "0")}`,
+          subjectLabel: firstSlot
+            ? firstSlot.targetSpecialty
+              ? `${firstSlot.subject} (${firstSlot.targetSpecialty})`
+              : firstSlot.subject
+            : examObj?.title || "Examen Blanc",
+          dateLabel: firstSlot?.date || examObj?.period || "",
+          timeLabel,
+          isTT,
+        });
+      });
+    }
+
+    return items.sort((a, b) => {
+      const rCmp = a.roomName.localeCompare(b.roomName);
+      if (rCmp !== 0) return rCmp;
+      if (a.tableSortNum !== b.tableSortNum) return a.tableSortNum - b.tableSortNum;
+      return a.candidate.lastName.localeCompare(b.candidate.lastName);
+    });
+  }, [
+    selectedLabelSlotObj,
+    labelDateFilter,
+    labelDateSlots,
+    candidatesFilteredByExam,
+    resolveExamForCandidate,
+    examSlots,
+    rooms,
+    slotsInExam,
+  ]);
+
+  const labelDistinctRooms = useMemo(() => {
+    return Array.from(new Set(allLabelItemsBeforeRoomFilter.map((i) => i.roomName).filter(Boolean))).sort();
+  }, [allLabelItemsBeforeRoomFilter]);
+
+  const labelItemsGroupedByRoom = useMemo(() => {
+    const filtered =
+      labelRoomFilter === "all"
+        ? allLabelItemsBeforeRoomFilter
+        : allLabelItemsBeforeRoomFilter.filter((i) => i.roomName === labelRoomFilter);
+
+    const groups = new Map<string, ResolvedTableLabelItem[]>();
+    filtered.forEach((item) => {
+      const key = item.roomName || "Salle non affectée";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(item);
+    });
+    return Array.from(groups.entries());
+  }, [allLabelItemsBeforeRoomFilter, labelRoomFilter]);
+
+  const totalLabelCardsCount = useMemo(
+    () => labelItemsGroupedByRoom.reduce((acc, [, list]) => acc + list.length, 0),
+    [labelItemsGroupedByRoom]
+  );
+
   const handlePrint = (singleCand?: CmsCandidate) => {
     const cand = singleCand || candidatesToPrint[0];
     const prevTitle = document.title;
-    if (cand) {
+    if (printMode === "etiquettes") {
+      document.title = `Etiquettes_Table_${labelRoomFilter === "all" ? "Toutes_Salles" : labelRoomFilter}`.replace(/[\s/\\?%*:|"<>]+/g, "_");
+    } else if (cand) {
       document.title = `Convocation_${cand.lastName.toUpperCase()}_${cand.firstName}_${cand.className}`.replace(/[\s/\\?%*:|"<>]+/g, "_");
     } else {
       document.title = `Convocations_Officielles_LFJP`;
@@ -195,10 +387,14 @@ export function ConvocElevesSection({
 
         <button
           onClick={() => handlePrint()}
-          className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition shadow-xs flex items-center gap-2 self-start sm:self-auto"
+          className="px-5 py-2.5 rounded-xl bg-[#0F2A56] hover:bg-[#1D4ED8] text-white font-bold text-xs transition shadow-xs flex items-center gap-2 self-start sm:self-auto cursor-pointer"
         >
           <Printer className="h-4 w-4" />
-          <span>Imprimer la sélection ({candidatesToPrint.length})</span>
+          <span>
+            {printMode === "etiquettes"
+              ? `Imprimer la planche (${totalLabelCardsCount} étiquettes)`
+              : `Imprimer la sélection (${candidatesToPrint.length})`}
+          </span>
         </button>
       </div>
 
@@ -260,97 +456,170 @@ export function ConvocElevesSection({
           </div>
         </div>
 
-        {/* Scope Radio Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg text-xs">
-            <span className="text-[11px] font-semibold text-slate-500 px-2 flex items-center gap-1">
-              <Filter className="h-3 w-3" />
-              <span>Périmètre :</span>
-            </span>
-            {[
-              { id: "single", label: "Élève unique" },
-              { id: "room", label: "Par salle" },
-              { id: "class", label: "Par classe" },
-              { id: "all", label: "Tous les élèves ciblés" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setFilterScope(tab.id as any)}
-                className={`px-2.5 py-1 rounded-md font-medium transition ${
-                  filterScope === tab.id
-                    ? "bg-white text-slate-900 shadow-2xs font-bold"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+        {/* Scope Radio Tabs (Convocations mode) OR Cascade Selectors (Étiquettes A4 mode) */}
+        {printMode === "convocation" ? (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-lg text-xs">
+                <span className="text-[11px] font-semibold text-slate-500 px-2 flex items-center gap-1">
+                  <Filter className="h-3 w-3" />
+                  <span>Périmètre :</span>
+                </span>
+                {[
+                  { id: "single", label: "Élève unique" },
+                  { id: "room", label: "Par salle" },
+                  { id: "class", label: "Par classe" },
+                  { id: "all", label: "Tous les élèves ciblés" },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setFilterScope(tab.id as any)}
+                    className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
+                      filterScope === tab.id
+                        ? "bg-white text-[#0F2A56] shadow-2xs font-bold"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
 
-          <div className="text-xs text-slate-500 font-medium">
-            Impression ciblée de <strong>{candidatesToPrint.length}</strong> document(s)
-          </div>
-        </div>
+              <div className="text-xs text-slate-500 font-medium tabular-nums">
+                Impression ciblée de <strong className="text-[#0F2A56]">{candidatesToPrint.length}</strong> document(s)
+              </div>
+            </div>
 
-        {/* Dynamic Secondary Filter */}
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 text-xs">
-          {filterScope === "single" && (
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500 font-semibold">Candidat :</span>
+            {/* Dynamic Secondary Filter */}
+            <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 text-xs">
+              {filterScope === "single" && (
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500 font-semibold">Candidat :</span>
+                  <select
+                    value={selectedCandidateId}
+                    onChange={(e) => setSelectedCandidateId(e.target.value)}
+                    className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white max-w-sm font-medium"
+                  >
+                    {candidatesFilteredByExam.map((c) => {
+                      const rm = getCandidateRoomInScope(c);
+                      return (
+                        <option key={c.id} value={c.id}>
+                          {c.lastName.toUpperCase()} {c.firstName} ({c.className} • {rm || "Sans salle"})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              )}
+
+              {filterScope === "room" && (
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500 font-semibold">Choisir la salle :</span>
+                  <select
+                    value={selectedRoomFilter}
+                    onChange={(e) => setSelectedRoomFilter(e.target.value)}
+                    className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-medium"
+                  >
+                    <option value="all">Toutes les salles</option>
+                    {distinctRooms.map((r) => (
+                      <option key={r} value={r}>
+                        {r} ({candidatesFilteredByExam.filter((c) => getCandidateRoomInScope(c) === r).length} élèves)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {filterScope === "class" && (
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500 font-semibold">Choisir la classe :</span>
+                  <select
+                    value={selectedClassFilter}
+                    onChange={(e) => setSelectedClassFilter(e.target.value)}
+                    className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-medium"
+                  >
+                    <option value="all">Toutes les classes</option>
+                    {distinctClasses.map((cls) => (
+                      <option key={cls} value={cls}>
+                        {cls} ({candidatesFilteredByExam.filter((c) => c.className === cls).length} élèves)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                1. Date d&apos;examen :
+              </label>
               <select
-                value={selectedCandidateId}
-                onChange={(e) => setSelectedCandidateId(e.target.value)}
-                className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white max-w-sm font-medium"
+                value={labelDateFilter}
+                onChange={(e) => {
+                  setLabelDateFilter(e.target.value);
+                  setLabelSlotFilter("all");
+                  setLabelRoomFilter("all");
+                }}
+                className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-semibold text-slate-900"
               >
-                {candidatesFilteredByExam.map((c) => {
-                  const rm = getCandidateRoomInScope(c);
+                <option value="all">Toutes les dates ({labelDistinctDates.length})</option>
+                {labelDistinctDates.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                2. Épreuve / Créneau :
+              </label>
+              <select
+                value={labelSlotFilter}
+                onChange={(e) => {
+                  setLabelSlotFilter(e.target.value);
+                  setLabelRoomFilter("all");
+                }}
+                className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-semibold text-slate-900"
+              >
+                <option value="all">Toutes les épreuves ({labelDateSlots.length})</option>
+                {labelDateSlots.map((sl) => (
+                  <option key={sl.id} value={sl.id}>
+                    {sl.date} • {sl.startTime}-{sl.endTime} : {sl.subject}
+                    {sl.targetSpecialty ? ` (${sl.targetSpecialty})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                3. Salle physique :
+              </label>
+              <select
+                value={labelRoomFilter}
+                onChange={(e) => setLabelRoomFilter(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-semibold text-[#0F2A56]"
+              >
+                <option value="all">
+                  Toutes les salles ({labelDistinctRooms.length} salle(s) • {allLabelItemsBeforeRoomFilter.length} étiquettes)
+                </option>
+                {labelDistinctRooms.map((rm) => {
+                  const cnt = allLabelItemsBeforeRoomFilter.filter((i) => i.roomName === rm).length;
                   return (
-                    <option key={c.id} value={c.id}>
-                      {c.lastName.toUpperCase()} {c.firstName} ({c.className} • {rm || "Sans salle"})
+                    <option key={rm} value={rm}>
+                      {rm} ({cnt} candidat{cnt > 1 ? "s" : ""})
                     </option>
                   );
                 })}
               </select>
             </div>
-          )}
-
-          {filterScope === "room" && (
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500 font-semibold">Choisir la salle :</span>
-              <select
-                value={selectedRoomFilter}
-                onChange={(e) => setSelectedRoomFilter(e.target.value)}
-                className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-medium"
-              >
-                <option value="all">Toutes les salles</option>
-                {distinctRooms.map((r) => (
-                  <option key={r} value={r}>
-                    {r} ({candidatesFilteredByExam.filter((c) => getCandidateRoomInScope(c) === r).length} élèves)
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {filterScope === "class" && (
-            <div className="flex items-center gap-2">
-              <span className="text-slate-500 font-semibold">Choisir la classe :</span>
-              <select
-                value={selectedClassFilter}
-                onChange={(e) => setSelectedClassFilter(e.target.value)}
-                className="px-3 py-1.5 text-xs border border-slate-300 rounded-lg bg-white font-medium"
-              >
-                <option value="all">Toutes les classes</option>
-                {distinctClasses.map((cls) => (
-                  <option key={cls} value={cls}>
-                    {cls} ({candidatesFilteredByExam.filter((c) => c.className === cls).length} élèves)
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* ======================================================== */}
@@ -431,7 +700,7 @@ export function ConvocElevesSection({
                           LYCÉE FRANÇAIS JACQUES PRÉVERT DE SALY
                         </h1>
                         <p className="text-xs text-slate-600">
-                          Session Officielle {siteInfo.schoolYear || "2026-2027"} • Code RNE 9930032S
+                          Session Officielle {siteInfo.schoolYear || "2026-2027"} • Saly Portudal
                         </p>
                       </div>
                     </div>
@@ -611,72 +880,108 @@ export function ConvocElevesSection({
       )}
 
       {/* ======================================================== */}
-      {/* 2. PRINTABLE TABLE LABELS (ÉTIQUETTES)                   */}
+      {/* 2. PRINTABLE TABLE LABELS (PLANCHE D'ÉTIQUETTES A4 LFJP) */}
       {/* ======================================================== */}
       {printMode === "etiquettes" && (
-        <div className="bg-white rounded-2xl border border-slate-300 shadow-md p-6 max-w-4xl mx-auto printable-content print:border-none print:shadow-none print:p-0 print:max-w-none print:w-full">
-          <div className="border-b pb-3 mb-4 flex items-center justify-between">
-            <span className="font-bold text-sm text-slate-900">
-              🏷️ Planche d&apos;Étiquettes de Table ({candidatesToPrint.length} étiquettes)
-              {activeExam ? ` • ${activeExam.title}` : ""}
-            </span>
-            <span className="text-xs text-slate-500">
-              Découpe centrale : Anonymat / Identité candidat
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {candidatesToPrint.map((cand, idx) => {
-              const candResolvedExam = resolveExamForCandidate(cand);
-              const candAssignment = getCandidateAssignmentForExam(
-                cand,
-                candResolvedExam,
-                examSlots,
-                rooms
-              );
-              const isTT = isCandidateTiersTemps(cand);
-              return (
-                <div
-                  key={cand.id}
-                  className="border-2 border-dashed border-slate-400 rounded-xl p-3 flex divide-x-2 divide-dashed divide-slate-400 text-xs bg-slate-50/50 print-avoid-break"
-                >
-                  {/* Left side: Anonymat */}
-                  <div className="w-1/2 pr-3 flex flex-col justify-between">
-                    <div>
-                      <span className="text-[9px] font-bold uppercase text-slate-400 tracking-wider">
-                        ANONYMAT EXAMEN
-                      </span>
-                      <p className="font-black text-sm text-slate-900 font-mono mt-0.5">
-                        {candAssignment.anonymatNumber || `LFJP-${String(idx + 101).padStart(4, "0")}`}
-                      </p>
-                    </div>
-                    <div className="text-[10px] text-slate-500">
-                      <p>Table : <span className="font-bold text-slate-800">{candAssignment.tableNumber || idx + 1}</span></p>
-                      <p>Salle : <span className="font-bold text-slate-800">{candAssignment.roomName || "Salle 1"}</span></p>
-                    </div>
+        <div className="space-y-6">
+          {labelItemsGroupedByRoom.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-xs text-slate-500">
+              Aucun candidat affecté trouvé pour ces critères (Session / Date / Épreuve / Salle).
+            </div>
+          ) : (
+            labelItemsGroupedByRoom.map(([roomName, roomItems], groupIdx) => (
+              <div
+                key={roomName}
+                className={`bg-white rounded-2xl border border-slate-300 shadow-md p-6 max-w-4xl mx-auto printable-content print:border-none print:shadow-none print:p-0 print:max-w-none print:w-full ${
+                  groupIdx > 0 ? "print-break-before" : ""
+                }`}
+              >
+                <div className="border-b-2 border-[#0F2A56] pb-3 mb-4 flex flex-wrap items-center justify-between gap-2 print-avoid-break">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Lycée Français Jacques Prévert • Planche d&apos;Étiquettes de Table A4
+                    </p>
+                    <h3 className="font-extrabold text-sm sm:text-base text-[#0F2A56]">
+                      {roomName} — {roomItems.length} étiquette{roomItems.length > 1 ? "s" : ""} (triées par N° de Table)
+                    </h3>
                   </div>
-
-                  {/* Right side: Identity */}
-                  <div className="w-1/2 pl-3 flex flex-col justify-between">
-                    <div>
-                      <span className="text-[9px] font-bold uppercase text-indigo-600 tracking-wider">
-                        IDENTITÉ CANDIDAT
-                      </span>
-                      <p className="font-bold text-xs text-slate-900 mt-0.5">
-                        {cand.lastName.toUpperCase()} {cand.firstName}
-                      </p>
-                      <p className="text-[10px] text-slate-500 font-mono">Classe : {cand.className}</p>
-                    </div>
-                    {isTT && (
-                      <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[9px] self-start">
-                        ♿ Tiers-Temps
-                      </span>
-                    )}
+                  <div className="text-right text-[11px] text-slate-500">
+                    {activeExam ? <span className="font-bold text-slate-700">{activeExam.title}</span> : null}
+                    <span className="block">Découpe le long des pointillés</span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-3.5">
+                  {roomItems.map((item, idx) => {
+                    const tableDisp = item.tableNumber
+                      ? formatConvocationTableNumber(item.tableNumber)
+                      : String(idx + 1).padStart(2, "0");
+                    const anonDisp =
+                      item.anonymatNumber || `LFJP-${String(idx + 101).padStart(4, "0")}`;
+
+                    return (
+                      <div
+                        key={item.key}
+                        className="border-2 border-dashed border-slate-400 rounded-xl overflow-hidden bg-white print-avoid-break flex flex-col justify-between"
+                      >
+                        {/* Top LFJP Navy Header: Table N° & Room */}
+                        <div className="bg-[#0F2A56] text-white px-3 py-1.5 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black font-mono tracking-wide tabular-nums bg-white text-[#0F2A56] px-2 py-0.5 rounded">
+                              TABLE N° {tableDisp}
+                            </span>
+                            <span className="text-[11px] font-bold truncate max-w-[130px]">
+                              {item.roomName}
+                            </span>
+                          </div>
+                          {item.isTT && (
+                            <span className="px-1.5 py-0.5 rounded bg-purple-200 text-purple-950 font-black text-[9px] shrink-0">
+                              ♿ +1/3 TT
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Body: Anonymat + Identity + Exam Details */}
+                        <div className="p-3 space-y-2 text-xs">
+                          <div className="flex items-start justify-between gap-2 border-b border-dashed border-slate-200 pb-2">
+                            <div className="min-w-0">
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                                Candidat
+                              </span>
+                              <p className="font-black text-sm text-[#0F2A56] truncate">
+                                {item.candidate.lastName.toUpperCase()} {item.candidate.firstName}
+                              </p>
+                              <p className="text-[11px] font-semibold text-slate-600">
+                                Classe : <strong className="text-slate-900">{item.candidate.className}</strong>
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                                N° Anonymat
+                              </span>
+                              <span className="inline-block font-mono font-black text-xs bg-slate-100 border border-slate-300 text-slate-900 px-2 py-0.5 rounded tabular-nums">
+                                {anonDisp}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-0.5 text-[11px]">
+                            <p className="font-bold text-slate-800 truncate" title={item.subjectLabel}>
+                              {item.subjectLabel}
+                            </p>
+                            <div className="flex items-center justify-between text-[10px] text-slate-600 font-mono tabular-nums">
+                              <span>{item.dateLabel}</span>
+                              {item.timeLabel && <span className="font-bold text-[#0F2A56]">{item.timeLabel}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>
@@ -855,20 +1160,19 @@ export function ConvocProfsSection({
       {/* Render Mission Orders */}
       <div className="space-y-8">
         {teachersToPrint.map((teacher, idx) => {
-          const teacherSurvs = surveillances
-            .filter((s) => {
-              const matchesTeacher =
-                s.teacherName.toLowerCase().includes(teacher.lastName.toLowerCase()) ||
-                (teacher.firstName &&
-                  teacher.firstName !== "(Renfort)" &&
-                  s.teacherName.toLowerCase().includes(teacher.firstName.toLowerCase()));
-              if (!matchesTeacher) return false;
-              if (selectedExamTitle !== "all") {
-                return (s.examTitle || "").trim().toLowerCase() === selectedExamTitle.trim().toLowerCase();
-              }
-              return true;
-            })
-            .sort((a, b) => a.date.localeCompare(b.date) || a.timeSlot.localeCompare(b.timeSlot));
+          const rawTeacherSurvs = surveillances.filter((s) => {
+            const matchesTeacher =
+              s.teacherName.toLowerCase().includes(teacher.lastName.toLowerCase()) ||
+              (teacher.firstName &&
+                teacher.firstName !== "(Renfort)" &&
+                s.teacherName.toLowerCase().includes(teacher.firstName.toLowerCase()));
+            if (!matchesTeacher) return false;
+            if (selectedExamTitle !== "all") {
+              return (s.examTitle || "").trim().toLowerCase() === selectedExamTitle.trim().toLowerCase();
+            }
+            return true;
+          });
+          const consolidatedSurvs = consolidateTeacherSurveillances(rawTeacherSurvs, examSlots);
 
           return (
             <div
@@ -935,16 +1239,16 @@ export function ConvocProfsSection({
                   <p className="text-xs text-slate-600 mt-1">Discipline / Fonction : <strong>{teacher.subject}</strong></p>
                 </div>
                 <div className="text-right">
-                  <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px]">
-                    {teacherSurvs.length} créneau(x) assigné(s)
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px] tabular-nums">
+                    {consolidatedSurvs.length} créneau(x) assigné(s)
                   </span>
                 </div>
               </div>
 
-              {/* Assigned slots */}
+              {/* Assigned slots (Consolidated chronologically, combining shared physical room subjects) */}
               <div className="space-y-2 text-xs">
                 <p className="font-bold text-slate-900">Détail des Créneaux &amp; Surveillances Assignées :</p>
-                {teacherSurvs.length === 0 ? (
+                {consolidatedSurvs.length === 0 ? (
                   <p className="text-xs text-slate-400 italic p-4 bg-slate-50 rounded-lg">
                     Aucun créneau de surveillance n&apos;est actuellement affecté à cet enseignant pour la sélection.
                   </p>
@@ -954,7 +1258,7 @@ export function ConvocProfsSection({
                       <thead>
                         <tr className="bg-slate-100 text-slate-700 font-bold">
                           <th className="p-2 border border-slate-300">Session d&apos;Examen</th>
-                          <th className="p-2 border border-slate-300">Épreuve / Discipline</th>
+                          <th className="p-2 border border-slate-300">Épreuve(s) / Discipline(s)</th>
                           <th className="p-2 border border-slate-300">Date</th>
                           <th className="p-2 border border-slate-300">Horaire</th>
                           <th className="p-2 border border-slate-300">Salle</th>
@@ -962,38 +1266,30 @@ export function ConvocProfsSection({
                         </tr>
                       </thead>
                       <tbody>
-                        {teacherSurvs.map((s) => {
-                          const matchingSlot = examSlots.find(
-                            (sl) =>
-                              sl.id === s.slotId ||
-                              (sl.date === s.date &&
-                                sl.examTitle.trim().toLowerCase() === s.examTitle.trim().toLowerCase())
-                          );
-                          return (
-                            <tr key={s.id} className="hover:bg-slate-50">
-                              <td className="p-2 border border-slate-300 font-bold">{s.examTitle}</td>
-                              <td className="p-2 border border-slate-300 font-semibold text-slate-900">
-                                {matchingSlot?.subject || "Épreuve écrite"}
-                              </td>
-                              <td className="p-2 border border-slate-300 whitespace-nowrap">{s.date}</td>
-                              <td className="p-2 border border-slate-300 font-mono font-bold text-[#002060] whitespace-nowrap">
-                                {s.timeSlot}
-                              </td>
-                              <td className="p-2 border border-slate-300 font-bold">{s.roomName}</td>
-                              <td className="p-2 border border-slate-300">
-                                <span
-                                  className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                    s.mission?.toLowerCase().includes("renfort")
-                                      ? "bg-purple-100 text-purple-800"
-                                      : "bg-emerald-100 text-emerald-800"
-                                  }`}
-                                >
-                                  {s.mission || "Surveillant titulaire"}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
+                        {consolidatedSurvs.map((s) => (
+                          <tr key={s.id} className="hover:bg-slate-50">
+                            <td className="p-2 border border-slate-300 font-bold">{s.examTitle}</td>
+                            <td className="p-2 border border-slate-300 font-semibold text-slate-900">
+                              {s.subjects.join(" • ")}
+                            </td>
+                            <td className="p-2 border border-slate-300 whitespace-nowrap tabular-nums">{s.date}</td>
+                            <td className="p-2 border border-slate-300 font-mono font-bold text-[#002060] whitespace-nowrap tabular-nums">
+                              {s.timeSlot}
+                            </td>
+                            <td className="p-2 border border-slate-300 font-bold">{s.roomName}</td>
+                            <td className="p-2 border border-slate-300">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  s.mission?.toLowerCase().includes("renfort")
+                                    ? "bg-purple-100 text-purple-800"
+                                    : "bg-emerald-100 text-emerald-800"
+                                }`}
+                              >
+                                {s.mission || "Surveillant titulaire"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>

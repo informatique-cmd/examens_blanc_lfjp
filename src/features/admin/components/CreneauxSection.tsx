@@ -673,26 +673,27 @@ export default function CreneauxSection({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-800">
-              Étape 3 • Calendrier des Épreuves
+            <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-blue-50 text-[#0F2A56] border border-blue-200">
+              Étape 04 • Calendrier des Épreuves
             </span>
             <span className="text-xs text-slate-500">
-              Horaires, épreuves et tiers-temps
+              Horaires, disciplines et salles mobilisées
             </span>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mt-1 flex items-center gap-2">
-            <Clock className="h-5 w-5 text-indigo-600" />
-            <span>Créneaux des Épreuves & Programmation</span>
+          <h2 className="text-xl font-extrabold text-[#0F2A56] mt-1 flex items-center gap-2 tracking-tight">
+            <Clock className="h-5 w-5 text-[#1D4ED8]" />
+            <span>Créneaux des Épreuves &amp; Programmation</span>
           </h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            Définissez les dates, heures de début et fin de chaque épreuve pour chaque session et niveau scolaire ciblé.
+            Définissez les dates, horaires de composition et salles affectées pour chaque session et niveau scolaire.
           </p>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <button
+            type="button"
             onClick={handleOpenNewModal}
-            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-sm flex items-center gap-2 cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-[#0F2A56] hover:bg-[#1D4ED8] text-white font-bold text-xs transition shadow-sm flex items-center gap-2 cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             <span>Programmer une Épreuve</span>
@@ -704,19 +705,19 @@ export default function CreneauxSection({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
           <p className="text-[11px] font-semibold text-slate-500 uppercase">Créneaux Totaux</p>
-          <p className="text-2xl font-bold text-slate-900 mt-0.5">{examSlots.length}</p>
+          <p className="text-2xl font-extrabold text-[#0F2A56] mt-0.5 tabular-nums">{examSlots.length}</p>
         </div>
         <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase">Jours d'épreuves</p>
-          <p className="text-2xl font-bold text-indigo-600 mt-0.5">{distinctDates.length}</p>
+          <p className="text-[11px] font-semibold text-slate-500 uppercase">Jours d&apos;épreuves</p>
+          <p className="text-2xl font-extrabold text-[#1D4ED8] mt-0.5 tabular-nums">{distinctDates.length}</p>
         </div>
         <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase">Salles Mobilisées</p>
-          <p className="text-2xl font-bold text-emerald-600 mt-0.5">{rooms.length}</p>
+          <p className="text-[11px] font-semibold text-slate-500 uppercase">Salles Disponibles</p>
+          <p className="text-2xl font-extrabold text-emerald-700 mt-0.5 tabular-nums">{rooms.length}</p>
         </div>
         <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs">
           <p className="text-[11px] font-semibold text-slate-500 uppercase">Surveillances Liées</p>
-          <p className="text-2xl font-bold text-purple-600 mt-0.5">{surveillances.length}</p>
+          <p className="text-2xl font-extrabold text-slate-800 mt-0.5 tabular-nums">{surveillances.length}</p>
         </div>
       </div>
 
@@ -728,7 +729,7 @@ export default function CreneauxSection({
             <select
               value={selectedDateFilter}
               onChange={(e) => setSelectedDateFilter(e.target.value)}
-              className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-indigo-500"
+              className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-[#1D4ED8]"
             >
               <option value="all">Tous les jours ({distinctDates.length})</option>
               {distinctDates.map((d) => (
@@ -750,7 +751,7 @@ export default function CreneauxSection({
                   setFormExamTitle(e.target.value);
                 }
               }}
-              className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-indigo-500"
+              className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-[#1D4ED8]"
             >
               <option value="all">Toutes les sessions ({exams.length})</option>
               {exams.map((ex) => (
@@ -762,23 +763,23 @@ export default function CreneauxSection({
           </div>
         </div>
 
-        <span className="text-xs text-slate-500">
-          Affichage : <strong>{filteredSlots.length}</strong> créneau(x)
+        <span className="text-xs text-slate-500 tabular-nums">
+          Affichage : <strong className="text-[#0F2A56]">{filteredSlots.length}</strong> créneau(x)
         </span>
       </div>
 
       {/* Active Exam Filter Banner */}
       {selectedExamFilter !== "all" && (
-        <div className="flex flex-wrap items-center justify-between gap-2 p-3 px-4 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 shadow-2xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 p-3 px-4 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-950 shadow-2xs">
           <div className="flex items-center gap-2">
-            <span className="font-bold flex items-center gap-1.5 text-blue-800">
-              <Calendar className="h-4 w-4" />
+            <span className="font-bold flex items-center gap-1.5 text-[#0F2A56]">
+              <Calendar className="h-4 w-4 text-[#1D4ED8]" />
               <span>Session affichée :</span>
             </span>
-            <span className="px-2.5 py-0.5 rounded-lg bg-blue-700 text-white font-bold">
+            <span className="px-2.5 py-0.5 rounded-lg bg-[#0F2A56] text-white font-bold">
               {selectedExamFilter}
             </span>
-            <span className="text-blue-700 font-semibold">
+            <span className="text-[#1D4ED8] font-semibold tabular-nums">
               • {filteredSlots.length} créneau(x)
             </span>
           </div>
@@ -788,7 +789,7 @@ export default function CreneauxSection({
               setSelectedExamFilter("all");
               setSelectedDateFilter("all");
             }}
-            className="text-xs font-bold text-blue-700 hover:text-blue-900 underline"
+            className="text-xs font-bold text-[#1D4ED8] hover:text-[#0F2A56] underline cursor-pointer"
           >
             Afficher toutes les sessions
           </button>
@@ -800,22 +801,22 @@ export default function CreneauxSection({
         {slotsByDate.length === 0 ? (
           <div className="bg-white rounded-xl border-2 border-dashed border-slate-200 p-12 text-center text-slate-400 space-y-3">
             <Clock className="h-10 w-10 mx-auto text-slate-300" />
-            <p className="text-sm font-semibold">Aucun créneau d'épreuve programmé pour l'instant.</p>
+            <p className="text-sm font-semibold">Aucun créneau d&apos;épreuve programmé pour l&apos;instant.</p>
             <p className="text-xs text-slate-500">
-              Cliquez sur "Programmer une Épreuve" ci-dessus pour planifier les dates et horaires.
+              Cliquez sur &quot;Programmer une Épreuve&quot; ci-dessus pour planifier les dates et horaires.
             </p>
           </div>
         ) : (
           slotsByDate.map(([dateStr, slots]) => (
-            <div key={dateStr} className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+            <div key={dateStr} className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
               {/* Date Header */}
-              <div className="bg-slate-50/90 border-b border-slate-200 px-5 py-3 flex items-center justify-between">
+              <div className="bg-[#0F2A56] text-white px-5 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <Calendar className="h-4 w-4 text-indigo-600" />
-                  <span className="font-bold text-sm text-slate-900">
+                  <Calendar className="h-4 w-4 text-sky-300" />
+                  <span className="font-extrabold text-sm tracking-tight tabular-nums">
                     {dateStr}
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200">
+                  <span className="text-[11px] px-2 py-0.5 rounded-md bg-white/15 text-white font-semibold tabular-nums">
                     {slots.length} épreuve(s)
                   </span>
                 </div>
@@ -836,23 +837,23 @@ export default function CreneauxSection({
                   return (
                     <div key={slot.id} className="divide-y divide-slate-100">
                       <div
-                        className="p-5 hover:bg-slate-50/60 transition flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                        className="p-5 hover:bg-[#F8FAFC] transition flex flex-col lg:flex-row lg:items-center justify-between gap-4"
                       >
                       <div className="space-y-2 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-bold text-sm text-slate-900">
+                          <span className="font-extrabold text-sm text-[#0F2A56]">
                             {slot.subject}
                           </span>
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
                             {slot.examTitle}
                           </span>
                           {slot.targetLevel && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-[#0F2A56] border border-blue-200">
                               {getShortLevelBadge(slot.targetLevel) || slot.targetLevel}
                             </span>
                           )}
                           {slot.targetSpecialty && (
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
                               Spé : {slot.targetSpecialty}
                             </span>
                           )}
@@ -860,13 +861,13 @@ export default function CreneauxSection({
 
                         {/* Schedules (simplified clean view, Tiers-Temps managed in dedicated rooms) */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                          <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200">
-                            <Clock className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                          <div className="flex items-center gap-2 p-2 rounded-lg bg-[#F8FAFC] border border-slate-200">
+                            <Clock className="h-3.5 w-3.5 text-[#1D4ED8] shrink-0" />
                             <div>
-                              <p className="text-[10px] text-slate-500 font-semibold uppercase">
+                              <p className="text-[10px] text-slate-500 font-semibold uppercase tabular-nums">
                                 Horaires ({Math.floor(slot.durationMinutes / 60)}h{slot.durationMinutes % 60 > 0 ? String(slot.durationMinutes % 60).padStart(2, "0") : "00"} • {slot.durationMinutes} min)
                               </p>
-                              <p className="font-mono font-bold text-slate-800">
+                              <p className="font-mono font-bold text-[#0F2A56] tabular-nums">
                                 {slot.startTime} ➔ {slot.endTime}
                               </p>
                             </div>
@@ -878,7 +879,7 @@ export default function CreneauxSection({
                               <p className="text-[10px] text-emerald-700 font-semibold uppercase">
                                 Surveillance Salles
                               </p>
-                              <p className="font-bold text-emerald-900">
+                              <p className="font-bold text-emerald-900 tabular-nums">
                                 {coveredCount} / {roomCoverage} salle(s) couverte(s)
                               </p>
                             </div>
@@ -894,7 +895,7 @@ export default function CreneauxSection({
                             {slot.roomNames.map((r) => (
                               <span
                                 key={r}
-                                className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
+                                className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200"
                               >
                                 {r}
                               </span>
@@ -914,14 +915,14 @@ export default function CreneauxSection({
                         <button
                           type="button"
                           onClick={() => toggleExpandSurv(slot.id)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer tabular-nums ${
                             expandedSurvSlotIds[slot.id]
-                              ? "bg-indigo-600 text-white shadow-xs"
-                              : "border border-indigo-200 bg-indigo-50/70 text-indigo-800 hover:bg-indigo-100"
+                              ? "bg-[#0F2A56] text-white shadow-xs"
+                              : "border border-blue-200 bg-blue-50/70 text-[#0F2A56] hover:bg-blue-100"
                           }`}
                         >
                           <Users className="h-3.5 w-3.5" />
-                          <span>Surveillants & Relais ({coveredCount}/{roomCoverage})</span>
+                          <span>Surveillants &amp; Relais ({coveredCount}/{roomCoverage})</span>
                           {expandedSurvSlotIds[slot.id] ? (
                             <ChevronUp className="h-3.5 w-3.5" />
                           ) : (

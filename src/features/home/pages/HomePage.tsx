@@ -16,6 +16,7 @@ import {
   Printer,
   X,
   FileText,
+  Briefcase,
 } from "lucide-react";
 
 import HomeHero from "../components/HomeHero";
@@ -26,6 +27,7 @@ import {
   type CmsExam,
   type CmsExamSlot,
   type CmsCandidate,
+  type CmsTeacher,
   getExamTargetLevels,
   getShortLevelBadge,
   isLevelFilterMatch,
@@ -37,6 +39,8 @@ import {
   summarizeCandidateConvocationLocation,
   formatConvocationRoomAndTable,
   formatConvocationTableNumber,
+  consolidateTeacherSurveillances,
+  parseTimeRangeMinutes,
 } from "../../../shared/services/cms-store";
 
 // Helper to normalize search strings (removes accents, lowercase, trim)
@@ -74,19 +78,31 @@ export default function HomePage() {
   const [selectedExamForConvocation, setSelectedExamForConvocation] =
     useState<CmsExam | null>(null);
 
+  // Public "Espace Surveillants / Professeurs" modal (scoped to a specific exam) & isolated A4 print state
+  const [teacherPortalExam, setTeacherPortalExam] = useState<CmsExam | null>(null);
+  const [teacherSearchQuery, setTeacherSearchQuery] = useState<string>("");
+  const [selectedTeacherKey, setSelectedTeacherKey] = useState<string | null>(null);
+  const [printableTeacherMission, setPrintableTeacherMission] = useState<{
+    teacherLabel: string;
+    subject: string;
+    examTitleFilter: string;
+  } | null>(null);
+
   // Expanded exam IDs (dict for independent toggling)
   const [expandedExamIds, setExpandedExamIds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (!findRoomModalExam) return;
+    if (!findRoomModalExam && !teacherPortalExam && !printableTeacherMission) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setFindRoomModalExam(null);
+        setTeacherPortalExam(null);
+        setPrintableTeacherMission(null);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [findRoomModalExam]);
+  }, [findRoomModalExam, teacherPortalExam, printableTeacherMission]);
 
   const toggleExamExpanded = (examId: string, defaultExpanded: boolean = true) => {
     setExpandedExamIds((prev) => {
@@ -290,14 +306,125 @@ export default function HomePage() {
     },
   };
 
+  // Consolidated teacher roster combining cmsData.teachers + any external names in surveillances
+  const consolidatedAllSurveillances = useMemo(() => {
+    const publishedTitles = new Set(
+      publishedExams.map((e) => e.title.trim().toLowerCase())
+    );
+    const relevantSurvs = cmsData.surveillances.filter(
+      (s) =>
+        !s.examTitle ||
+        publishedTitles.size === 0 ||
+        publishedTitles.has(s.examTitle.trim().toLowerCase())
+    );
+    return consolidateTeacherSurveillances(relevantSurvs, cmsData.examSlots || []);
+  }, [cmsData.surveillances, cmsData.examSlots, publishedExams]);
+
+  const portalTeachersList = useMemo(() => {
+    const byNormKey = new Map<
+      string,
+      {
+        key: string;
+        displayName: string;
+        subject: string;
+        teacher?: CmsTeacher;
+      }
+    >();
+
+    for (const t of cmsData.teachers) {
+      const displayName = `${t.lastName.toUpperCase()} ${t.firstName}`.trim();
+      const key = normalizeSearchStr(displayName);
+      if (key && !byNormKey.has(key)) {
+        byNormKey.set(key, {
+          key,
+          displayName: `${t.civility ? `${t.civility} ` : ""}${displayName}`.trim(),
+          subject: t.subject || "Enseignement",
+          teacher: t,
+        });
+      }
+    }
+
+    for (const surv of consolidatedAllSurveillances) {
+      const rawName = (surv.teacherName || "").trim();
+      if (!rawName) continue;
+      const cleaned = rawName.replace(/^(madame|monsieur|mme|m\.)\s+/i, "").trim();
+      const cleanedNorm = normalizeSearchStr(cleaned);
+      const matchedExisting = Array.from(byNormKey.values()).find((entry) => {
+        if (!entry.teacher) return entry.key === cleanedNorm;
+        const ln = normalizeSearchStr(entry.teacher.lastName);
+        const fn = normalizeSearchStr(entry.teacher.firstName);
+        return (
+          cleanedNorm === `${ln} ${fn}` ||
+          cleanedNorm === `${fn} ${ln}` ||
+          (ln.length > 2 && cleanedNorm.includes(ln) && (!fn || cleanedNorm.includes(fn.slice(0, 3))))
+        );
+      });
+      if (!matchedExisting) {
+        byNormKey.set(cleanedNorm || normalizeSearchStr(rawName), {
+          key: cleanedNorm || normalizeSearchStr(rawName),
+          displayName: rawName,
+          subject: "Personnel / Surveillant",
+        });
+      }
+    }
+
+    return Array.from(byNormKey.values()).sort((a, b) =>
+      a.displayName.localeCompare(b.displayName, "fr")
+    );
+  }, [cmsData.teachers, consolidatedAllSurveillances]);
+
+  const getSurveillancesForPortalTeacher = (
+    teacherEntry: {
+      key: string;
+      displayName: string;
+      teacher?: CmsTeacher;
+    },
+    examFilter: string
+  ) => {
+    return consolidatedAllSurveillances.filter((s) => {
+      if (
+        examFilter !== "all" &&
+        (s.examTitle || "").trim().toLowerCase() !== examFilter.trim().toLowerCase()
+      ) {
+        return false;
+      }
+      const sNorm = normalizeSearchStr(s.teacherName).replace(/^(madame|monsieur|mme|m\.)\s+/i, "").trim();
+      if (teacherEntry.teacher) {
+        const ln = normalizeSearchStr(teacherEntry.teacher.lastName);
+        const fn = normalizeSearchStr(teacherEntry.teacher.firstName);
+        return (
+          sNorm === `${ln} ${fn}` ||
+          sNorm === `${fn} ${ln}` ||
+          (ln.length > 2 && sNorm.includes(ln) && (!fn || sNorm.includes(fn.slice(0, 3))))
+        );
+      }
+      return sNorm === teacherEntry.key || normalizeSearchStr(s.teacherName) === normalizeSearchStr(teacherEntry.displayName);
+    });
+  };
+
+  const computeSurveillancesTotalLabel = (list: typeof consolidatedAllSurveillances) => {
+    let totalMinutes = 0;
+    for (const item of list) {
+      const parsed = parseTimeRangeMinutes(item.timeSlot);
+      if (parsed && parsed.endMin > parsed.startMin) {
+        totalMinutes += parsed.endMin - parsed.startMin;
+      }
+    }
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    return `${h}h${String(m).padStart(2, "0")}`;
+  };
+
+  const isPrintSheetActive = Boolean(selectedStudentForConvocation || printableTeacherMission);
+
   return (
     <HomeLayout
       schoolYear={cmsData.siteInfo.schoolYear}
       schoolName={cmsData.siteInfo.schoolName || cmsData.siteInfo.title}
       schoolCity={cmsData.siteInfo.schoolCity}
-      hideChromeOnPrint={Boolean(selectedStudentForConvocation)}
+      hideChromeOnPrint={isPrintSheetActive}
     >
-      <div className={selectedStudentForConvocation ? "print:hidden w-full flex flex-col items-center gap-8" : "w-full flex flex-col items-center gap-8"}>
+      <div className={isPrintSheetActive ? "print:hidden w-full flex flex-col items-center gap-8" : "w-full flex flex-col items-center gap-8"}>
       {/* 1. Hero Header Centered */}
       <HomeHero
         subtitle={cmsData.siteInfo.subtitle}
@@ -465,7 +592,7 @@ export default function HomePage() {
               Sessions d&apos;Examens &amp; Calendrier des Épreuves
             </h2>
             <p className="text-xs text-slate-600 mt-0.5">
-              Consultez les créneaux par jour, les salles affectées ou cliquez sur &quot;Trouver ma Salle&quot;.
+              Consultez les créneaux par jour, les salles affectées ou accédez à votre espace candidat / surveillant.
             </p>
           </div>
 
@@ -544,8 +671,8 @@ export default function HomePage() {
                   <div className="h-1 w-full bg-gradient-to-r from-[#0F2A56] via-[#1D4ED8] to-[#c92a2a]" />
 
                   {/* Exam Card Header */}
-                  <div className="p-5 bg-slate-50/60 border-b border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="space-y-1.5 flex-1">
+                  <div className="p-4 sm:p-5 bg-slate-50/60 border-b border-slate-200/80 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="space-y-1.5 flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
                         {examLevels.map((lvl) => (
                           <span
@@ -595,35 +722,48 @@ export default function HomePage() {
                       )}
                     </div>
 
-                    {/* Dual Action Buttons: "Trouver ma Salle" (Modal) & "Consulter le planning" */}
-                    <div className="flex flex-wrap items-center gap-2 self-start md:self-center shrink-0">
+                    {/* Contextual Action Buttons: "Espace Candidat", "Espace Surveillant / Professeur", & Planning Toggle */}
+                    <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto lg:justify-end shrink-0">
                       <button
                         type="button"
                         onClick={() => {
                           setModalSearchQuery("");
                           setFindRoomModalExam(exam);
                         }}
-                        className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                        className="flex-1 sm:flex-initial justify-center px-3 py-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98] sm:whitespace-nowrap"
                       >
-                        <Search className="h-3.5 w-3.5 text-slate-950" />
-                        <span>Trouver ma Salle</span>
+                        <Search className="h-3.5 w-3.5 text-slate-950 shrink-0" />
+                        <span>Espace Candidat</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTeacherSearchQuery("");
+                          setSelectedTeacherKey(null);
+                          setTeacherPortalExam(exam);
+                        }}
+                        className="flex-1 sm:flex-initial justify-center px-3 py-2 rounded-xl bg-[#1D4ED8] hover:bg-[#0F2A56] text-white font-bold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98] sm:whitespace-nowrap"
+                      >
+                        <Briefcase className="h-3.5 w-3.5 text-amber-300 shrink-0" />
+                        <span>Espace Surveillant / Professeur</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => toggleExamExpanded(exam.id, true)}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-[0.98] ${
+                        className={`w-full sm:w-auto justify-center px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer active:scale-[0.98] sm:whitespace-nowrap ${
                           isExpanded
-                            ? "bg-[#0F2A56] text-white shadow-2xs"
-                            : "bg-white hover:bg-slate-100 text-slate-800 border border-slate-200"
+                            ? "bg-white hover:bg-slate-100 text-[#0F2A56] border border-slate-300 shadow-2xs"
+                            : "bg-[#0F2A56] hover:bg-[#1e3a6e] text-white shadow-2xs"
                         }`}
                       >
                         <span>
                           {isExpanded
                             ? "Replier le planning"
-                            : `Voir le planning (${examSlots.length} épreuves)`}
+                            : `Consulter le planning (${examSlots.length})`}
                         </span>
-                        {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        {isExpanded ? <ChevronUp className="h-3.5 w-3.5 shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0" />}
                       </button>
                     </div>
                   </div>
@@ -790,26 +930,6 @@ export default function HomePage() {
                             </div>
                           </div>
 
-                          {/* Sleek Candidate CTA Row opening the Floating Modal */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-xl bg-slate-50 border border-slate-200">
-                            <div className="text-xs text-slate-700">
-                              <strong className="text-[#0F2A56]">Espace Candidat • {exam.title}</strong>
-                              <span className="text-slate-500 block sm:inline sm:ml-2">
-                                Vérifiez votre salle, numéro de table et téléchargez votre convocation officielle.
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setModalSearchQuery("");
-                                setFindRoomModalExam(exam);
-                              }}
-                              className="px-3.5 py-2 rounded-lg bg-[#0F2A56] hover:bg-[#1D4ED8] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
-                            >
-                              <Search className="h-3.5 w-3.5 text-amber-300" />
-                              <span>Trouver ma Salle &amp; Convocation</span>
-                            </button>
-                          </div>
                         </>
                       )}
                     </div>
@@ -908,7 +1028,7 @@ export default function HomePage() {
                         LYCÉE FRANÇAIS JACQUES PRÉVERT
                       </h2>
                       <p className="text-[11px] text-slate-600">
-                        Saly Portudal • Sénégal • Code RNE 9930032S
+                        Saly Portudal • Sénégal
                       </p>
                     </div>
                   </div>
@@ -1383,6 +1503,481 @@ export default function HomePage() {
                     })}
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+      {/* 8. MODAL PUBLIQUE : ESPACE SURVEILLANTS / PROFESSEURS (FILTRÉE SUR L'EXAMEN SÉLECTIONNÉ) */}
+      {teacherPortalExam && (() => {
+        const tQuery = normalizeSearchStr(teacherSearchQuery);
+        const filteredTeachers = portalTeachersList
+          .filter((t) => {
+            if (!tQuery) return true;
+            return (
+              normalizeSearchStr(t.displayName).includes(tQuery) ||
+              normalizeSearchStr(t.subject).includes(tQuery)
+            );
+          })
+          .sort((a, b) => {
+            const countA = getSurveillancesForPortalTeacher(a, teacherPortalExam.title).length;
+            const countB = getSurveillancesForPortalTeacher(b, teacherPortalExam.title).length;
+            if ((countA > 0) !== (countB > 0)) return countA > 0 ? -1 : 1;
+            return a.displayName.localeCompare(b.displayName, "fr");
+          });
+        const activeTeacher =
+          portalTeachersList.find((t) => t.key === selectedTeacherKey) || null;
+        const activeTeacherSurvs = activeTeacher
+          ? getSurveillancesForPortalTeacher(activeTeacher, teacherPortalExam.title)
+          : [];
+        const activeTotalDuration = computeSurveillancesTotalLabel(activeTeacherSurvs);
+
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 print:hidden"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setTeacherPortalExam(null);
+              }
+            }}
+          >
+            <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
+              {/* Header */}
+              <div className="bg-[#0F2A56] text-white px-5 py-4 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-300 truncate">
+                    Portail Enseignants &amp; Surveillants • {teacherPortalExam.title}
+                  </p>
+                  <h3 className="text-base sm:text-lg font-extrabold tracking-tight flex items-center gap-2 truncate">
+                    <Briefcase className="h-4 w-4 text-amber-300 shrink-0" />
+                    <span>Espace Surveillant / Professeur</span>
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTeacherPortalExam(null)}
+                  className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition cursor-pointer shrink-0"
+                  title="Fermer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Search & Active Session Context Bar */}
+              <div className="p-4 border-b border-slate-200 bg-slate-50/80 grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                <div className="md:col-span-7 relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    type="text"
+                    autoFocus
+                    value={teacherSearchQuery}
+                    onChange={(e) => setTeacherSearchQuery(e.target.value)}
+                    placeholder="Rechercher votre nom, prénom ou discipline..."
+                    className="w-full pl-10 pr-9 py-2 text-xs sm:text-sm rounded-xl bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#1D4ED8] focus:ring-2 focus:ring-blue-100 focus:outline-hidden font-medium"
+                  />
+                  {teacherSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setTeacherSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="md:col-span-5 px-3 py-2 rounded-xl bg-blue-50 border border-blue-200 text-left">
+                  <span className="block text-[9px] font-bold uppercase tracking-wider text-[#1D4ED8]">
+                    Session filtrée
+                  </span>
+                  <span className="block text-xs font-extrabold text-[#0F2A56] truncate">
+                    {teacherPortalExam.title}
+                  </span>
+                </div>
+              </div>
+
+              {/* Body: Roster + Planning Detail */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 grid grid-cols-1 md:grid-cols-12 gap-4 bg-white">
+                {/* Left: Teacher list */}
+                <div className="md:col-span-5 border border-slate-200 rounded-xl overflow-hidden flex flex-col max-h-[420px]">
+                  <div className="px-3.5 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                      Professeurs &amp; Surveillants ({filteredTeachers.length})
+                    </span>
+                  </div>
+                  <div className="overflow-y-auto divide-y divide-slate-100">
+                    {filteredTeachers.length === 0 ? (
+                      <p className="p-4 text-xs text-slate-400 italic text-center">
+                        Aucun surveillant trouvé pour cette recherche.
+                      </p>
+                    ) : (
+                      filteredTeachers.map((entry) => {
+                        const survCount = getSurveillancesForPortalTeacher(
+                          entry,
+                          teacherPortalExam.title
+                        ).length;
+                        const isSelected = activeTeacher?.key === entry.key;
+
+                        return (
+                          <button
+                            key={entry.key}
+                            type="button"
+                            onClick={() => setSelectedTeacherKey(entry.key)}
+                            className={`w-full px-3.5 py-2.5 text-left transition flex items-center justify-between gap-2 cursor-pointer ${
+                              isSelected
+                                ? "bg-blue-50 border-l-4 border-[#1D4ED8]"
+                                : "hover:bg-slate-50"
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <span
+                                className={`block text-xs font-bold truncate ${
+                                  isSelected ? "text-[#0F2A56]" : "text-slate-800"
+                                }`}
+                              >
+                                {entry.displayName}
+                              </span>
+                              <span className="block text-[10px] text-slate-500 truncate">
+                                {entry.subject}
+                              </span>
+                            </div>
+                            <span
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold tabular-nums shrink-0 ${
+                                survCount > 0
+                                  ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                  : "bg-slate-100 text-slate-500"
+                              }`}
+                            >
+                              {survCount}
+                            </span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: Selected Teacher Consolidated Planning */}
+                <div className="md:col-span-7 flex flex-col gap-3">
+                  {!activeTeacher ? (
+                    <div className="h-full min-h-[240px] rounded-xl border border-dashed border-slate-300 bg-slate-50/70 flex flex-col items-center justify-center p-6 text-center space-y-2">
+                      <UserCheck className="h-9 w-9 text-[#1D4ED8]/60" />
+                      <p className="text-xs font-bold text-[#0F2A56]">
+                        Sélectionnez votre nom dans la liste de gauche
+                      </p>
+                      <p className="text-[11px] text-slate-500 max-w-xs">
+                        Vous accéderez à votre planning consolidé de surveillances pour <strong>{teacherPortalExam.title}</strong> et à l&apos;impression de votre Ordre de Mission A4.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-[#1D4ED8] block">
+                            Planning Personnel • {teacherPortalExam.title}
+                          </span>
+                          <h4 className="text-base font-extrabold text-[#0F2A56]">
+                            {activeTeacher.displayName}
+                          </h4>
+                          <p className="text-xs text-slate-600">{activeTeacher.subject}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-center">
+                            <span className="block text-[9px] uppercase font-bold text-slate-400">
+                              Missions
+                            </span>
+                            <strong className="text-sm font-black text-[#0F2A56] tabular-nums">
+                              {activeTeacherSurvs.length}
+                            </strong>
+                          </div>
+                          <div className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-center">
+                            <span className="block text-[9px] uppercase font-bold text-slate-400">
+                              Volume Horaire
+                            </span>
+                            <strong className="text-sm font-black text-emerald-700 tabular-nums">
+                              {activeTotalDuration}
+                            </strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      {activeTeacherSurvs.length === 0 ? (
+                        <div className="p-5 rounded-xl bg-white border border-slate-200 text-center text-xs text-slate-500">
+                          Aucune surveillance programmée pour cette session ({teacherPortalExam.title}).
+                        </div>
+                      ) : (
+                        <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs text-left border-collapse">
+                              <thead className="bg-[#0F2A56] text-white text-[10px] uppercase tracking-wider">
+                                <tr>
+                                  <th className="py-2 px-3 font-bold">Date &amp; Horaire</th>
+                                  <th className="py-2 px-3 font-bold">Salle</th>
+                                  <th className="py-2 px-3 font-bold">Épreuve(s) &amp; Mission</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-200">
+                                {activeTeacherSurvs.map((surv) => (
+                                  <tr key={surv.id} className="hover:bg-slate-50">
+                                    <td className="py-2.5 px-3 whitespace-nowrap">
+                                      <div className="font-mono font-bold text-[#0F2A56] tabular-nums">
+                                        {surv.date}
+                                      </div>
+                                      <div className="font-mono text-[11px] font-semibold text-slate-700 tabular-nums">
+                                        {surv.timeSlot}
+                                      </div>
+                                    </td>
+                                    <td className="py-2.5 px-3 whitespace-nowrap">
+                                      <span className="px-2 py-0.5 rounded bg-blue-50 border border-blue-200 text-[#0F2A56] font-bold text-[11px]">
+                                        {surv.roomName}
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5 px-3">
+                                      <div className="font-bold text-slate-900 text-xs">
+                                        {surv.subjects.join(" / ")}
+                                      </div>
+                                      <div className="text-[10px] text-slate-500 mt-0.5">
+                                        {surv.examTitle} •{" "}
+                                        <span className="font-semibold text-emerald-700">
+                                          {surv.mission}
+                                        </span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const examTitle = teacherPortalExam.title;
+                          setTeacherPortalExam(null);
+                          setPrintableTeacherMission({
+                            teacherLabel: activeTeacher.displayName,
+                            subject: activeTeacher.subject,
+                            examTitleFilter: examTitle,
+                          });
+                        }}
+                        disabled={activeTeacherSurvs.length === 0}
+                        className="w-full py-2.5 px-4 rounded-xl bg-[#0F2A56] hover:bg-[#1D4ED8] disabled:opacity-40 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                      >
+                        <Printer className="h-4 w-4 text-amber-300" />
+                        <span>Imprimer mon Ordre de Mission (A4)</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 9. MODAL ORDRE DE MISSION ENSEIGNANT A4 IMPRIMABLE */}
+      {printableTeacherMission && (() => {
+        const activeEntry = portalTeachersList.find(
+          (t) => t.displayName === printableTeacherMission.teacherLabel
+        );
+        const missionSurvs = activeEntry
+          ? getSurveillancesForPortalTeacher(activeEntry, printableTeacherMission.examTitleFilter)
+          : [];
+        const totalDuration = computeSurveillancesTotalLabel(missionSurvs);
+
+        return (
+          <div
+            id="teacher-mission-modal-backdrop"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto print:static print:bg-white print:p-0 print:block print:overflow-visible"
+          >
+            <div className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95 print:max-w-none print:shadow-none print:border-none print:rounded-none print:m-0">
+              {/* Top Bar Hidden on Print */}
+              <div className="print:hidden bg-[#0F2A56] text-white px-5 py-3 flex items-center justify-between border-b border-white/10">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Briefcase className="h-4 w-4 text-amber-300 shrink-0" />
+                  <span className="text-xs font-bold tracking-wide truncate">
+                    Ordre de Mission • {printableTeacherMission.teacherLabel}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prevTitle = document.title;
+                      document.title = `Ordre_Mission_${printableTeacherMission.teacherLabel}`.replace(
+                        /[\s/\\?%*:|"<>]+/g,
+                        "_"
+                      );
+                      window.print();
+                      setTimeout(() => {
+                        document.title = prevTitle;
+                      }, 2000);
+                    }}
+                    className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    <span>Imprimer / PDF (A4)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrintableTeacherMission(null)}
+                    className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                    title="Fermer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Printable A4 Sheet */}
+              <div
+                id="printable-convocation-sheet"
+                className="p-6 sm:p-8 bg-white text-slate-900 space-y-4 text-left print:p-0"
+              >
+                <div className="flex items-center justify-between border-b-2 border-[#0F2A56] pb-3 gap-4 print-avoid-break">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src="/assets/aistudio/logo-lfjp_62451311.png"
+                      alt="Lycée Français Jacques Prévert"
+                      className="h-11 sm:h-12 w-auto object-contain shrink-0"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = "/logo-lfjp.png";
+                      }}
+                    />
+                    <div>
+                      <p className="text-[10px] uppercase font-bold tracking-widest text-red-600">
+                        RÉPUBLIQUE FRANÇAISE • RÉSEAU AEFE
+                      </p>
+                      <h2 className="text-sm sm:text-base font-black text-[#0F2A56] leading-tight">
+                        LYCÉE FRANÇAIS JACQUES PRÉVERT
+                      </h2>
+                      <p className="text-[11px] text-slate-600">
+                        Saly Portudal • Sénégal
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right flex flex-col items-end gap-1 shrink-0">
+                    <span className="px-2.5 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-[#0F2A56] font-bold text-xs">
+                      Année scolaire {cmsData.siteInfo.schoolYear || "2026-2027"}
+                    </span>
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+                      Convocation Surveillant
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-center space-y-1 print-avoid-break">
+                  <h1 className="text-base sm:text-lg font-black text-[#0F2A56] uppercase tracking-wide">
+                    ORDRE DE MISSION — SURVEILLANCE D&apos;EXAMENS
+                  </h1>
+                  <p className="text-xs text-slate-500">
+                    {printableTeacherMission.examTitleFilter === "all"
+                      ? "Récapitulatif consolidé des surveillances officielles"
+                      : printableTeacherMission.examTitleFilter}
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-slate-300 p-4 bg-slate-50/70 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs print-avoid-break">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                      Surveillant(e) / Enseignant(e)
+                    </span>
+                    <strong className="text-sm font-black text-[#0F2A56]">
+                      {printableTeacherMission.teacherLabel}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                      Discipline / Statut
+                    </span>
+                    <strong className="text-sm font-bold text-slate-800">
+                      {printableTeacherMission.subject}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                      Total Missions &amp; Volume
+                    </span>
+                    <strong className="text-sm font-bold text-emerald-700 font-mono tabular-nums">
+                      {missionSurvs.length} créneau(x) • {totalDuration}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="print-table-wrap border border-slate-300 rounded-xl overflow-hidden">
+                  <table className="print-a4-table w-full text-xs text-left">
+                    <thead className="bg-[#0F2A56] text-white text-[11px] uppercase tracking-wider">
+                      <tr>
+                        <th className="py-2 px-2.5 font-bold">Session</th>
+                        <th className="py-2 px-2.5 font-bold">Date</th>
+                        <th className="py-2 px-2.5 font-bold">Horaire</th>
+                        <th className="py-2 px-2.5 font-bold">Épreuve(s) / Discipline(s)</th>
+                        <th className="py-2 px-2.5 font-bold">Salle</th>
+                        <th className="py-2 px-2.5 font-bold">Mission</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 bg-white">
+                      {missionSurvs.map((surv) => (
+                        <tr key={surv.id}>
+                          <td className="py-2 px-2.5 font-medium text-slate-700">
+                            {surv.examTitle}
+                          </td>
+                          <td className="py-2 px-2.5 font-semibold text-slate-900 whitespace-nowrap tabular-nums">
+                            {surv.date}
+                          </td>
+                          <td className="py-2 px-2.5 font-mono font-bold text-[#0F2A56] whitespace-nowrap tabular-nums">
+                            {surv.timeSlot}
+                          </td>
+                          <td className="py-2 px-2.5 font-bold text-slate-800">
+                            {surv.subjects.join(" / ")}
+                          </td>
+                          <td className="py-2 px-2.5 font-bold text-[#0F2A56] whitespace-nowrap">
+                            {surv.roomName}
+                          </td>
+                          <td className="py-2 px-2.5 text-slate-700">
+                            {surv.mission}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-[11px] text-slate-600 space-y-1 leading-relaxed print-avoid-break">
+                  <p className="font-bold text-slate-900 uppercase tracking-wide text-[10px]">
+                    Rappel des Obligations de Surveillance :
+                  </p>
+                  <ul className="list-disc pl-4 space-y-0.5">
+                    <li>
+                      Se présenter au secrétariat des examens <strong>20 minutes avant le début</strong> de l&apos;épreuve pour retirer la pochette (sujets, copies et feuille d&apos;émargement).
+                    </li>
+                    <li>
+                      Vérifier l&apos;identité de chaque candidat, la mise en mode examen des calculatrices autorisées et l&apos;extinction complète des appareils connectés.
+                    </li>
+                    <li>
+                      Compléter et signer le procès-verbal d&apos;épreuve avant la remise des copies classées par ordre croissant des numéros d&apos;anonymat / de table.
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="flex justify-between items-end pt-3 border-t border-slate-200 text-xs print-avoid-break">
+                  <div className="text-[11px] text-slate-400">
+                    <p className="font-semibold text-slate-600">Lycée Français Jacques Prévert de Saly</p>
+                    <p>Ordre de mission officiel • Session {cmsData.siteInfo.schoolYear || "2026-2027"}</p>
+                  </div>
+                  <div className="text-right space-y-3">
+                    <p className="text-slate-600 text-xs">
+                      Fait à Saly Portudal, le {new Date().toLocaleDateString("fr-FR")}
+                    </p>
+                    <div>
+                      <p className="font-bold text-[#0F2A56]">Le / La Proviseur(e)</p>
+                      <p className="text-[10px] text-slate-500 italic">Direction du Lycée Français Jacques Prévert</p>
+                      <p className="text-[9px] text-slate-400">Signature et cachet officiel du LFJP</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

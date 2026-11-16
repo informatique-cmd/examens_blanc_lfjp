@@ -350,6 +350,207 @@ export function slotsTimeOverlap(slotA: CmsExamSlot, slotB: CmsExamSlot): boolea
   return startA < endB && startB < endA;
 }
 
+export function formatMinutesToColon(totalMinutes: number): string {
+  const safe = ((Math.round(totalMinutes) % (24 * 60)) + 24 * 60) % (24 * 60);
+  const h = Math.floor(safe / 60);
+  const m = safe % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+export function parseTimeRangeMinutes(
+  timeSlot?: string
+): { startMin: number; endMin: number } | null {
+  if (!timeSlot) return null;
+  const matches = timeSlot.match(/(\d{1,2})\s*[:hH]\s*(\d{2})/g);
+  if (!matches || matches.length < 2) return null;
+  const parsePart = (part: string): number | null => {
+    const m = part.match(/(\d{1,2})\s*[:hH]\s*(\d{2})/);
+    if (!m) return null;
+    const h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    if (isNaN(h) || isNaN(min)) return null;
+    return h * 60 + min;
+  };
+  const s = parsePart(matches[0]);
+  const e = parsePart(matches[1]);
+  if (s === null || e === null) return null;
+  return { startMin: s, endMin: e > s ? e : s + 60 };
+}
+
+export function surveillancesTimeOverlap(
+  dateA: string,
+  rangeA: string,
+  dateB: string,
+  rangeB: string
+): boolean {
+  if ((dateA || "").trim() !== (dateB || "").trim()) return false;
+  const parsedA = parseTimeRangeMinutes(rangeA);
+  const parsedB = parseTimeRangeMinutes(rangeB);
+  if (parsedA && parsedB) {
+    return parsedA.startMin < parsedB.endMin && parsedB.startMin < parsedA.endMin;
+  }
+  return (rangeA || "").trim() === (rangeB || "").trim();
+}
+
+export function computeTiersTempsEndTimeColon(
+  startTime: string,
+  durationMinutes: number,
+  explicitTTEnd?: string
+): string {
+  if (explicitTTEnd && explicitTTEnd.trim()) {
+    const normalized = explicitTTEnd.trim().replace(/[hH]/, ":");
+    if (/^\d{1,2}:\d{2}$/.test(normalized)) {
+      const [h, m] = normalized.split(":");
+      return `${h.padStart(2, "0")}:${m}`;
+    }
+  }
+  const startMin = parseTimeMinutes(startTime);
+  if (startMin === null) return explicitTTEnd || "";
+  const dur = durationMinutes && durationMinutes > 0 ? durationMinutes : 60;
+  return formatMinutesToColon(startMin + Math.round(dur * (4 / 3)));
+}
+
+export function isRoomMarkedTiersTemps(
+  room: Pick<CmsRoom, "id" | "name" | "notes">,
+  slots: CmsExamSlot[] = [],
+  exam?: Pick<CmsExam, "ttRoomIds"> | null
+): boolean {
+  if (slots.some((s) => s.ttRoomIds?.includes(room.id))) return true;
+  if (
+    slots.some(
+      (s) =>
+        /\btiers[\s-]*temps\b/i.test(s.subject || "") &&
+        (s.roomNames || []).some((rn) => rn.trim().toLowerCase() === room.name.trim().toLowerCase())
+    )
+  ) {
+    return true;
+  }
+  if (exam?.ttRoomIds?.includes(room.id)) return true;
+  const rName = (room.name || "").toLowerCase();
+  const rNotes = (room.notes || "").toLowerCase();
+  return (
+    /\btt\b/.test(rName) ||
+    rName.includes("tiers") ||
+    /\btt\b/.test(rNotes) ||
+    rNotes.includes("tiers")
+  );
+}
+
+export function teacherMatchesSlotSubjects(
+  teacherSubject: string = "",
+  slotSubjects: string[] = []
+): boolean {
+  const normTeacher = (teacherSubject || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (!normTeacher || slotSubjects.length === 0) return false;
+
+  const combinedSlots = slotSubjects
+    .join(" ")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  const pairs: Array<[RegExp, RegExp]> = [
+    [/\bphilo/, /\bphilo/],
+    [/\b(francais|lettres)/, /\b(francais|eaf)\b/],
+    [/\bmath/, /\b(math\w*|eam)\b/],
+    [/\b(pc|physique|chimie)/, /\b(pc|physique|chimie)/],
+    [/\b(svt|vie de la terre)/, /\b(svt|sciences de la vie)\b/],
+    [/\b(histoire|geographie|hg|hggsp)/, /\b(histoire|geographie|hggsp|hg)\b/],
+    [/\b(ses|sciences economiques)/, /\b(ses|sciences economiques)\b/],
+    [/\b(anglais|amc|llce)/, /\b(anglais|amc|llce)/],
+    [/\bespagnol/, /\bespagnol/],
+    [/\b(technologie|numerique|nsi)/, /\b(nsi|technologie)\b/],
+  ];
+
+  return pairs.some(([tRx, sRx]) => tRx.test(normTeacher) && sRx.test(combinedSlots));
+}
+
+export interface ConsolidatedTeacherSurveillance {
+  id: string;
+  examTitle: string;
+  date: string;
+  timeSlot: string;
+  roomName: string;
+  mission: string;
+  teacherName: string;
+  subjects: string[];
+  rawIds: string[];
+}
+
+export function consolidateTeacherSurveillances(
+  survs: CmsSurveillance[],
+  examSlots: CmsExamSlot[] = []
+): ConsolidatedTeacherSurveillance[] {
+  const map = new Map<string, ConsolidatedTeacherSurveillance>();
+
+  for (const s of survs) {
+    const matchedSlot = examSlots.find(
+      (sl) =>
+        (s.slotId && sl.id === s.slotId) ||
+        (sl.date === s.date &&
+          (!s.examTitle || sl.examTitle.trim().toLowerCase() === s.examTitle.trim().toLowerCase()) &&
+          (sl.roomNames || []).some(
+            (rn) => rn.trim().toLowerCase() === (s.roomName || "").trim().toLowerCase()
+          ) &&
+          surveillancesTimeOverlap(sl.date, `${sl.startTime} - ${sl.tiersTempsEndTime || sl.endTime}`, s.date, s.timeSlot))
+    );
+
+    const parallelSlotsInRoom =
+      s.roomName && s.roomName !== "Renfort"
+        ? examSlots.filter(
+            (sl) =>
+              sl.date === s.date &&
+              (!s.examTitle ||
+                sl.examTitle.trim().toLowerCase() === s.examTitle.trim().toLowerCase()) &&
+              (sl.roomNames || []).some(
+                (rn) => rn.trim().toLowerCase() === s.roomName.trim().toLowerCase()
+              ) &&
+              surveillancesTimeOverlap(
+                sl.date,
+                `${sl.startTime} - ${sl.tiersTempsEndTime || sl.endTime}`,
+                s.date,
+                s.timeSlot
+              )
+          )
+        : [];
+
+    const subjectNames = Array.from(
+      new Set([
+        ...(matchedSlot ? [matchedSlot.subject] : []),
+        ...parallelSlotsInRoom.map((sl) => sl.subject),
+      ].filter(Boolean))
+    );
+
+    const key = `${s.date}::${s.timeSlot}::${s.roomName}::${(s.examTitle || "").trim().toLowerCase()}::${(s.teacherName || "").trim().toLowerCase()}`;
+    const existing = map.get(key);
+    if (existing) {
+      subjectNames.forEach((subj) => {
+        if (!existing.subjects.includes(subj)) existing.subjects.push(subj);
+      });
+      existing.rawIds.push(s.id);
+    } else {
+      map.set(key, {
+        id: s.id,
+        examTitle: s.examTitle,
+        date: s.date,
+        timeSlot: s.timeSlot,
+        roomName: s.roomName,
+        mission: s.mission || "Surveillant titulaire",
+        teacherName: s.teacherName,
+        subjects: subjectNames.length > 0 ? subjectNames : ["Épreuve écrite"],
+        rawIds: [s.id],
+      });
+    }
+  }
+
+  return Array.from(map.values()).sort(
+    (a, b) => (a.date || "").localeCompare(b.date || "") || (a.timeSlot || "").localeCompare(b.timeSlot || "")
+  );
+}
+
 /**
  * Resolves a candidate's room/table/anonymat strictly for a specific exam session,
  * preserving legacy assignments stored directly on roomName/tableNumber when appropriate

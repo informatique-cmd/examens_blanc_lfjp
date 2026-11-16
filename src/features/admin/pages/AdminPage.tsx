@@ -43,6 +43,7 @@ import {
   BarChart3,
   Award,
   Rocket,
+  Menu,
 } from "lucide-react";
 
 import {
@@ -246,6 +247,7 @@ export default function AdminPage() {
   const sectionFromUrl = (searchParams.get("section") as AdminSection) || "dashboard";
   const [currentSection, setLocalCurrentSection] = useState<AdminSection>(sectionFromUrl);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Keyboard shortcut Ctrl+B or Cmd+B to toggle sidebar collapse
   useEffect(() => {
@@ -1056,39 +1058,50 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800">
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-3 shadow-xs print:hidden">
-        <div
-          onClick={() => setCurrentSection("dashboard")}
-          className="flex items-center gap-3 cursor-pointer group"
-          title="Retourner au Tableau de Bord"
-        >
-          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 p-0.5 shadow-2xs group-hover:scale-105 group-hover:border-blue-400 transition">
-            <img
-              src="/assets/aistudio/logo-lfjp_62451311.png"
-              alt="LFJP Logo"
-              className="h-full w-full object-contain"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = "/logo-lfjp.png";
-              }}
-            />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold text-[#0F2A56] group-hover:text-[#1D4ED8] transition">
-                Administration Examens LFJP
-              </h1>
-              <span className="rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-bold text-[#0F2A56]">
-                Année scolaire {cmsData.siteInfo.schoolYear || "2026-2027"}
-              </span>
+      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 sm:px-6 py-3 shadow-xs print:hidden">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <button
+            type="button"
+            onClick={() => setIsMobileSidebarOpen((prev) => !prev)}
+            className="lg:hidden p-2 rounded-xl border border-slate-200 bg-slate-50 text-[#0F2A56] hover:bg-slate-100 transition cursor-pointer shrink-0"
+            aria-label="Ouvrir le menu de navigation"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
+          <div
+            onClick={() => setCurrentSection("dashboard")}
+            className="flex items-center gap-3 cursor-pointer group min-w-0"
+            title="Retourner au Tableau de Bord"
+          >
+            <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 p-0.5 shadow-2xs group-hover:scale-105 group-hover:border-blue-400 transition shrink-0">
+              <img
+                src="/assets/aistudio/logo-lfjp_62451311.png"
+                alt="LFJP Logo"
+                className="h-full w-full object-contain"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "/logo-lfjp.png";
+                }}
+              />
             </div>
-            <p className="text-xs text-slate-500 font-medium">
-              {cmsData.siteInfo.schoolName || "Lycée Français Jacques Prévert"} • Réseau AEFE
-            </p>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-sm sm:text-base font-bold text-[#0F2A56] group-hover:text-[#1D4ED8] transition truncate">
+                  Administration Examens LFJP
+                </h1>
+                <span className="hidden sm:inline-block rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-bold text-[#0F2A56] whitespace-nowrap">
+                  Année scolaire {cmsData.siteInfo.schoolYear || "2026-2027"}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-medium truncate">
+                {cmsData.siteInfo.schoolName || "Lycée Français Jacques Prévert"} • Réseau AEFE
+              </p>
+            </div>
           </div>
         </div>
 
         {/* User profile & Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* User badge */}
           {adminSession?.role === "proviseur" ? (
             <div className="flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-950 font-bold shadow-xs">
@@ -1906,6 +1919,8 @@ export default function AdminPage() {
           isSyncing={isSyncing}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+          isMobileOpen={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />
 
         {/* Main Content Area */}
@@ -1995,6 +2010,8 @@ export default function AdminPage() {
               candidates={cmsData.candidates}
               surveillances={cmsData.surveillances}
               siteInfo={cmsData.siteInfo}
+              exams={cmsData.exams}
+              examSlots={cmsData.examSlots || []}
             />
           )}
 

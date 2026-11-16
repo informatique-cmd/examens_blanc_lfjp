@@ -37,6 +37,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Loader2,
+  X,
 } from "lucide-react";
 
 export type AdminSection =
@@ -85,6 +86,8 @@ interface AdminSidebarProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   visibleModules?: Record<string, boolean>;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export default function AdminSidebar({
@@ -108,7 +111,14 @@ export default function AdminSidebar({
   isCollapsed = false,
   onToggleCollapse,
   visibleModules,
+  isMobileOpen = false,
+  onCloseMobile,
 }: AdminSidebarProps) {
+  const handleSelectSection = (sec: AdminSection) => {
+    onSelectSection(sec);
+    onCloseMobile?.();
+  };
+
   const isModuleVisible = (key: string) => {
     if (role !== "proviseur") return true;
     if (visibleModules && key in visibleModules) {
@@ -148,16 +158,25 @@ export default function AdminSidebar({
   ].includes(currentSection);
 
   return (
-    <aside
-      className={`w-full ${
-        isCollapsed ? "lg:w-[72px]" : "lg:w-[260px]"
-      } bg-[#0F2A56] text-slate-300 flex flex-col flex-shrink-0 min-h-[calc(100vh-65px)] lg:min-h-screen border-r border-[#091b38] select-none text-[0.86rem] transition-all duration-200 print:hidden`}
-    >
+    <>
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs lg:hidden print:hidden"
+          onClick={onCloseMobile}
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-[260px] transform ${
+          isMobileOpen ? "translate-x-0" : "-translate-x-full"
+        } lg:static lg:translate-x-0 ${
+          isCollapsed ? "lg:w-[72px]" : "lg:w-[260px]"
+        } bg-[#0F2A56] text-slate-300 flex flex-col flex-shrink-0 min-h-screen border-r border-[#091b38] select-none text-[0.86rem] transition-all duration-200 print:hidden`}
+      >
       {/* Sidebar Header */}
       <div className="p-3 bg-black/20 border-b border-white/10 flex items-center justify-between gap-2">
         {!isCollapsed ? (
           <div
-            onClick={() => onSelectSection("dashboard")}
+            onClick={() => handleSelectSection("dashboard")}
             className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition min-w-0"
             title="Accéder au Tableau de Bord"
           >
@@ -180,7 +199,7 @@ export default function AdminSidebar({
           </div>
         ) : (
           <div
-            onClick={() => onSelectSection("dashboard")}
+            onClick={() => handleSelectSection("dashboard")}
             className="mx-auto cursor-pointer hover:opacity-90 transition py-0.5"
             title="Tableau de bord LFJP"
           >
@@ -195,20 +214,32 @@ export default function AdminSidebar({
           </div>
         )}
 
-        {onToggleCollapse && (
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            title={isCollapsed ? "Agrandir le menu (Ctrl+B)" : "Réduire le menu (Ctrl+B)"}
-            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition shrink-0 cursor-pointer"
-          >
-            {isCollapsed ? (
-              <PanelLeftOpen className="h-4 w-4 text-sky-400" />
-            ) : (
-              <PanelLeftClose className="h-4 w-4 text-slate-400" />
-            )}
-          </button>
-        )}
+        <div className="flex items-center gap-1 shrink-0">
+          {onCloseMobile && (
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              title="Fermer le menu"
+              className="lg:hidden p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          {onToggleCollapse && (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              title={isCollapsed ? "Agrandir le menu (Ctrl+B)" : "Réduire le menu (Ctrl+B)"}
+              className="hidden lg:inline-flex p-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition shrink-0 cursor-pointer"
+            >
+              {isCollapsed ? (
+                <PanelLeftOpen className="h-4 w-4 text-sky-400" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4 text-slate-400" />
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Navigation List */}
@@ -216,7 +247,7 @@ export default function AdminSidebar({
         {/* 0. Tableau de Bord */}
         {isModuleVisible("dashboard") && (
         <button
-          onClick={() => onSelectSection("dashboard")}
+          onClick={() => handleSelectSection("dashboard")}
           title="00. Tableau de Bord"
           className={`w-full flex items-center rounded-xl ${
             isCollapsed ? "justify-center px-2 py-2.5" : "justify-between px-3 py-2.5"
@@ -241,7 +272,7 @@ export default function AdminSidebar({
         {/* 1. Configuration & Logo (SuperAdmin) */}
         {role === "superadmin" && (
           <button
-            onClick={() => onSelectSection("config")}
+            onClick={() => handleSelectSection("config")}
             title="01. Paramètres & Accès"
             className={`w-full flex items-center rounded-xl ${
               isCollapsed ? "justify-center px-2 py-2.5" : "justify-between px-3 py-2.5"
@@ -269,7 +300,7 @@ export default function AdminSidebar({
           <button
             onClick={() => {
               if (isCollapsed) {
-                onSelectSection("data-eleves");
+                handleSelectSection("data-eleves");
               } else {
                 onToggleSubmenu("dataMenu");
               }
@@ -304,7 +335,7 @@ export default function AdminSidebar({
           {!isCollapsed && openSubmenus.dataMenu && (
             <div className="bg-black/20 py-1 border-b border-white/5">
               <button
-                onClick={() => onSelectSection("data-eleves")}
+                onClick={() => handleSelectSection("data-eleves")}
                 className={`w-full flex items-center justify-between pl-9 pr-4 py-2 text-xs transition ${
                   currentSection === "data-eleves"
                     ? "text-white font-bold bg-[#1D4ED8]/70 rounded-lg"
@@ -321,7 +352,7 @@ export default function AdminSidebar({
               </button>
 
               <button
-                onClick={() => onSelectSection("data-salles")}
+                onClick={() => handleSelectSection("data-salles")}
                 className={`w-full flex items-center justify-between pl-9 pr-4 py-2 text-xs transition ${
                   currentSection === "data-salles"
                     ? "text-white font-bold bg-[#1D4ED8]/70 rounded-lg"
@@ -338,7 +369,7 @@ export default function AdminSidebar({
               </button>
 
               <button
-                onClick={() => onSelectSection("data-profs")}
+                onClick={() => handleSelectSection("data-profs")}
                 className={`w-full flex items-center justify-between pl-9 pr-4 py-2 text-xs transition ${
                   currentSection === "data-profs"
                     ? "text-white font-bold bg-[#1D4ED8]/70 rounded-lg"
@@ -355,7 +386,7 @@ export default function AdminSidebar({
               </button>
 
               <button
-                onClick={() => onSelectSection("data-amenagements")}
+                onClick={() => handleSelectSection("data-amenagements")}
                 className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
                   currentSection === "data-amenagements"
                     ? "text-white font-bold bg-[#1D4ED8]/70 rounded-lg"
@@ -367,7 +398,7 @@ export default function AdminSidebar({
               </button>
 
               <button
-                onClick={() => onSelectSection("sec-pochettes")}
+                onClick={() => handleSelectSection("sec-pochettes")}
                 className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
                   currentSection === "sec-pochettes"
                     ? "text-white font-bold bg-[#1D4ED8]/70 rounded-lg"
@@ -385,7 +416,7 @@ export default function AdminSidebar({
         {/* 3. Sessions d'Examens */}
         {isModuleVisible("sessions-examens") && (
         <button
-          onClick={() => onSelectSection("sessions-examens")}
+          onClick={() => handleSelectSection("sessions-examens")}
           title="03. Sessions d'Examens"
           className={`w-full flex items-center rounded-xl ${
             isCollapsed ? "justify-center px-2 py-2.5" : "justify-between px-3 py-2.5"
@@ -417,7 +448,7 @@ export default function AdminSidebar({
         {/* 4. Créneaux des Épreuves */}
         {isModuleVisible("creneaux-epreuves") && (
         <button
-          onClick={() => onSelectSection("creneaux-epreuves")}
+          onClick={() => handleSelectSection("creneaux-epreuves")}
           title="04. Créneaux des Épreuves"
           className={`w-full flex items-center rounded-xl ${
             isCollapsed ? "justify-center px-2 py-2.5" : "justify-between px-3 py-2.5"
@@ -449,7 +480,7 @@ export default function AdminSidebar({
         {/* 5. Répartition & Brassage */}
         {isModuleVisible("organization") && (
         <button
-          onClick={() => onSelectSection("organization")}
+          onClick={() => handleSelectSection("organization")}
           title="05. Répartition & Brassage"
           className={`w-full flex items-center rounded-xl ${
             isCollapsed ? "justify-center px-2 py-2.5" : "justify-between px-3 py-2.5"
@@ -477,7 +508,7 @@ export default function AdminSidebar({
           <button
             onClick={() => {
               if (isCollapsed) {
-                onSelectSection("planning-rooms");
+                handleSelectSection("planning-rooms");
               } else {
                 onToggleSubmenu("planningMenu");
               }
@@ -512,7 +543,7 @@ export default function AdminSidebar({
           {!isCollapsed && openSubmenus.planningMenu && (
             <div className="bg-black/20 py-1 border-b border-white/5">
               <button
-                onClick={() => onSelectSection("planning-rooms")}
+                onClick={() => handleSelectSection("planning-rooms")}
                 className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
                   currentSection === "planning-rooms"
                     ? "text-white font-bold bg-[#1D4ED8]/70 rounded-lg"
@@ -524,7 +555,7 @@ export default function AdminSidebar({
               </button>
 
               <button
-                onClick={() => onSelectSection("planning-profs")}
+                onClick={() => handleSelectSection("planning-profs")}
                 className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
                   currentSection === "planning-profs"
                     ? "text-white font-bold bg-[#1D4ED8]/70 rounded-lg"
@@ -542,7 +573,7 @@ export default function AdminSidebar({
         {/* 7. Vers EDT */}
         {isModuleVisible("view-edt") && (
         <button
-          onClick={() => onSelectSection("view-edt")}
+          onClick={() => handleSelectSection("view-edt")}
           title="07. Vers EDT & Cours Impactés"
           className={`w-full flex items-center rounded-xl ${
             isCollapsed ? "justify-center px-2 py-2.5" : "justify-between px-3 py-2.5"
@@ -570,7 +601,7 @@ export default function AdminSidebar({
           <button
             onClick={() => {
               if (isCollapsed) {
-                onSelectSection("corr-repartition");
+                handleSelectSection("corr-repartition");
               } else {
                 onToggleSubmenu("resMenu");
               }
@@ -605,7 +636,7 @@ export default function AdminSidebar({
           {!isCollapsed && openSubmenus.resMenu && (
             <div className="bg-black/20 py-1 border-b border-white/5">
               <button
-                onClick={() => onSelectSection("corr-repartition")}
+                onClick={() => handleSelectSection("corr-repartition")}
                 className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
                   currentSection === "corr-repartition"
                     ? "text-white font-bold bg-[#1D4ED8]/70 rounded-lg"
@@ -617,7 +648,7 @@ export default function AdminSidebar({
               </button>
 
               <button
-                onClick={() => onSelectSection("res-import")}
+                onClick={() => handleSelectSection("res-import")}
                 className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
                   currentSection === "res-import"
                     ? "text-white font-bold bg-[#1D4ED8]/70 rounded-lg"
@@ -629,7 +660,7 @@ export default function AdminSidebar({
               </button>
 
               <button
-                onClick={() => onSelectSection("res-analyse")}
+                onClick={() => handleSelectSection("res-analyse")}
                 className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
                   currentSection === "res-analyse"
                     ? "text-white font-bold bg-[#1D4ED8]/70 rounded-lg"
@@ -641,7 +672,7 @@ export default function AdminSidebar({
               </button>
 
               <button
-                onClick={() => onSelectSection("res-releves")}
+                onClick={() => handleSelectSection("res-releves")}
                 className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
                   currentSection === "res-releves"
                     ? "text-white font-bold bg-[#1D4ED8]/70 rounded-lg"
@@ -653,7 +684,7 @@ export default function AdminSidebar({
               </button>
 
               <button
-                onClick={() => onSelectSection("res-datavis")}
+                onClick={() => handleSelectSection("res-datavis")}
                 className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
                   currentSection === "res-datavis"
                     ? "text-white font-bold bg-[#1D4ED8]/70 rounded-lg"
@@ -665,7 +696,7 @@ export default function AdminSidebar({
               </button>
 
               <button
-                onClick={() => onSelectSection("res-simul")}
+                onClick={() => handleSelectSection("res-simul")}
                 className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
                   currentSection === "res-simul"
                     ? "text-white font-bold bg-[#1D4ED8]/70 rounded-lg"
@@ -686,7 +717,7 @@ export default function AdminSidebar({
           <button
             onClick={() => {
               if (isCollapsed) {
-                onSelectSection("convoc-eleves");
+                handleSelectSection("convoc-eleves");
               } else {
                 onToggleSubmenu("convocMenu");
               }
@@ -721,7 +752,7 @@ export default function AdminSidebar({
           {!isCollapsed && openSubmenus.convocMenu && (
             <div className="bg-black/20 py-1 border-b border-white/5">
               <button
-                onClick={() => onSelectSection("convoc-eleves")}
+                onClick={() => handleSelectSection("convoc-eleves")}
                 className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
                   currentSection === "convoc-eleves"
                     ? "text-white font-bold bg-[#1D4ED8]/70 rounded-lg"
@@ -733,7 +764,7 @@ export default function AdminSidebar({
               </button>
 
               <button
-                onClick={() => onSelectSection("convoc-profs")}
+                onClick={() => handleSelectSection("convoc-profs")}
                 className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition ${
                   currentSection === "convoc-profs"
                     ? "text-white font-bold bg-[#1D4ED8]/70 rounded-lg"
@@ -754,7 +785,7 @@ export default function AdminSidebar({
           <button
             onClick={() => {
               if (isCollapsed) {
-                onSelectSection("vitrine-publish");
+                handleSelectSection("vitrine-publish");
               } else {
                 onToggleSubmenu("publishDeployMenu");
               }
@@ -791,7 +822,7 @@ export default function AdminSidebar({
           {!isCollapsed && openSubmenus.publishDeployMenu && (
             <div className="bg-black/20 py-1 rounded-lg my-1">
               <button
-                onClick={() => onSelectSection("vitrine-publish")}
+                onClick={() => handleSelectSection("vitrine-publish")}
                 className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition rounded-lg ${
                   currentSection === "vitrine-publish"
                     ? "text-white font-bold bg-[#1D4ED8]/70"
@@ -804,7 +835,7 @@ export default function AdminSidebar({
 
               {role === "superadmin" && (
                 <button
-                  onClick={() => onSelectSection("deployment")}
+                  onClick={() => handleSelectSection("deployment")}
                   className={`w-full flex items-center gap-2 pl-9 pr-4 py-2 text-xs transition rounded-lg ${
                     currentSection === "deployment"
                       ? "text-white font-bold bg-[#1D4ED8]/70"
@@ -937,5 +968,6 @@ export default function AdminSidebar({
         )}
       </div>
     </aside>
+    </>
   );
 }

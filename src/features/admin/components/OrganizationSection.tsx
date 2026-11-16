@@ -21,6 +21,7 @@ import {
   Calendar,
   RotateCcw,
   AlertTriangle,
+  ShieldCheck,
 } from "lucide-react";
 import type {
   CmsCandidate,
@@ -40,6 +41,12 @@ import {
   slotsTimeOverlap,
   canAssignCandidateToSlot,
   detectExamScheduleConflicts,
+  surveillancesTimeOverlap,
+  parseTimeRangeMinutes,
+  computeTiersTempsEndTimeColon,
+  isRoomMarkedTiersTemps,
+  teacherMatchesSlotSubjects,
+  formatMinutesToColon,
 } from "../../../shared/services/cms-store";
 
 type DispatchMode = "brassage" | "alphabetique" | "classe" | "specialite";
@@ -142,6 +149,8 @@ export default function OrganizationSection({
   }, [currentExamSlots, selectedDate]);
 
   const [selectedSlotByExamDate, setSelectedSlotByExamDate] = useState<Record<string, string>>({});
+  const [checkedSlotIdsByExamDate, setCheckedSlotIdsByExamDate] = useState<Record<string, string[]>>({});
+
   const selectedSlot: CmsExamSlot | null = useMemo(() => {
     if (slotsForSelectedDate.length === 0) return null;
     const key = `${selectedExam?.id || "__all__"}::${selectedDate}`;
@@ -149,19 +158,81 @@ export default function OrganizationSection({
     return slotsForSelectedDate.find((s) => s.id === storedId) || slotsForSelectedDate[0];
   }, [slotsForSelectedDate, selectedSlotByExamDate, selectedExam, selectedDate]);
 
+  // Multi-épreuve checked slots on the current date
+  const checkedSlotIds = useMemo(() => {
+    if (slotsForSelectedDate.length === 0) return [];
+    const key = `${selectedExam?.id || "__all__"}::${selectedDate}`;
+    const stored = checkedSlotIdsByExamDate[key];
+    if (Array.isArray(stored) && stored.length > 0) {
+      const validIds = stored.filter((id) => slotsForSelectedDate.some((s) => s.id === id));
+      if (validIds.length > 0) return validIds;
+    }
+    return selectedSlot ? [selectedSlot.id] : [slotsForSelectedDate[0].id];
+  }, [slotsForSelectedDate, checkedSlotIdsByExamDate, selectedExam, selectedDate, selectedSlot]);
+
+  const activeSlots: CmsExamSlot[] = useMemo(() => {
+    if (slotsForSelectedDate.length === 0) return [];
+    const list = slotsForSelectedDate.filter((s) => checkedSlotIds.includes(s.id));
+    if (list.length > 0) return list;
+    return selectedSlot ? [selectedSlot] : [];
+  }, [slotsForSelectedDate, checkedSlotIds, selectedSlot]);
+
+  const primarySlot: CmsExamSlot | null = activeSlots[0] || selectedSlot;
+  const isMultiSlotMode = activeSlots.length > 1;
+
   const setSelectedDispatchSlotId = (slotId: string) => {
     const key = `${selectedExam?.id || "__all__"}::${selectedDate}`;
     setSelectedSlotByExamDate((prev) => ({ ...prev, [key]: slotId }));
+    setCheckedSlotIdsByExamDate((prev) => ({ ...prev, [key]: [slotId] }));
     setShowAllSchoolRooms(false);
     setInspectingRoomName(null);
   };
 
-  // Map of candidateId -> "Room (Subject)" for candidates already assigned to ANOTHER overlapping slot at the exact same date & time
+  const handleToggleCheckedSlot = (slotId: string) => {
+    const key = `${selectedExam?.id || "__all__"}::${selectedDate}`;
+    const current = checkedSlotIds;
+    const exists = current.includes(slotId);
+    if (exists && current.length <= 1) {
+      // Keep at least one slot checked so workspace stays valid
+      return;
+    }
+    const next = exists ? current.filter((id) => id !== slotId) : [...current, slotId];
+    setCheckedSlotIdsByExamDate((prev) => ({ ...prev, [key]: next }));
+    if (next.length > 0) {
+      setSelectedSlotByExamDate((prev) => ({ ...prev, [key]: next[0] }));
+    }
+    setShowAllSchoolRooms(false);
+    setInspectingRoomName(null);
+  };
+
+  const handleCheckSameTimeWindow = () => {
+    if (!primarySlot) return;
+    const key = `${selectedExam?.id || "__all__"}::${selectedDate}`;
+    const parallelIds = slotsForSelectedDate
+      .filter((s) => s.id === primarySlot.id || slotsTimeOverlap(s, primarySlot))
+      .map((s) => s.id);
+    if (parallelIds.length > 0) {
+      setCheckedSlotIdsByExamDate((prev) => ({ ...prev, [key]: parallelIds }));
+    }
+    setInspectingRoomName(null);
+  };
+
+  const handleCheckAllDateSlots = () => {
+    const key = `${selectedExam?.id || "__all__"}::${selectedDate}`;
+    const allIds = slotsForSelectedDate.map((s) => s.id);
+    if (allIds.length > 0) {
+      setCheckedSlotIdsByExamDate((prev) => ({ ...prev, [key]: allIds }));
+    }
+    setInspectingRoomName(null);
+  };
+
+  // Map of candidateId -> "Room (Subject)" for candidates already assigned to ANOTHER slot OUTSIDE activeSlots at an overlapping time
   const occupiedInParallelSlots = useMemo(() => {
     const map = new Map<string, string>();
-    if (!selectedSlot) return map;
+    if (activeSlots.length === 0) return map;
+    const activeIds = new Set(activeSlots.map((s) => s.id));
     const parallelSlots = currentExamSlots.filter(
-      (s) => s.id !== selectedSlot.id && slotsTimeOverlap(s, selectedSlot)
+      (s) => !activeIds.has(s.id) && activeSlots.some((as) => slotsTimeOverlap(s, as))
     );
     if (parallelSlots.length === 0) return map;
 
@@ -175,7 +246,7 @@ export default function OrganizationSection({
       }
     });
     return map;
-  }, [candidates, currentExamSlots, selectedSlot]);
+  }, [candidates, currentExamSlots, activeSlots]);
 
   // Detect any overlapping slot assignments or overlapping compatible schedules for the active exam
   const examConflicts = useMemo(() => {
@@ -187,19 +258,167 @@ export default function OrganizationSection({
     [examConflicts]
   );
 
-  // Helper to get a candidate's assignment strictly for the CURRENT active slot (or exam fallback if 0 slots)
-  const getActiveAssignment = useCallback(
-    (c: CmsCandidate) => {
-      if (selectedSlot) {
-        const slotAssign = c.assignmentsBySlot?.[selectedSlot.id];
-        if (slotAssign?.roomName) {
-          return {
-            roomName: slotAssign.roomName,
-            tableNumber: slotAssign.tableNumber || "",
-            anonymatNumber: slotAssign.anonymatNumber || "",
-          };
+  // Per-slot & per-exam room mobilization state
+  const [slotRoomMap, setSlotRoomMap] = useState<Record<string, string[]>>({});
+  const [examRoomMap, setExamRoomMap] = useState<Record<string, string[]>>({});
+  const [slotTTRoomMap, setSlotTTRoomMap] = useState<Record<string, string[]>>({});
+  const [examTTRoomMap, setExamTTRoomMap] = useState<Record<string, string[]>>({});
+  const [showAllSchoolRooms, setShowAllSchoolRooms] = useState<boolean>(false);
+
+  const getRoomIdsForSlot = useCallback(
+    (slot: CmsExamSlot): string[] => {
+      if (slotRoomMap[slot.id] !== undefined) {
+        return slotRoomMap[slot.id];
+      }
+      const names = new Set<string>((slot.roomNames || []).map((rn) => rn.trim().toLowerCase()));
+      candidates.forEach((c) => {
+        const rm = c.assignmentsBySlot?.[slot.id]?.roomName;
+        if (rm) names.add(rm.trim().toLowerCase());
+      });
+      return rooms.filter((r) => names.has(r.name.trim().toLowerCase())).map((r) => r.id);
+    },
+    [slotRoomMap, candidates, rooms]
+  );
+
+  const getTTRoomIdsForSlot = useCallback(
+    (slot: CmsExamSlot, slotRoomIds: string[]): string[] => {
+      if (slotTTRoomMap[slot.id] !== undefined) {
+        return slotTTRoomMap[slot.id];
+      }
+      if (Array.isArray(slot.ttRoomIds)) {
+        return slot.ttRoomIds;
+      }
+      if (selectedExam && Array.isArray(selectedExam.ttRoomIds)) {
+        return selectedExam.ttRoomIds.filter((id) => slotRoomIds.includes(id));
+      }
+      return rooms
+        .filter((r) => slotRoomIds.includes(r.id) && isRoomMarkedTiersTemps(r, [slot], selectedExam))
+        .map((r) => r.id);
+    },
+    [slotTTRoomMap, selectedExam, rooms]
+  );
+
+  // Deduplicated selected room IDs across ALL active checked slots
+  const selectedRoomIds = useMemo(() => {
+    if (activeSlots.length > 0) {
+      const idSet = new Set<string>();
+      activeSlots.forEach((slot) => {
+        getRoomIdsForSlot(slot).forEach((id) => idSet.add(id));
+      });
+      return rooms.filter((r) => idSet.has(r.id)).map((r) => r.id);
+    }
+
+    if (!selectedExam) return [];
+    if (examRoomMap[selectedExam.id] !== undefined) {
+      return examRoomMap[selectedExam.id];
+    }
+    if (Array.isArray(selectedExam.mobilizedRoomIds) && selectedExam.mobilizedRoomIds.length > 0) {
+      return selectedExam.mobilizedRoomIds;
+    }
+    const matchedNames = new Set<string>();
+    currentExamSlots.forEach((s) => {
+      (s.roomNames || []).forEach((rn) => matchedNames.add(rn.trim().toLowerCase()));
+    });
+    return rooms.filter((r) => matchedNames.has(r.name.trim().toLowerCase())).map((r) => r.id);
+  }, [activeSlots, getRoomIdsForSlot, rooms, selectedExam, examRoomMap, currentExamSlots]);
+
+  // Deduplicated TT room IDs across ALL active checked slots
+  const ttRoomIds = useMemo(() => {
+    if (activeSlots.length > 0) {
+      const ttSet = new Set<string>();
+      activeSlots.forEach((slot) => {
+        const sRooms = getRoomIdsForSlot(slot);
+        getTTRoomIdsForSlot(slot, sRooms).forEach((id) => ttSet.add(id));
+      });
+      // Also catch rooms explicitly marked TT by name/subject when slot.ttRoomIds isn't yet initialized
+      rooms.forEach((r) => {
+        if (selectedRoomIds.includes(r.id) && !activeSlots.some((s) => slotTTRoomMap[s.id] !== undefined || Array.isArray(s.ttRoomIds))) {
+          if (isRoomMarkedTiersTemps(r, activeSlots, selectedExam)) {
+            ttSet.add(r.id);
+          }
         }
-        // Check if this exam already uses per-slot assignments on this candidate
+      });
+      return rooms.filter((r) => selectedRoomIds.includes(r.id) && ttSet.has(r.id)).map((r) => r.id);
+    }
+
+    if (!selectedExam) return [];
+    if (examTTRoomMap[selectedExam.id] !== undefined) {
+      return examTTRoomMap[selectedExam.id];
+    }
+    if (Array.isArray(selectedExam.ttRoomIds)) {
+      return selectedExam.ttRoomIds;
+    }
+    return rooms
+      .filter((r) => selectedRoomIds.includes(r.id) && isRoomMarkedTiersTemps(r, [], selectedExam))
+      .map((r) => r.id);
+  }, [activeSlots, getRoomIdsForSlot, getTTRoomIdsForSlot, rooms, selectedRoomIds, slotTTRoomMap, selectedExam, examTTRoomMap]);
+
+  // Score and pick the most logical slot within activeSlots for a given candidate
+  const pickBestSlotForCandidate = useCallback(
+    (c: CmsCandidate, candidateSlots: CmsExamSlot[]): CmsExamSlot | null => {
+      if (candidateSlots.length === 0) return null;
+      const eligible = candidateSlots.filter((s) =>
+        isCandidateEligibleForSlot(c, selectedExam, s, {
+          ignoreExistingAssignment: true,
+          allowMissingSpecialty: true,
+        })
+      );
+      if (eligible.length === 0) return null;
+      if (eligible.length === 1) return eligible[0];
+
+      const isTT = isCandidateTiersTemps(c);
+      const candHasSpec = Boolean(
+        (c.specialty && c.specialty.trim()) || (Array.isArray(c.options) && c.options.length > 0)
+      );
+
+      let best = eligible[0];
+      let bestScore = -Infinity;
+
+      for (const sl of eligible) {
+        let score = 0;
+        const slotMentionsTT = /\b(tiers[\s-]*temps|tt)\b/i.test(sl.subject || "");
+        const slotRooms = getRoomIdsForSlot(sl);
+        const slotHasTTRoom = getTTRoomIdsForSlot(sl, slotRooms).length > 0;
+        const slotHasSpec = Boolean(sl.targetSpecialty && sl.targetSpecialty.trim());
+
+        if (isTT) {
+          if (slotMentionsTT) score += 200;
+          else if (slotHasTTRoom) score += 60;
+        } else {
+          if (slotMentionsTT) score -= 200;
+        }
+
+        if (candHasSpec && slotHasSpec) score += 100;
+        else if (!candHasSpec && !slotHasSpec) score += 20;
+
+        if (c.assignmentsBySlot?.[sl.id]?.roomName) score += 10;
+
+        if (score > bestScore) {
+          bestScore = score;
+          best = sl;
+        }
+      }
+      return best;
+    },
+    [selectedExam, getRoomIdsForSlot, getTTRoomIdsForSlot]
+  );
+
+  // Helper to get a candidate's assignment across ALL active checked slots (or exam fallback if 0 slots)
+  const getActiveAssignment = useCallback(
+    (c: CmsCandidate): { roomName: string; tableNumber: string; anonymatNumber: string; slotSubject?: string; slotId?: string } => {
+      if (activeSlots.length > 0) {
+        for (const sl of activeSlots) {
+          const slotAssign = c.assignmentsBySlot?.[sl.id];
+          if (slotAssign?.roomName) {
+            return {
+              roomName: slotAssign.roomName,
+              tableNumber: slotAssign.tableNumber || "",
+              anonymatNumber: slotAssign.anonymatNumber || "",
+              slotSubject: sl.subject,
+              slotId: sl.id,
+            };
+          }
+        }
         const examSlotIdSet = new Set(currentExamSlots.map((s) => s.id));
         const hasAnySlotAssignInExam = Boolean(
           c.assignmentsBySlot &&
@@ -212,14 +431,13 @@ export default function OrganizationSection({
         if (hasAnySlotAssignInExam) {
           return { roomName: "", tableNumber: "", anonymatNumber: "" };
         }
-        // Pure legacy fallback before first per-slot dispatch: only match if room is in this slot's roomNames
+        // Pure legacy fallback before first per-slot dispatch
         const legacy = getCandidateAssignmentForExam(c, selectedExam, currentExamSlots, rooms);
         if (legacy.roomName) {
-          const slotRooms = selectedSlot.roomNames || [];
-          if (
-            slotRooms.length === 0 ||
-            slotRooms.some((rn) => rn.trim().toLowerCase() === legacy.roomName.trim().toLowerCase())
-          ) {
+          const groupRoomNames = new Set(
+            activeSlots.flatMap((s) => (s.roomNames || []).map((rn) => rn.trim().toLowerCase()))
+          );
+          if (groupRoomNames.size === 0 || groupRoomNames.has(legacy.roomName.trim().toLowerCase())) {
             return legacy;
           }
         }
@@ -227,42 +445,44 @@ export default function OrganizationSection({
       }
       return getCandidateAssignmentForExam(c, selectedExam, currentExamSlots, rooms);
     },
-    [selectedSlot, selectedExam, currentExamSlots, rooms]
+    [activeSlots, selectedExam, currentExamSlots, rooms]
   );
 
-  // Eligible candidates for the selected slot (or exam if no slot exists)
+  // Deduplicated eligible candidates across active checked slots (filtered strictly by level & specialty, never duplicated)
   const slotEligibleAllCandidates = useMemo(() => {
     if (!selectedExam) return candidates;
-    if (selectedSlot) {
+    if (activeSlots.length > 0) {
       return candidates.filter((c) => {
-        if (c.assignmentsBySlot?.[selectedSlot.id]?.roomName) return true;
-        return isCandidateEligibleForSlot(c, selectedExam, selectedSlot, {
-          ignoreExistingAssignment: false,
-          allowMissingSpecialty: true,
-        });
+        if (activeSlots.some((s) => Boolean(c.assignmentsBySlot?.[s.id]?.roomName))) {
+          return true;
+        }
+        return activeSlots.some((s) =>
+          isCandidateEligibleForSlot(c, selectedExam, s, {
+            ignoreExistingAssignment: false,
+            allowMissingSpecialty: true,
+          })
+        );
       });
     }
     const levels = getExamTargetLevels(selectedExam);
     return candidates.filter((c) => {
-      if (c.assignmentsByExam?.[selectedExam.id]?.roomName) {
-        return true;
-      }
+      if (c.assignmentsByExam?.[selectedExam.id]?.roomName) return true;
       if (c.examName && c.examName.trim().toLowerCase() === selectedExam.title.trim().toLowerCase()) {
         return true;
       }
       return isCandidateMatchingLevel(c.className, levels);
     });
-  }, [candidates, selectedExam, selectedSlot]);
+  }, [candidates, selectedExam, activeSlots]);
 
-  // Candidates targeted for dispatch (ALWAYS excluding those already placed in a parallel slot at the same date & time)
+  // Candidates targeted for dispatch (excluding only those already assigned in OTHER external parallel slots)
   const targetCandidates = useMemo(() => {
-    if (!selectedSlot) return slotEligibleAllCandidates;
+    if (activeSlots.length === 0) return slotEligibleAllCandidates;
     return slotEligibleAllCandidates.filter(
       (c) =>
-        Boolean(c.assignmentsBySlot?.[selectedSlot.id]?.roomName) ||
+        activeSlots.some((s) => Boolean(c.assignmentsBySlot?.[s.id]?.roomName)) ||
         !occupiedInParallelSlots.has(c.id)
     );
-  }, [slotEligibleAllCandidates, selectedSlot, occupiedInParallelSlots]);
+  }, [slotEligibleAllCandidates, activeSlots, occupiedInParallelSlots]);
 
   // Non-target candidates to protect from erasure during dispatch
   const nonTargetCandidates = useMemo(() => {
@@ -271,22 +491,25 @@ export default function OrganizationSection({
   }, [candidates, targetCandidates]);
 
   // --- ELEVES BRASSAGE STATE (persisted per slot/exam with local state mirror) ---
-  const scopeKey = selectedSlot?.id || selectedExam?.id || "__default__";
+  const scopeKey =
+    activeSlots.length > 1
+      ? activeSlots.map((s) => s.id).join("+")
+      : primarySlot?.id || selectedExam?.id || "__default__";
 
   const [dispatchModeMap, setDispatchModeMap] = useState<Record<string, DispatchMode>>({});
   const dispatchMode: DispatchMode = useMemo(() => {
     return (
       dispatchModeMap[scopeKey] ||
-      selectedSlot?.dispatchMode ||
+      primarySlot?.dispatchMode ||
       selectedExam?.dispatchMode ||
       "brassage"
     );
-  }, [scopeKey, dispatchModeMap, selectedSlot, selectedExam]);
+  }, [scopeKey, dispatchModeMap, primarySlot, selectedExam]);
 
   const handleSetDispatchMode = (mode: DispatchMode) => {
     setDispatchModeMap((prev) => ({ ...prev, [scopeKey]: mode }));
-    if (selectedSlot) {
-      onUpdateExamSlot?.(selectedSlot.id, { dispatchMode: mode });
+    if (activeSlots.length > 0) {
+      activeSlots.forEach((s) => onUpdateExamSlot?.(s.id, { dispatchMode: mode }));
     } else if (selectedExam) {
       onUpdateExam?.(selectedExam.id, { dispatchMode: mode });
     }
@@ -302,127 +525,52 @@ export default function OrganizationSection({
     return clean.length > 0 ? `${clean.slice(0, 4)}-` : "DNB-";
   };
   const anonymatPrefix = useMemo(() => {
-    return anonymatPrefixMap[scopeKey] ?? defaultPrefixForExam(selectedExam, selectedSlot);
-  }, [scopeKey, selectedExam, selectedSlot, anonymatPrefixMap]);
+    return anonymatPrefixMap[scopeKey] ?? defaultPrefixForExam(selectedExam, primarySlot);
+  }, [scopeKey, selectedExam, primarySlot, anonymatPrefixMap]);
 
   const setAnonymatPrefix = (val: string) => {
     setAnonymatPrefixMap((prev) => ({ ...prev, [scopeKey]: val }));
   };
 
-  // Per-slot room mobilization: slotId -> roomIds[] (plus legacy per-exam map if 0 slots)
-  const [slotRoomMap, setSlotRoomMap] = useState<Record<string, string[]>>({});
-  const [examRoomMap, setExamRoomMap] = useState<Record<string, string[]>>({});
-  // Per-slot TT room designation: slotId -> roomIds[]
-  const [slotTTRoomMap, setSlotTTRoomMap] = useState<Record<string, string[]>>({});
-  const [examTTRoomMap, setExamTTRoomMap] = useState<Record<string, string[]>>({});
-
-  const [showAllSchoolRooms, setShowAllSchoolRooms] = useState<boolean>(false);
-
-  // Selected room IDs strictly for the CURRENT selected slot (or exam if no slot)
-  const selectedRoomIds = useMemo(() => {
-    if (selectedSlot) {
-      if (slotRoomMap[selectedSlot.id] !== undefined) {
-        return slotRoomMap[selectedSlot.id];
-      }
-      const names = new Set<string>(
-        (selectedSlot.roomNames || []).map((rn) => rn.trim().toLowerCase())
-      );
-      // Also include any room where candidates are already explicitly assigned for THIS slot
-      candidates.forEach((c) => {
-        const rm = c.assignmentsBySlot?.[selectedSlot.id]?.roomName;
-        if (rm) names.add(rm.trim().toLowerCase());
-      });
-      return rooms.filter((r) => names.has(r.name.trim().toLowerCase())).map((r) => r.id);
-    }
-
-    if (!selectedExam) return [];
-    if (examRoomMap[selectedExam.id] !== undefined) {
-      return examRoomMap[selectedExam.id];
-    }
-    if (Array.isArray(selectedExam.mobilizedRoomIds) && selectedExam.mobilizedRoomIds.length > 0) {
-      return selectedExam.mobilizedRoomIds;
-    }
-    const matchedNames = new Set<string>();
-    currentExamSlots.forEach((s) => {
-      (s.roomNames || []).forEach((rn) => matchedNames.add(rn.trim().toLowerCase()));
-    });
-    return rooms.filter((r) => matchedNames.has(r.name.trim().toLowerCase())).map((r) => r.id);
-  }, [selectedSlot, slotRoomMap, candidates, rooms, selectedExam, examRoomMap, currentExamSlots]);
-
-  // Helper to determine TT room IDs strictly for the active slot (or exam fallback)
-  const ttRoomIds = useMemo(() => {
-    if (selectedSlot) {
-      if (slotTTRoomMap[selectedSlot.id] !== undefined) {
-        return slotTTRoomMap[selectedSlot.id];
-      }
-      if (Array.isArray(selectedSlot.ttRoomIds)) {
-        return selectedSlot.ttRoomIds;
-      }
-      if (selectedExam && Array.isArray(selectedExam.ttRoomIds)) {
-        return selectedExam.ttRoomIds.filter((id) => selectedRoomIds.includes(id));
-      }
-      const defaultTT = rooms.filter(
-        (r) =>
-          selectedRoomIds.includes(r.id) &&
-          (r.name.toLowerCase().includes("tt") ||
-            r.notes?.toLowerCase().includes("tiers") ||
-            r.notes?.toLowerCase().includes("tt"))
-      );
-      return defaultTT.map((r) => r.id);
-    }
-
-    if (!selectedExam) return [];
-    if (examTTRoomMap[selectedExam.id] !== undefined) {
-      return examTTRoomMap[selectedExam.id];
-    }
-    if (Array.isArray(selectedExam.ttRoomIds)) {
-      return selectedExam.ttRoomIds;
-    }
-    const defaultTT = rooms.filter(
-      (r) =>
-        selectedRoomIds.includes(r.id) &&
-        (r.name.toLowerCase().includes("tt") ||
-          r.notes?.toLowerCase().includes("tiers") ||
-          r.notes?.toLowerCase().includes("tt"))
-    );
-    return defaultTT.map((r) => r.id);
-  }, [selectedSlot, slotTTRoomMap, selectedExam, examTTRoomMap, selectedRoomIds, rooms]);
-
-  // Toggle room selection for candidate dispatch of the ACTIVE slot (or exam if no slot)
+  // Toggle room mobilization across checked slot(s) (or exam if no slot)
   const handleToggleRoomSelection = (roomId: string) => {
-    const current = selectedRoomIds;
-    const next = current.includes(roomId)
-      ? current.filter((id) => id !== roomId)
-      : [...current, roomId];
+    const isAdding = !selectedRoomIds.includes(roomId);
+    const roomObj = rooms.find((r) => r.id === roomId);
+    if (!roomObj) return;
 
-    if (selectedSlot) {
-      setSlotRoomMap((prev) => ({ ...prev, [selectedSlot.id]: next }));
-      const nextRoomNames = rooms.filter((r) => next.includes(r.id)).map((r) => r.name);
-      onUpdateExamSlot?.(selectedSlot.id, { roomNames: nextRoomNames });
+    if (activeSlots.length > 0) {
+      activeSlots.forEach((slot) => {
+        const curIds = getRoomIdsForSlot(slot);
+        const nextIds = isAdding
+          ? Array.from(new Set([...curIds, roomId]))
+          : curIds.filter((id) => id !== roomId);
+        setSlotRoomMap((prev) => ({ ...prev, [slot.id]: nextIds }));
+        const nextNames = rooms.filter((r) => nextIds.includes(r.id)).map((r) => r.name);
+        onUpdateExamSlot?.(slot.id, { roomNames: nextNames });
+      });
       return;
     }
 
     if (!selectedExam) return;
-    setExamRoomMap((prev) => ({
-      ...prev,
-      [selectedExam.id]: next,
-    }));
+    const next = isAdding
+      ? [...selectedRoomIds, roomId]
+      : selectedRoomIds.filter((id) => id !== roomId);
+    setExamRoomMap((prev) => ({ ...prev, [selectedExam.id]: next }));
     onUpdateExam?.(selectedExam.id, { mobilizedRoomIds: next });
   };
 
   // --- CUSTOM ROOM CAPACITY (QUOTAS PAR SALLE) ---
   const [customRoomCapacities, setCustomRoomCapacities] = useState<Record<string, number>>({});
 
-  // Helper to determine the effective capacity / quota of a room for the active slot/exam
   const getRoomQuota = useCallback(
     (room: CmsRoom): number => {
       const key = `${scopeKey}:${room.id}`;
       if (customRoomCapacities[key] !== undefined && customRoomCapacities[key] > 0) {
         return customRoomCapacities[key];
       }
-      const slotPersisted = selectedSlot?.customRoomQuotas?.[room.id];
-      if (slotPersisted !== undefined && slotPersisted > 0) {
-        return slotPersisted;
+      for (const sl of activeSlots) {
+        const q = sl.customRoomQuotas?.[room.id];
+        if (q !== undefined && q > 0) return q;
       }
       const examPersisted = selectedExam?.customRoomQuotas?.[room.id];
       if (examPersisted !== undefined && examPersisted > 0) {
@@ -430,17 +578,18 @@ export default function OrganizationSection({
       }
       return room.capacity || 24;
     },
-    [customRoomCapacities, scopeKey, selectedSlot, selectedExam]
+    [customRoomCapacities, scopeKey, activeSlots, selectedExam]
   );
 
-  // Helper to build updated candidate record for slot or exam
-  const applyAssignmentToCandidate = useCallback(
+  // Build updated candidate record for a target slot (or exam)
+  const applyAssignmentToCandidateForSlot = useCallback(
     (
       c: CmsCandidate,
-      assignment: { roomName: string; tableNumber: string; anonymatNumber: string }
+      assignment: { roomName: string; tableNumber: string; anonymatNumber: string },
+      targetSlot: CmsExamSlot | null
     ): CmsCandidate => {
       const examTitle = selectedExam ? selectedExam.title : "Examen Blanc";
-      if (selectedSlot && selectedExam) {
+      if (targetSlot && selectedExam) {
         return {
           ...c,
           roomName: c.roomName || assignment.roomName,
@@ -455,10 +604,10 @@ export default function OrganizationSection({
           },
           assignmentsBySlot: {
             ...(c.assignmentsBySlot || {}),
-            [selectedSlot.id]: {
+            [targetSlot.id]: {
               ...assignment,
               examId: selectedExam.id,
-              slotId: selectedSlot.id,
+              slotId: targetSlot.id,
             },
           },
         };
@@ -479,36 +628,42 @@ export default function OrganizationSection({
           : {}),
       };
     },
-    [selectedSlot, selectedExam]
+    [selectedExam]
   );
 
-  // Toggle room as Tiers-Temps for the ACTIVE slot (or exam) AND auto-assign TT students for that scope
+  // Toggle room as Tiers-Temps across checked slot(s) AND auto-assign TT students into TT rooms
   const handleToggleTTRoom = (roomId: string) => {
     if (!selectedExam) return;
-    const current = ttRoomIds;
-    const turningOn = !current.includes(roomId);
-    const nextTT = turningOn
-      ? [...current, roomId]
-      : current.filter((id) => id !== roomId);
+    const turningOn = !ttRoomIds.includes(roomId);
+    const nextTTGlobal = turningOn
+      ? Array.from(new Set([...ttRoomIds, roomId]))
+      : ttRoomIds.filter((id) => id !== roomId);
 
-    if (selectedSlot) {
-      setSlotTTRoomMap((prev) => ({ ...prev, [selectedSlot.id]: nextTT }));
-      onUpdateExamSlot?.(selectedSlot.id, { ttRoomIds: nextTT });
+    if (activeSlots.length > 0) {
+      activeSlots.forEach((slot) => {
+        const sRooms = getRoomIdsForSlot(slot);
+        const curSlotTT = getTTRoomIdsForSlot(slot, sRooms);
+        const nextSlotTT = turningOn
+          ? Array.from(new Set([...curSlotTT, roomId]))
+          : curSlotTT.filter((id) => id !== roomId);
+        setSlotTTRoomMap((prev) => ({ ...prev, [slot.id]: nextSlotTT }));
+        onUpdateExamSlot?.(slot.id, { ttRoomIds: nextSlotTT });
+      });
     } else {
-      setExamTTRoomMap((prev) => ({ ...prev, [selectedExam.id]: nextTT }));
-      onUpdateExam?.(selectedExam.id, { ttRoomIds: nextTT });
+      setExamTTRoomMap((prev) => ({ ...prev, [selectedExam.id]: nextTTGlobal }));
+      onUpdateExam?.(selectedExam.id, { ttRoomIds: nextTTGlobal });
     }
 
     const toggledRoom = rooms.find((r) => r.id === roomId);
     if (turningOn && toggledRoom) {
-      const activeTtRooms = rooms.filter((r) => nextTT.includes(r.id));
+      const activeTtRooms = rooms.filter((r) => nextTTGlobal.includes(r.id));
       const ttStudents = targetCandidates
         .filter((c) => isCandidateTiersTemps(c))
         .sort((a, b) => a.lastName.localeCompare(b.lastName));
 
       if (ttStudents.length === 0) {
         onShowNotification(
-          `♿ Salle "${toggledRoom.name}" définie en Salle Tiers-Temps pour cette épreuve. Aucun élève PAP/PPS/Tiers-Temps détecté dans les candidats ciblés.`
+          `♿ Salle "${toggledRoom.name}" définie en Salle Tiers-Temps. Aucun élève PAP/PPS/Tiers-Temps détecté dans les candidats ciblés.`
         );
         return;
       }
@@ -518,7 +673,7 @@ export default function OrganizationSection({
       let tableNum = 1;
       const assignmentMap = new Map<
         string,
-        { roomName: string; tableNumber: string; anonymatNumber: string }
+        { roomName: string; tableNumber: string; anonymatNumber: string; slot: CmsExamSlot | null }
       >();
 
       ttStudents.forEach((st, idx) => {
@@ -528,11 +683,13 @@ export default function OrganizationSection({
         const anon =
           existingAssign.anonymatNumber ||
           `${anonymatPrefix}TT${String(idx + 1).padStart(3, "0")}`;
+        const destSlot = activeSlots.length > 0 ? pickBestSlotForCandidate(st, activeSlots) : null;
 
         assignmentMap.set(st.id, {
           roomName: destRoom.name,
           tableNumber: String(tableNum),
           anonymatNumber: anon,
+          slot: destSlot,
         });
 
         tableNum++;
@@ -545,12 +702,23 @@ export default function OrganizationSection({
       const updatedCandidates = candidates.map((c) => {
         const assign = assignmentMap.get(c.id);
         if (!assign) return c;
-        return applyAssignmentToCandidate(c, assign);
+        // Clear any old assignment on other activeSlots before moving to TT slot
+        let base = c;
+        if (activeSlots.length > 0 && c.assignmentsBySlot) {
+          const nextBySlot = { ...c.assignmentsBySlot };
+          activeSlots.forEach((s) => delete nextBySlot[s.id]);
+          base = { ...c, assignmentsBySlot: nextBySlot };
+        }
+        return applyAssignmentToCandidateForSlot(
+          base,
+          { roomName: assign.roomName, tableNumber: assign.tableNumber, anonymatNumber: assign.anonymatNumber },
+          assign.slot
+        );
       });
 
       onSetCandidates(updatedCandidates);
       onShowNotification(
-        `♿ Salle "${toggledRoom.name}" définie en Tiers-Temps${selectedSlot ? ` (${selectedSlot.subject})` : ""} : ${ttStudents.length} élève(s) PAP/PPS/TT affecté(s) !`
+        `♿ Salle "${toggledRoom.name}" définie en Tiers-Temps : ${ttStudents.length} élève(s) PAP/PPS/TT affecté(s) !`
       );
     } else if (toggledRoom) {
       onShowNotification(`Salle "${toggledRoom.name}" repassée en salle Standard.`);
@@ -570,7 +738,7 @@ export default function OrganizationSection({
   const [manualSearchTerm, setManualSearchTerm] = useState<string>("");
   const [inspectingRoomName, setInspectingRoomName] = useState<string | null>(null);
 
-  // Summary by class for the TARGET candidates of the selected slot/exam
+  // Summary by class for the TARGET candidates
   const classBreakdown = useMemo(() => {
     const map = new Map<string, number>();
     targetCandidates.forEach((c) => {
@@ -580,17 +748,37 @@ export default function OrganizationSection({
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [targetCandidates]);
 
-  // Selected mobilized rooms for this active slot (or exam)
+  // Deduplicated mobilized rooms across active checked slots (or exam)
   const selectedRooms = useMemo(() => {
     return rooms.filter((r) => selectedRoomIds.includes(r.id));
   }, [rooms, selectedRoomIds]);
 
-  // Total capacity of chosen rooms based on custom quotas
-  const selectedCapacity = useMemo(() => {
-    return selectedRooms.reduce((acc, r) => acc + getRoomQuota(r), 0);
-  }, [selectedRooms, getRoomQuota]);
+  // Dual capacity stats (Standard vs Tiers-Temps +1/3)
+  const capacityStats = useMemo(() => {
+    const stdRooms = selectedRooms.filter((r) => !ttRoomIds.includes(r.id));
+    const ttRoomsList = selectedRooms.filter((r) => ttRoomIds.includes(r.id));
+    const stdCapacity = stdRooms.reduce((acc, r) => acc + getRoomQuota(r), 0);
+    const ttCapacity = ttRoomsList.reduce((acc, r) => acc + getRoomQuota(r), 0);
+    const totalCapacity = stdCapacity + ttCapacity;
 
-  // Breakdown by room strictly for the assignments of the SELECTED slot (or exam)
+    const ttStudentsCount = targetCandidates.filter((c) => separateTT && isCandidateTiersTemps(c)).length;
+    const stdStudentsCount = targetCandidates.length - ttStudentsCount;
+
+    return {
+      stdRoomsCount: stdRooms.length,
+      ttRoomsCount: ttRoomsList.length,
+      stdCapacity,
+      ttCapacity,
+      totalCapacity,
+      stdStudentsCount,
+      ttStudentsCount,
+      totalStudentsCount: targetCandidates.length,
+    };
+  }, [selectedRooms, ttRoomIds, getRoomQuota, targetCandidates, separateTT]);
+
+  const selectedCapacity = capacityStats.totalCapacity;
+
+  // Deduplicated breakdown by physical room across checked slot(s)
   const roomBreakdown = useMemo(() => {
     const roomsToDisplay = showAllSchoolRooms
       ? rooms
@@ -624,12 +812,12 @@ export default function OrganizationSection({
     getRoomQuota,
   ]);
 
-  // Main algorithm to dispatch candidates strictly for the ACTIVE slot (or exam) into its SELECTED rooms
+  // Main algorithm to dispatch deduplicated candidates across checked slot(s) into deduplicated Standard & TT rooms
   const handleRunDispatch = () => {
     if (targetCandidates.length === 0) {
       alert(
-        selectedSlot
-          ? `Aucun candidat disponible pour l'épreuve "${selectedSlot.subject}" (${selectedSlot.date}). Vérifiez le niveau/spécialité ou les élèves déjà affectés sur un créneau parallèle.`
+        activeSlots.length > 0
+          ? `Aucun candidat disponible pour les épreuves sélectionnées (${formatDisplayDateFr(selectedDate)}). Vérifiez les niveaux/spécialités ou les affectations déjà prises sur un autre créneau.`
           : selectedExam
             ? `Aucun candidat ne correspond au niveau "${selectedExam.targetLevel}" ciblé par l'examen "${selectedExam.title}".`
             : "Aucun candidat importé."
@@ -638,8 +826,8 @@ export default function OrganizationSection({
     }
     if (selectedRooms.length === 0) {
       alert(
-        selectedSlot
-          ? `Aucune salle sélectionnée pour l'épreuve "${selectedSlot.subject}". Cliquez sur "+ Afficher toutes les salles" pour en mobiliser au moins une.`
+        activeSlots.length > 0
+          ? `Aucune salle sélectionnée pour cette sélection d'épreuves. Cliquez sur "+ Afficher toutes les salles" pour en mobiliser au moins une.`
           : "Aucune salle sélectionnée pour cet examen. Veuillez cocher au moins une salle mobilisée."
       );
       return;
@@ -647,7 +835,7 @@ export default function OrganizationSection({
 
     if (selectedCapacity < targetCandidates.length) {
       const confirmProceed = confirm(
-        `Attention : La capacité des salles sélectionnées (${selectedCapacity} places) est inférieure au nombre d'élèves ciblés (${targetCandidates.length} élèves). Voulez-vous tout de même continuer ?`
+        `Attention : La capacité cumulée des salles sélectionnées (${selectedCapacity} places) est inférieure au nombre d'élèves ciblés (${targetCandidates.length} élèves). Voulez-vous tout de même continuer ?`
       );
       if (!confirmProceed) return;
     }
@@ -674,59 +862,79 @@ export default function OrganizationSection({
     let globalAnonymatIndex = 101;
     const examTitle = selectedExam ? selectedExam.title : "Examen Blanc";
 
+    // Collision-free continuous table number counter per physical room name
+    const nextTableByRoom: Record<string, number> = {};
+    const takeNextTable = (roomName: string): string => {
+      const next = nextTableByRoom[roomName] || 1;
+      nextTableByRoom[roomName] = next + 1;
+      return String(next);
+    };
+
     const applyStudentAssignment = (
       student: CmsCandidate,
       roomName: string,
-      tableNumber: string,
       anonymatNumber: string
     ): CmsCandidate => {
-      return applyAssignmentToCandidate(student, { roomName, tableNumber, anonymatNumber });
+      // Clear any previous entry in activeSlots first so a candidate is never double-assigned across checked overlapping slots
+      let cleanedStudent = student;
+      if (activeSlots.length > 0 && student.assignmentsBySlot) {
+        const nextBySlot = { ...student.assignmentsBySlot };
+        activeSlots.forEach((s) => delete nextBySlot[s.id]);
+        cleanedStudent = { ...student, assignmentsBySlot: nextBySlot };
+      }
+      const destSlot =
+        activeSlots.length > 0 ? pickBestSlotForCandidate(cleanedStudent, activeSlots) : null;
+      return applyAssignmentToCandidateForSlot(
+        cleanedStudent,
+        { roomName, tableNumber: takeNextTable(roomName), anonymatNumber },
+        destSlot
+      );
     };
 
-    // 1. Assign TT students into chosen TT rooms
+    // 1. Prioritize Tiers-Temps students into TT room(s)
     if (ttCandidates.length > 0) {
       let currentTTRoomIdx = 0;
-      let currentTTTable = 1;
+      let countInCurrTT = 0;
 
       ttCandidates.sort((a, b) => a.lastName.localeCompare(b.lastName));
       ttCandidates.forEach((student) => {
         const room = finalTtRooms[currentTTRoomIdx] || selectedRooms[0];
         const roomLimit = getRoomQuota(room);
-        const existingAnon = getActiveAssignment(student).anonymatNumber;
-        const anon = existingAnon || `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
-        updatedCandidates.push(
-          applyStudentAssignment(student, room.name, String(currentTTTable), anon)
-        );
-
-        currentTTTable++;
-        globalAnonymatIndex++;
-        if (currentTTTable > roomLimit && currentTTRoomIdx < finalTtRooms.length - 1) {
+        if (countInCurrTT >= roomLimit && currentTTRoomIdx < finalTtRooms.length - 1) {
           currentTTRoomIdx++;
-          currentTTTable = 1;
+          countInCurrTT = 0;
         }
+        const activeRoom = finalTtRooms[currentTTRoomIdx] || selectedRooms[0];
+        const existingAnon = getActiveAssignment(student).anonymatNumber;
+        const anon =
+          existingAnon || `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
+        updatedCandidates.push(applyStudentAssignment(student, activeRoom.name, anon));
+        countInCurrTT++;
+        globalAnonymatIndex++;
       });
     }
 
-    // 2. Assign Regular students according to selected dispatchMode
+    // 2. Dispatch Standard candidates respecting dispatchMode
     const assignGroupedBlocks = (groups: CmsCandidate[][]) => {
       if (finalStdRooms.length >= groups.length && groups.length > 1) {
         let roomCursor = 0;
         groups.forEach((group) => {
-          let tableNum = 1;
+          let countInRoom = 0;
           group.forEach((student) => {
             const room = finalStdRooms[roomCursor] || finalStdRooms[finalStdRooms.length - 1];
             const limit = getRoomQuota(room);
-            if (tableNum > limit && roomCursor < finalStdRooms.length - 1) {
+            if (countInRoom >= limit && roomCursor < finalStdRooms.length - 1) {
               roomCursor++;
-              tableNum = 1;
+              countInRoom = 0;
             }
-            const activeRoom = finalStdRooms[roomCursor] || finalStdRooms[finalStdRooms.length - 1];
+            const activeRoom =
+              finalStdRooms[roomCursor] || finalStdRooms[finalStdRooms.length - 1];
             const existingAnon = getActiveAssignment(student).anonymatNumber;
-            const anon = existingAnon || `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
-            updatedCandidates.push(
-              applyStudentAssignment(student, activeRoom.name, String(tableNum), anon)
-            );
-            tableNum++;
+            const anon =
+              existingAnon ||
+              `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
+            updatedCandidates.push(applyStudentAssignment(student, activeRoom.name, anon));
+            countInRoom++;
             globalAnonymatIndex++;
           });
           if (roomCursor < finalStdRooms.length - 1) {
@@ -736,21 +944,21 @@ export default function OrganizationSection({
       } else {
         const flat = groups.flat();
         let roomIdx = 0;
-        let tableNum = 1;
+        let countInRoom = 0;
         flat.forEach((student) => {
           const room = finalStdRooms[roomIdx] || selectedRooms[0];
           const limit = getRoomQuota(room);
-          const existingAnon = getActiveAssignment(student).anonymatNumber;
-          const anon = existingAnon || `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
-          updatedCandidates.push(
-            applyStudentAssignment(student, room.name, String(tableNum), anon)
-          );
-          tableNum++;
-          globalAnonymatIndex++;
-          if (tableNum > limit && roomIdx < finalStdRooms.length - 1) {
+          if (countInRoom >= limit && roomIdx < finalStdRooms.length - 1) {
             roomIdx++;
-            tableNum = 1;
+            countInRoom = 0;
           }
+          const activeRoom = finalStdRooms[roomIdx] || selectedRooms[0];
+          const existingAnon = getActiveAssignment(student).anonymatNumber;
+          const anon =
+            existingAnon || `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
+          updatedCandidates.push(applyStudentAssignment(student, activeRoom.name, anon));
+          countInRoom++;
+          globalAnonymatIndex++;
         });
       }
     };
@@ -813,32 +1021,33 @@ export default function OrganizationSection({
       }
 
       let currentStdRoomIdx = 0;
-      let currentStdTable = 1;
+      let countInStdRoom = 0;
 
       sortedRegular.forEach((student) => {
         const room = finalStdRooms[currentStdRoomIdx] || selectedRooms[0];
         const roomLimit = getRoomQuota(room);
-        const existingAnon = getActiveAssignment(student).anonymatNumber;
-        const anon = existingAnon || `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
-        updatedCandidates.push(
-          applyStudentAssignment(student, room.name, String(currentStdTable), anon)
-        );
-
-        currentStdTable++;
-        globalAnonymatIndex++;
-        if (currentStdTable > roomLimit && currentStdRoomIdx < finalStdRooms.length - 1) {
+        if (countInStdRoom >= roomLimit && currentStdRoomIdx < finalStdRooms.length - 1) {
           currentStdRoomIdx++;
-          currentStdTable = 1;
+          countInStdRoom = 0;
         }
+        const activeRoom = finalStdRooms[currentStdRoomIdx] || selectedRooms[0];
+        const existingAnon = getActiveAssignment(student).anonymatNumber;
+        const anon =
+          existingAnon || `${anonymatPrefix}${String(globalAnonymatIndex).padStart(4, "0")}`;
+        updatedCandidates.push(applyStudentAssignment(student, activeRoom.name, anon));
+        countInStdRoom++;
+        globalAnonymatIndex++;
       });
     }
 
-    if (selectedSlot) {
-      onUpdateExamSlot?.(selectedSlot.id, {
-        roomNames: selectedRooms.map((r) => r.name),
-        ttRoomIds,
-        anonymatPrefix,
-        dispatchMode,
+    if (activeSlots.length > 0) {
+      activeSlots.forEach((sl) => {
+        onUpdateExamSlot?.(sl.id, {
+          roomNames: selectedRooms.map((r) => r.name),
+          ttRoomIds,
+          anonymatPrefix,
+          dispatchMode,
+        });
       });
     } else if (selectedExam) {
       onUpdateExam?.(selectedExam.id, {
@@ -851,9 +1060,11 @@ export default function OrganizationSection({
 
     onSetCandidates([...nonTargetCandidates, ...updatedCandidates]);
     onShowNotification(
-      selectedSlot
-        ? `🎉 Répartition réussie pour « ${selectedSlot.subject} » (${formatDisplayDateFr(selectedSlot.date)}) : ${updatedCandidates.length} élève(s) dans ${selectedRooms.length} salle(s).`
-        : `🎉 Répartition réussie pour "${examTitle}" ! ${updatedCandidates.length} élève(s) (${ttCandidates.length} Tiers-Temps) répartis dans ${selectedRooms.length} salle(s).`
+      activeSlots.length > 1
+        ? `🎉 Brassage groupé réussi sur ${activeSlots.length} épreuves (${formatDisplayDateFr(selectedDate)}) : ${updatedCandidates.length} élève(s) réparti(s) sans doublon dans ${selectedRooms.length} salle(s).`
+        : primarySlot
+          ? `🎉 Répartition réussie pour « ${primarySlot.subject} » (${formatDisplayDateFr(primarySlot.date)}) : ${updatedCandidates.length} élève(s) dans ${selectedRooms.length} salle(s).`
+          : `🎉 Répartition réussie pour "${examTitle}" ! ${updatedCandidates.length} élève(s) (${ttCandidates.length} Tiers-Temps) répartis dans ${selectedRooms.length} salle(s).`
     );
   };
 
@@ -908,6 +1119,14 @@ export default function OrganizationSection({
     let totalAssignmentsCount = 0;
     const skippedNoRooms: string[] = [];
     const skippedNoEligible: string[] = [];
+    const nextTableByWindowRoom: Record<string, number> = {};
+
+    const takeWindowTable = (date: string, startTime: string, roomName: string): string => {
+      const key = `${(date || "").trim()}::${(startTime || "").trim()}::${roomName.trim().toLowerCase()}`;
+      const next = nextTableByWindowRoom[key] || 1;
+      nextTableByWindowRoom[key] = next + 1;
+      return String(next);
+    };
 
     for (const slot of currentExamSlots) {
       // 1. Resolve mobilized rooms strictly for THIS slot
@@ -1017,21 +1236,27 @@ export default function OrganizationSection({
 
       if (slotTT.length > 0) {
         let ttRoomIdx = 0;
-        let ttTable = 1;
+        let ttCountInRoom = 0;
         slotTT.forEach((student) => {
           const rm = finalTtRooms[ttRoomIdx] || slotRooms[0];
           const limit = getSlotRoomLimit(rm);
+          if (ttCountInRoom >= limit && ttRoomIdx < finalTtRooms.length - 1) {
+            ttRoomIdx++;
+            ttCountInRoom = 0;
+          }
+          const activeRm = finalTtRooms[ttRoomIdx] || slotRooms[0];
           const existingAnon =
             student.assignmentsBySlot?.[slot.id]?.anonymatNumber ||
             student.anonymatNumber ||
             `${slotPrefix}${String(anonIdx).padStart(4, "0")}`;
-          recordSlotAssign(student, rm.name, String(ttTable), existingAnon);
-          ttTable++;
+          recordSlotAssign(
+            student,
+            activeRm.name,
+            takeWindowTable(slot.date, slot.startTime, activeRm.name),
+            existingAnon
+          );
+          ttCountInRoom++;
           anonIdx++;
-          if (ttTable > limit && ttRoomIdx < finalTtRooms.length - 1) {
-            ttRoomIdx++;
-            ttTable = 1;
-          }
         });
       }
 
@@ -1086,21 +1311,27 @@ export default function OrganizationSection({
       }
 
       let stdRoomIdx = 0;
-      let stdTable = 1;
+      let stdCountInRoom = 0;
       orderedStd.forEach((student) => {
         const rm = finalStdRooms[stdRoomIdx] || slotRooms[0];
         const limit = getSlotRoomLimit(rm);
+        if (stdCountInRoom >= limit && stdRoomIdx < finalStdRooms.length - 1) {
+          stdRoomIdx++;
+          stdCountInRoom = 0;
+        }
+        const activeRm = finalStdRooms[stdRoomIdx] || slotRooms[0];
         const existingAnon =
           student.assignmentsBySlot?.[slot.id]?.anonymatNumber ||
           student.anonymatNumber ||
           `${slotPrefix}${String(anonIdx).padStart(4, "0")}`;
-        recordSlotAssign(student, rm.name, String(stdTable), existingAnon);
-        stdTable++;
+        recordSlotAssign(
+          student,
+          activeRm.name,
+          takeWindowTable(slot.date, slot.startTime, activeRm.name),
+          existingAnon
+        );
+        stdCountInRoom++;
         anonIdx++;
-        if (stdTable > limit && stdRoomIdx < finalStdRooms.length - 1) {
-          stdRoomIdx++;
-          stdTable = 1;
-        }
       });
 
       onUpdateExamSlot?.(slot.id, {
@@ -1132,39 +1363,76 @@ export default function OrganizationSection({
     }
 
     const confirmed = confirm(
-      selectedSlot
-        ? `Voulez-vous réinitialiser l'affectation des salles pour l'épreuve "${selectedSlot.subject}" du ${formatDisplayDateFr(selectedSlot.date)} ?\n\nCela n'affectera ni les autres épreuves, ni les autres sessions.`
-        : selectedExam
-          ? `Voulez-vous réinitialiser l'affectation des élèves de la session "${selectedExam.title}" (${targetCandidates.length} élèves) ?\n\nCela effacera uniquement les salles attribuées pour cette session, sans toucher aux autres sessions ni supprimer les fiches élèves.`
-          : "Voulez-vous réinitialiser l'affectation des élèves ?"
+      activeSlots.length > 1
+        ? `Voulez-vous réinitialiser l'affectation des salles pour les ${activeSlots.length} épreuves cochées du ${formatDisplayDateFr(selectedDate)} ?\n\nCela n'affectera ni les autres dates, ni les autres sessions.`
+        : primarySlot
+          ? `Voulez-vous réinitialiser l'affectation des salles pour l'épreuve "${primarySlot.subject}" du ${formatDisplayDateFr(primarySlot.date)} ?\n\nCela n'affectera ni les autres épreuves, ni les autres sessions.`
+          : selectedExam
+            ? `Voulez-vous réinitialiser l'affectation des élèves de la session "${selectedExam.title}" (${targetCandidates.length} élèves) ?\n\nCela effacera uniquement les salles attribuées pour cette session, sans toucher aux autres sessions ni supprimer les fiches élèves.`
+            : "Voulez-vous réinitialiser l'affectation des élèves ?"
     );
     if (!confirmed) return;
 
-    if (selectedSlot) {
+    if (activeSlots.length > 0) {
+      const resetSlotIds = new Set(activeSlots.map((s) => s.id));
       const examSlotIdSet = new Set(currentExamSlots.map((s) => s.id));
       const resetCandidates = candidates.map((c) => {
-        if (!c.assignmentsBySlot?.[selectedSlot.id]) return c;
-        const nextBySlot = { ...c.assignmentsBySlot };
-        delete nextBySlot[selectedSlot.id];
+        const hadAnyInResetSlots = Boolean(
+          c.assignmentsBySlot && activeSlots.some((s) => Boolean(c.assignmentsBySlot?.[s.id]))
+        );
+        const isEligibleInScope = slotEligibleAllCandidates.some((sc) => sc.id === c.id);
+
+        if (!hadAnyInResetSlots && !isEligibleInScope) return c;
+
+        const nextBySlot = { ...(c.assignmentsBySlot || {}) };
+        resetSlotIds.forEach((sId) => {
+          delete nextBySlot[sId];
+        });
 
         const stillHasSlotInExam = Object.entries(nextBySlot).some(
           ([sId, a]) =>
             Boolean(a?.roomName) &&
             ((selectedExam && a.examId === selectedExam.id) || examSlotIdSet.has(sId))
         );
+
         const nextByExam = { ...(c.assignmentsByExam || {}) };
         if (!stillHasSlotInExam && selectedExam) {
           delete nextByExam[selectedExam.id];
+          const examTitleNorm = selectedExam.title.trim().toLowerCase();
+          Object.keys(nextByExam).forEach((k) => {
+            if (k.trim().toLowerCase() === examTitleNorm) delete nextByExam[k];
+          });
         }
+
+        // CRITICAL FIX: if candidate no longer has ANY slot left in this exam,
+        // clear legacy roomName/tableNumber/anonymatNumber (or restore from another remaining exam)
+        // so getActiveAssignment falls back cleanly to 0 / quota!
+        if (!stillHasSlotInExam) {
+          const remainingExamKeys = Object.keys(nextByExam);
+          const fallbackAssign =
+            remainingExamKeys.length > 0 ? nextByExam[remainingExamKeys[0]] : null;
+          return {
+            ...c,
+            assignmentsBySlot: nextBySlot,
+            assignmentsByExam: nextByExam,
+            roomName: fallbackAssign ? fallbackAssign.roomName : "",
+            tableNumber: fallbackAssign ? fallbackAssign.tableNumber : "",
+            anonymatNumber: fallbackAssign ? fallbackAssign.anonymatNumber : "",
+          };
+        }
+
         return {
           ...c,
           assignmentsBySlot: nextBySlot,
           assignmentsByExam: nextByExam,
         };
       });
+      setInspectingRoomName(null);
       onSetCandidates(resetCandidates);
       onShowNotification(
-        `Le brassage a été réinitialisé pour « ${selectedSlot.subject} » (${formatDisplayDateFr(selectedSlot.date)}).`
+        activeSlots.length > 1
+          ? `🔄 Réinitialisation complète pour les ${activeSlots.length} épreuves cochées (0 élève affecté).`
+          : `🔄 Le brassage a été réinitialisé pour « ${primarySlot?.subject || "l'épreuve"} » (0 élève affecté).`
       );
       return;
     }
@@ -1186,9 +1454,10 @@ export default function OrganizationSection({
         anonymatNumber: fallbackAssign ? fallbackAssign.anonymatNumber : "",
       };
     });
+    setInspectingRoomName(null);
     onSetCandidates(resetCandidates);
     onShowNotification(
-      `Le brassage a été réinitialisé pour "${selectedExam?.title || "la session"}".`
+      `🔄 Le brassage a été réinitialisé pour "${selectedExam?.title || "la session"}" (0 élève affecté).`
     );
   };
 
@@ -1227,7 +1496,7 @@ export default function OrganizationSection({
   }, [slotEligibleAllCandidates, manualClassFilter, manualSearchTerm]);
 
   const handleToggleManualCandidate = (id: string) => {
-    if (selectedSlot && occupiedInParallelSlots.has(id)) {
+    if (activeSlots.length > 0 && occupiedInParallelSlots.has(id)) {
       return;
     }
     setManualSelectedIds((prev) =>
@@ -1245,14 +1514,14 @@ export default function OrganizationSection({
       return;
     }
 
-    if (selectedSlot) {
+    if (activeSlots.length > 0) {
       const blocked = candidates.filter((c) => {
         if (!manualSelectedIds.includes(c.id)) return false;
-        return !canAssignCandidateToSlot(c, selectedSlot, currentExamSlots).allowed;
+        return occupiedInParallelSlots.has(c.id);
       });
       if (blocked.length > 0) {
         alert(
-          `Double affectation interdite : ${blocked.map((b) => `${b.lastName} ${b.firstName}`).join(", ")} est déjà affecté(e) à une autre épreuve sur le même créneau horaire (${selectedSlot.startTime}–${selectedSlot.endTime}).`
+          `Double affectation interdite : ${blocked.map((b) => `${b.lastName} ${b.firstName}`).join(", ")} est déjà affecté(e) à une autre épreuve sur le même créneau horaire.`
         );
         return;
       }
@@ -1287,20 +1556,35 @@ export default function OrganizationSection({
       const anon =
         getActiveAssignment(c).anonymatNumber ||
         `${anonymatPrefix}${String(100 + idx + 1).padStart(4, "0")}`;
-      return applyAssignmentToCandidate(c, {
-        roomName: manualTargetRoomName,
-        tableNumber: assignedTable,
-        anonymatNumber: anon,
-      });
+      let base = c;
+      if (activeSlots.length > 0 && c.assignmentsBySlot) {
+        const nextBySlot = { ...c.assignmentsBySlot };
+        activeSlots.forEach((s) => delete nextBySlot[s.id]);
+        base = { ...c, assignmentsBySlot: nextBySlot };
+      }
+      const destSlot = activeSlots.length > 0 ? pickBestSlotForCandidate(base, activeSlots) : null;
+      return applyAssignmentToCandidateForSlot(
+        base,
+        {
+          roomName: manualTargetRoomName,
+          tableNumber: assignedTable,
+          anonymatNumber: anon,
+        },
+        destSlot
+      );
     });
 
-    // Ensure target room is marked mobilized for this slot/exam
     const destRoomObj = rooms.find((r) => r.name === manualTargetRoomName);
-    if (selectedSlot && destRoomObj && !selectedRoomIds.includes(destRoomObj.id)) {
-      const nextMobilized = [...selectedRoomIds, destRoomObj.id];
-      setSlotRoomMap((prev) => ({ ...prev, [selectedSlot.id]: nextMobilized }));
-      const nextNames = rooms.filter((r) => nextMobilized.includes(r.id)).map((r) => r.name);
-      onUpdateExamSlot?.(selectedSlot.id, { roomNames: nextNames });
+    if (activeSlots.length > 0 && destRoomObj && !selectedRoomIds.includes(destRoomObj.id)) {
+      activeSlots.forEach((sl) => {
+        const curIds = getRoomIdsForSlot(sl);
+        if (!curIds.includes(destRoomObj.id)) {
+          const nextMobilized = [...curIds, destRoomObj.id];
+          setSlotRoomMap((prev) => ({ ...prev, [sl.id]: nextMobilized }));
+          const nextNames = rooms.filter((r) => nextMobilized.includes(r.id)).map((r) => r.name);
+          onUpdateExamSlot?.(sl.id, { roomNames: nextNames });
+        }
+      });
     } else if (selectedExam && destRoomObj && !selectedRoomIds.includes(destRoomObj.id)) {
       const nextMobilized = [...selectedRoomIds, destRoomObj.id];
       setExamRoomMap((prev) => ({ ...prev, [selectedExam.id]: nextMobilized }));
@@ -1309,7 +1593,7 @@ export default function OrganizationSection({
 
     onSetCandidates(updated);
     onShowNotification(
-      `✅ ${selectedObjects.length} élève(s) affecté(s) dans ${manualTargetRoomName}${selectedSlot ? ` (${selectedSlot.subject})` : ` pour "${examTitle}"`}.`
+      `✅ ${selectedObjects.length} élève(s) affecté(s) dans ${manualTargetRoomName}${primarySlot ? ` (${activeSlots.map((s) => s.subject).join(", ")})` : ` pour "${examTitle}"`}.`
     );
     setIsManualAssignOpen(false);
     setManualSelectedIds([]);
@@ -1320,12 +1604,31 @@ export default function OrganizationSection({
     const targetCandidate = candidates.find((c) => c.id === candidateId);
     const updated = candidates.map((c) => {
       if (c.id !== candidateId) return c;
-      if (selectedSlot) {
+      if (activeSlots.length > 0) {
         const nextBySlot = { ...(c.assignmentsBySlot || {}) };
-        delete nextBySlot[selectedSlot.id];
+        activeSlots.forEach((s) => delete nextBySlot[s.id]);
+        const examSlotIdSet = new Set(currentExamSlots.map((s) => s.id));
+        const stillHasSlot = Object.entries(nextBySlot).some(
+          ([sId, a]) =>
+            Boolean(a?.roomName) &&
+            ((selectedExam && a.examId === selectedExam.id) || examSlotIdSet.has(sId))
+        );
+        const nextByExam = { ...(c.assignmentsByExam || {}) };
+        if (!stillHasSlot && selectedExam) {
+          delete nextByExam[selectedExam.id];
+          return {
+            ...c,
+            assignmentsBySlot: nextBySlot,
+            assignmentsByExam: nextByExam,
+            roomName: "",
+            tableNumber: "",
+            anonymatNumber: "",
+          };
+        }
         return {
           ...c,
           assignmentsBySlot: nextBySlot,
+          assignmentsByExam: nextByExam,
         };
       }
       const nextByExam = { ...(c.assignmentsByExam || {}) };
@@ -1344,11 +1647,148 @@ export default function OrganizationSection({
     });
     onSetCandidates(updated);
     onShowNotification(
-      `Élève ${targetCandidate?.lastName} retiré(e) de la salle${selectedSlot ? ` pour « ${selectedSlot.subject} »` : ""}.`
+      `Élève ${targetCandidate?.lastName} retiré(e) de la salle.`
     );
   };
 
-  // --- AUTOMATIC SUPERVISOR DISPATCH ALGORITHM ---
+  // --- CONSOLIDATED PHYSICAL ROOM × TIME WINDOW MODEL FOR TAB 2 (SURVEILLANTS) ---
+  interface ConsolidatedRoomUnit {
+    room: CmsRoom;
+    hostedSlots: CmsExamSlot[];
+    subjects: string[];
+    isTT: boolean;
+    effectiveEndTime: string;
+    effectiveTimeSlot: string;
+    durationMinutes: number;
+    examTitle: string;
+    primarySlot: CmsExamSlot;
+  }
+
+  interface ConsolidatedTimeWindow {
+    windowKey: string;
+    date: string;
+    startTime: string;
+    baseEndTime: string;
+    slots: CmsExamSlot[];
+    roomUnits: ConsolidatedRoomUnit[];
+  }
+
+  const consolidatedTimeWindows: ConsolidatedTimeWindow[] = useMemo(() => {
+    const filtered = (
+      selectedSlotId === "all"
+        ? examSlots
+        : examSlots.filter((s) => s.id === selectedSlotId)
+    ).slice();
+
+    filtered.sort((a, b) => {
+      const d = (a.date || "").localeCompare(b.date || "");
+      if (d !== 0) return d;
+      const t = (a.startTime || "").localeCompare(b.startTime || "");
+      if (t !== 0) return t;
+      return (a.subject || "").localeCompare(b.subject || "");
+    });
+
+    const windowMap = new Map<string, CmsExamSlot[]>();
+    filtered.forEach((slot) => {
+      const key = `${slot.date || ""}::${slot.startTime || ""}`;
+      if (!windowMap.has(key)) windowMap.set(key, []);
+      windowMap.get(key)!.push(slot);
+    });
+
+    return Array.from(windowMap.entries()).map(([windowKey, slotsInWin]) => {
+      const date = slotsInWin[0]?.date || "";
+      const startTime = slotsInWin[0]?.startTime || "08:00";
+      const baseEndTime =
+        slotsInWin
+          .map((s) => s.endTime || "")
+          .sort()
+          .pop() || "10:00";
+
+      // Deduplicate unique physical rooms across all simultaneous slots in this window
+      const roomToSlots = new Map<string, CmsExamSlot[]>();
+      slotsInWin.forEach((sl) => {
+        const roomNamesForSlot =
+          sl.roomNames && sl.roomNames.length > 0
+            ? sl.roomNames
+            : selectedRooms.map((r) => r.name);
+        roomNamesForSlot.forEach((rn) => {
+          const matchedRoom = rooms.find(
+            (r) => r.name.trim().toLowerCase() === rn.trim().toLowerCase()
+          );
+          if (!matchedRoom) return;
+          if (!roomToSlots.has(matchedRoom.id)) roomToSlots.set(matchedRoom.id, []);
+          roomToSlots.get(matchedRoom.id)!.push(sl);
+        });
+      });
+
+      const roomUnits: ConsolidatedRoomUnit[] = rooms
+        .filter((r) => roomToSlots.has(r.id))
+        .map((room) => {
+          const hostedSlots = roomToSlots.get(room.id) || [];
+          const subjects = Array.from(new Set(hostedSlots.map((s) => s.subject).filter(Boolean)));
+          const parentExam = exams.find((e) =>
+            hostedSlots.some(
+              (hs) =>
+                hs.examId === e.id ||
+                hs.examTitle.trim().toLowerCase() === e.title.trim().toLowerCase()
+            )
+          );
+          const hasTTCandidate = candidates.some(
+            (c) =>
+              isCandidateTiersTemps(c) &&
+              hostedSlots.some(
+                (hs) =>
+                  (c.assignmentsBySlot?.[hs.id]?.roomName || "").trim().toLowerCase() ===
+                  room.name.trim().toLowerCase()
+              )
+          );
+          const isTT =
+            hasTTCandidate || isRoomMarkedTiersTemps(room, hostedSlots, parentExam || selectedExam);
+
+          const maxBaseDur = Math.max(
+            60,
+            ...hostedSlots.map((s) => Number(s.durationMinutes) || 60)
+          );
+          const roomBaseEnd =
+            hostedSlots
+              .map((s) => s.endTime || "")
+              .sort()
+              .pop() || baseEndTime;
+          const explicitTT = hostedSlots.find((s) => Boolean(s.tiersTempsEndTime))?.tiersTempsEndTime;
+          const effectiveEndTime = isTT
+            ? computeTiersTempsEndTimeColon(startTime, maxBaseDur, explicitTT)
+            : roomBaseEnd;
+          const effectiveTimeSlot = `${startTime} - ${effectiveEndTime}`;
+          const parsedRange = parseTimeRangeMinutes(effectiveTimeSlot);
+          const durationMinutes = parsedRange
+            ? Math.max(30, parsedRange.endMin - parsedRange.startMin)
+            : maxBaseDur;
+
+          return {
+            room,
+            hostedSlots,
+            subjects,
+            isTT,
+            effectiveEndTime,
+            effectiveTimeSlot,
+            durationMinutes,
+            examTitle: hostedSlots[0]?.examTitle || "",
+            primarySlot: hostedSlots[0],
+          };
+        });
+
+      return {
+        windowKey,
+        date,
+        startTime,
+        baseEndTime,
+        slots: slotsInWin,
+        roomUnits,
+      };
+    });
+  }, [examSlots, selectedSlotId, rooms, selectedRooms, exams, candidates, selectedExam]);
+
+  // --- AUTOMATIC SUPERVISOR DISPATCH (BY CONSOLIDATED PHYSICAL ROOM × TIME WINDOW) ---
   const handleAutoDispatchSurveillants = () => {
     if (!onSetSurveillances) return;
     if (teachers.length === 0) {
@@ -1356,106 +1796,176 @@ export default function OrganizationSection({
       return;
     }
     if (examSlots.length === 0) {
-      alert("Aucun créneau d'épreuve programmé. Programmez d'abord des créneaux dans l'Étape 3 : Créneaux des Épreuves.");
+      alert("Aucun créneau d'épreuve programmé. Programmez d'abord des créneaux dans l'Étape 4 : Créneaux des Épreuves.");
       return;
     }
 
-    // Keep count of assignments per teacher to ensure fairness
-    const teacherLoad: Record<string, number> = {};
+    // Track remaining surveillances if filtering a single slot
+    const targetWindowSlotIds = new Set(consolidatedTimeWindows.flatMap((w) => w.slots.map((s) => s.id)));
+    const targetWindowRoomDates = new Set(
+      consolidatedTimeWindows.flatMap((w) =>
+        w.roomUnits.map((u) => `${w.date}::${u.room.name.trim().toLowerCase()}`)
+      )
+    );
+
+    const keptSurveillances =
+      selectedSlotId === "all"
+        ? surveillances.filter((s) => s.roomName === "Renfort") // keep Renfort posts
+        : surveillances.filter(
+            (s) =>
+              !(
+                (s.slotId && targetWindowSlotIds.has(s.slotId)) ||
+                targetWindowRoomDates.has(`${s.date}::${(s.roomName || "").trim().toLowerCase()}`)
+              )
+          );
+
+    // Track cumulative assigned minutes per teacher across all preserved + newly created surveillances
+    const teacherMinutesLoad: Record<string, number> = {};
+    const teacherObjectByName = new Map<string, CmsTeacher>();
     teachers.forEach((t) => {
       const name = `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`;
-      teacherLoad[name] = 0;
+      teacherMinutesLoad[name] = 0;
+      teacherObjectByName.set(name, t);
     });
 
-    const newSurveillances: CmsSurveillance[] = [];
+    keptSurveillances.forEach((s) => {
+      const r = parseTimeRangeMinutes(s.timeSlot);
+      const mins = r ? Math.max(30, r.endMin - r.startMin) : 60;
+      if (s.teacherName && s.teacherName in teacherMinutesLoad) {
+        teacherMinutesLoad[s.teacherName] += mins;
+      }
+    });
 
-    // Slots to process: either selected slot or all slots
-    const targetSlots = selectedSlotId === "all"
-      ? examSlots
-      : examSlots.filter((s) => s.id === selectedSlotId);
+    const workingSurveillances: CmsSurveillance[] = [...keptSurveillances];
+    let assignedCount = 0;
+    let skippedNoTeacherCount = 0;
 
-    targetSlots.forEach((slot) => {
-      const mobilizedRooms = slot.roomNames && slot.roomNames.length > 0
-        ? rooms.filter((r) => slot.roomNames!.includes(r.name))
-        : rooms;
-
-      // Track teachers assigned on this exact slot to avoid double-booking
-      const assignedOnSlot = new Set<string>();
-
-      mobilizedRooms.forEach((room) => {
-        // Pick available teacher with lowest current load not yet assigned on this slot
-        const availableTeachers = [...teachers]
+    consolidatedTimeWindows.forEach((win) => {
+      win.roomUnits.forEach((unit) => {
+        // Teachers whose schedule does NOT overlap [startTime..effectiveEndTime] on win.date
+        const nonConflictingNames = teachers
           .map((t) => `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`)
-          .filter((name) => !assignedOnSlot.has(name))
-          .sort((a, b) => (teacherLoad[a] || 0) - (teacherLoad[b] || 0));
+          .filter(
+            (fullName) =>
+              !workingSurveillances.some(
+                (existing) =>
+                  existing.teacherName === fullName &&
+                  surveillancesTimeOverlap(existing.date, existing.timeSlot, win.date, unit.effectiveTimeSlot)
+              )
+          );
 
-        if (availableTeachers.length > 0) {
-          const chosen = availableTeachers[0];
-          assignedOnSlot.add(chosen);
-          teacherLoad[chosen] = (teacherLoad[chosen] || 0) + 1;
-
-          newSurveillances.push({
-            id: `surv-auto-${slot.id}-${room.id}-${Date.now()}-${Math.random()}`,
-            examTitle: slot.examTitle,
-            slotId: slot.id,
-            teacherName: chosen,
-            roomName: room.name,
-            date: slot.date,
-            timeSlot: `${slot.startTime} - ${slot.endTime}`,
-            mission: "Surveillant titulaire",
-          });
+        if (nonConflictingNames.length === 0) {
+          skippedNoTeacherCount++;
+          return;
         }
+
+        // Strongly prefer teachers who do NOT teach any of the subjects hosted in that room
+        const neutralSubjectTeachers = nonConflictingNames.filter((fullName) => {
+          const tObj = teacherObjectByName.get(fullName);
+          return !tObj || !teacherMatchesSlotSubjects(tObj.subject, unit.subjects);
+        });
+
+        const pool = neutralSubjectTeachers.length > 0 ? neutralSubjectTeachers : nonConflictingNames;
+        pool.sort((a, b) => (teacherMinutesLoad[a] || 0) - (teacherMinutesLoad[b] || 0));
+
+        const chosen = pool[0];
+        teacherMinutesLoad[chosen] = (teacherMinutesLoad[chosen] || 0) + unit.durationMinutes;
+
+        workingSurveillances.push({
+          id: `surv-auto-${unit.primarySlot.id}-${unit.room.id}-${Date.now()}-${assignedCount}`,
+          examTitle: unit.examTitle,
+          slotId: unit.primarySlot.id,
+          teacherName: chosen,
+          roomName: unit.room.name,
+          date: win.date,
+          timeSlot: unit.effectiveTimeSlot,
+          mission: unit.isTT
+            ? "Surveillant titulaire (Tiers-Temps +1/3)"
+            : "Surveillant titulaire",
+        });
+        assignedCount++;
       });
     });
 
-    // Merge with existing surveillances for other slots if filtering a single slot
-    if (selectedSlotId === "all") {
-      onSetSurveillances(newSurveillances);
-    } else {
-      const remaining = surveillances.filter((s) => s.slotId !== selectedSlotId);
-      onSetSurveillances([...remaining, ...newSurveillances]);
-    }
-
+    onSetSurveillances(workingSurveillances);
     onShowNotification(
-      `🎲 Brassage équitable des surveillants réussi ! ${newSurveillances.length} affectations générées sans conflits horaires.`
+      `🎲 Brassage équitable réussi : ${assignedCount} salle(s) physique(s) couverte(s) sans aucun conflit horaire${skippedNoTeacherCount > 0 ? ` (${skippedNoTeacherCount} salle(s) sans enseignant disponible)` : ""}.`
     );
   };
 
-  // Manual assign or change surveillant for a specific room & slot
-  const handleAssignTeacherToRoomSlot = (
-    slot: CmsExamSlot,
-    room: CmsRoom,
+  // Manual assign or change surveillant for a consolidated physical room × time window
+  const handleAssignTeacherToRoomWindow = (
+    unit: ConsolidatedRoomUnit,
+    date: string,
     teacherFullName: string
   ) => {
     if (!onSetSurveillances) return;
 
-    // Remove existing surveillance for this exact slot and room
+    // Remove existing surveillance rows matching this exact physical room overlapping this window
     const filtered = surveillances.filter(
       (s) =>
         !(
-          (s.slotId === slot.id || (s.date === slot.date && s.timeSlot.includes(slot.startTime))) &&
-          s.roomName === room.name
+          s.roomName.trim().toLowerCase() === unit.room.name.trim().toLowerCase() &&
+          surveillancesTimeOverlap(s.date, s.timeSlot, date, unit.effectiveTimeSlot)
         )
     );
 
     if (teacherFullName) {
       filtered.push({
-        id: `surv-${Date.now()}`,
-        examTitle: slot.examTitle,
-        slotId: slot.id,
+        id: `surv-${Date.now()}-${unit.room.id}`,
+        examTitle: unit.examTitle,
+        slotId: unit.primarySlot.id,
         teacherName: teacherFullName,
-        roomName: room.name,
-        date: slot.date,
-        timeSlot: `${slot.startTime} - ${slot.endTime}`,
-        mission: "Surveillant titulaire",
+        roomName: unit.room.name,
+        date,
+        timeSlot: unit.effectiveTimeSlot,
+        mission: unit.isTT
+          ? "Surveillant titulaire (Tiers-Temps +1/3)"
+          : "Surveillant titulaire",
       });
-      onShowNotification(`${teacherFullName} affecté(e) à ${room.name} (${slot.subject}).`);
+      onShowNotification(
+        `${teacherFullName} affecté(e) à ${unit.room.name} (${unit.effectiveTimeSlot}${unit.isTT ? " • TT" : ""}).`
+      );
     } else {
-      onShowNotification(`Surveillance retirée pour ${room.name}.`);
+      onShowNotification(`Surveillance retirée pour ${unit.room.name}.`);
     }
 
     onSetSurveillances(filtered);
   };
+
+  // Teacher equity summary for Tab 2
+  const teacherEquityStats = useMemo(() => {
+    const minutesByTeacher = new Map<string, number>();
+    surveillances.forEach((s) => {
+      if (!s.teacherName) return;
+      const r = parseTimeRangeMinutes(s.timeSlot);
+      const mins = r ? Math.max(30, r.endMin - r.startMin) : 60;
+      minutesByTeacher.set(s.teacherName, (minutesByTeacher.get(s.teacherName) || 0) + mins);
+    });
+    const values = Array.from(minutesByTeacher.values());
+    const minM = values.length > 0 ? Math.min(...values) : 0;
+    const maxM = values.length > 0 ? Math.max(...values) : 0;
+    const totalRooms = consolidatedTimeWindows.reduce((acc, w) => acc + w.roomUnits.length, 0);
+    const coveredRooms = consolidatedTimeWindows.reduce(
+      (acc, w) =>
+        acc +
+        w.roomUnits.filter((u) =>
+          surveillances.some(
+            (s) =>
+              s.roomName.trim().toLowerCase() === u.room.name.trim().toLowerCase() &&
+              surveillancesTimeOverlap(s.date, s.timeSlot, w.date, u.effectiveTimeSlot)
+          )
+        ).length,
+      0
+    );
+    return {
+      mobilizedCount: minutesByTeacher.size,
+      minLabel: formatMinutesToColon(minM).replace(":", "h"),
+      maxLabel: formatMinutesToColon(maxM).replace(":", "h"),
+      totalRooms,
+      coveredRooms,
+    };
+  }, [surveillances, consolidatedTimeWindows]);
 
   return (
     <div className="space-y-6">
@@ -1698,61 +2208,100 @@ export default function OrganizationSection({
                     </div>
                   </div>
 
-                  {/* 2B. Épreuves du jour sélectionné */}
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                      Épreuve / Créneau du {formatDisplayDateFr(selectedDate)} ({slotsForSelectedDate.length}) :
-                    </p>
+                  {/* 2B. Épreuves du jour sélectionné (Multi-sélection par cases à cocher) */}
+                  <div className="space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Épreuve(s) / Créneau(x) du {formatDisplayDateFr(selectedDate)} ({checkedSlotIds.length} cochée{checkedSlotIds.length > 1 ? "s" : ""} / {slotsForSelectedDate.length}) :
+                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {primarySlot && slotsForSelectedDate.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={handleCheckSameTimeWindow}
+                            className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#0F2A56] border border-blue-200 text-[11px] font-semibold transition cursor-pointer"
+                            title="Cocher automatiquement toutes les épreuves ayant lieu simultanément sur le même horaire"
+                          >
+                            Regrouper même créneau horaire
+                          </button>
+                        )}
+                        {slotsForSelectedDate.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={handleCheckAllDateSlots}
+                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition cursor-pointer"
+                          >
+                            Tout cocher ce jour
+                          </button>
+                        )}
+                        {isMultiSlotMode && primarySlot && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDispatchSlotId(primarySlot.id)}
+                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 text-[11px] font-semibold transition cursor-pointer"
+                          >
+                            1 seule épreuve
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                       {slotsForSelectedDate.map((slot) => {
-                        const isSelected = selectedSlot?.id === slot.id;
+                        const isChecked = checkedSlotIds.includes(slot.id);
                         const slotAssignedCount = candidates.filter((c) =>
                           Boolean(c.assignmentsBySlot?.[slot.id]?.roomName)
                         ).length;
                         const slotRoomsList = slot.roomNames || [];
                         return (
-                          <button
+                          <label
                             key={slot.id}
-                            type="button"
-                            onClick={() => setSelectedDispatchSlotId(slot.id)}
-                            className={`text-left p-3 rounded-xl border transition ${
-                              isSelected
-                                ? "border-[#1D4ED8] bg-blue-50/70 ring-2 ring-blue-500/20 shadow-xs"
+                            className={`text-left p-3.5 rounded-xl border transition cursor-pointer flex items-start gap-2.5 select-none ${
+                              isChecked
+                                ? "border-[#1D4ED8] bg-blue-50/75 ring-2 ring-blue-500/20 shadow-xs"
                                 : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
                             }`}
                           >
-                            <div className="flex items-start justify-between gap-2">
-                              <span className="font-bold text-xs text-slate-900 leading-snug">
-                                {slot.subject}
-                              </span>
-                              <span className="text-[10px] font-mono font-bold text-[#0F2A56] bg-white px-1.5 py-0.5 rounded border border-slate-200 shrink-0 tabular-nums">
-                                {slot.startTime}–{slot.endTime}
-                              </span>
-                            </div>
-                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-600">
-                              {slot.targetLevel && (
-                                <span className="font-semibold text-slate-700">
-                                  {getShortLevelBadge(slot.targetLevel) || slot.targetLevel}
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleCheckedSlot(slot.id)}
+                              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#1D4ED8] focus:ring-[#1D4ED8] shrink-0 cursor-pointer"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <span className="font-bold text-xs text-slate-900 leading-snug">
+                                  {slot.subject}
                                 </span>
-                              )}
-                              {slot.targetSpecialty && (
-                                <>
-                                  <span aria-hidden="true">·</span>
-                                  <span className="font-semibold text-indigo-700">{slot.targetSpecialty}</span>
-                                </>
-                              )}
-                              <span aria-hidden="true">·</span>
-                              <span className="tabular-nums font-medium">
-                                {slotRoomsList.length > 0
-                                  ? slotRoomsList.slice(0, 3).join(", ") + (slotRoomsList.length > 3 ? ` +${slotRoomsList.length - 3}` : "")
-                                  : "0 salle"}
-                              </span>
-                              <span aria-hidden="true">·</span>
-                              <span className={`tabular-nums font-bold ${slotAssignedCount > 0 ? "text-emerald-700" : "text-amber-700"}`}>
-                                {slotAssignedCount} affecté{slotAssignedCount > 1 ? "s" : ""}
-                              </span>
+                                <span className="text-[10px] font-mono font-bold text-[#0F2A56] bg-white px-1.5 py-0.5 rounded border border-slate-200 shrink-0 tabular-nums">
+                                  {slot.startTime}–{slot.endTime}
+                                </span>
+                              </div>
+                              <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-600">
+                                {slot.targetLevel && (
+                                  <span className="font-semibold text-slate-700">
+                                    {getShortLevelBadge(slot.targetLevel) || slot.targetLevel}
+                                  </span>
+                                )}
+                                {slot.targetSpecialty && (
+                                  <>
+                                    <span aria-hidden="true">·</span>
+                                    <span className="font-semibold text-indigo-700">{slot.targetSpecialty}</span>
+                                  </>
+                                )}
+                                <span aria-hidden="true">·</span>
+                                <span className="tabular-nums font-medium">
+                                  {slotRoomsList.length > 0
+                                    ? `${slotRoomsList.length} salle${slotRoomsList.length > 1 ? "s" : ""}`
+                                    : "0 salle"}
+                                </span>
+                                <span aria-hidden="true">·</span>
+                                <span className={`tabular-nums font-bold ${slotAssignedCount > 0 ? "text-emerald-700" : "text-slate-500"}`}>
+                                  {slotAssignedCount} affecté{slotAssignedCount > 1 ? "s" : ""}
+                                </span>
+                              </div>
                             </div>
-                          </button>
+                          </label>
                         );
                       })}
                     </div>
@@ -1809,21 +2358,38 @@ export default function OrganizationSection({
             </div>
           )}
 
-          {/* Action Buttons: Reset, Single-Slot Dispatch & Global Intelligent Dispatch */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200">
+          {/* Action Buttons: Reset, Multi-Slot Dispatch & Global Intelligent Dispatch */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
             <div className="text-xs text-slate-600 space-y-1">
               <div>
-                {selectedSlot ? (
+                {activeSlots.length > 1 ? (
                   <>
-                    Épreuve active : <strong className="text-[#0F2A56]">{selectedSlot.subject}</strong>{" "}
+                    Sélection groupée ({activeSlots.length} épreuves) :{" "}
+                    <strong className="text-[#0F2A56]">
+                      {activeSlots.map((s) => s.subject).join(" + ")}
+                    </strong>{" "}
                     <span className="text-slate-500 font-mono tabular-nums">
-                      ({formatDisplayDateFr(selectedSlot.date)} • {selectedSlot.startTime}–{selectedSlot.endTime})
+                      ({formatDisplayDateFr(selectedDate)})
+                    </span>{" "}
+                    • Candidats dédoublonnés :{" "}
+                    <strong className="text-emerald-700 tabular-nums">
+                      {targetCandidates.length} élève(s)
+                    </strong>
+                  </>
+                ) : primarySlot ? (
+                  <>
+                    Épreuve active : <strong className="text-[#0F2A56]">{primarySlot.subject}</strong>{" "}
+                    <span className="text-slate-500 font-mono tabular-nums">
+                      ({formatDisplayDateFr(primarySlot.date)} • {primarySlot.startTime}–{primarySlot.endTime})
                     </span>{" "}
                     • Niveau :{" "}
                     <span className="px-2 py-0.5 rounded bg-slate-100 font-semibold text-slate-800">
-                      {getShortLevelBadge(selectedSlot.targetLevel || "") || "Session"}
+                      {getShortLevelBadge(primarySlot.targetLevel || "") || "Session"}
                     </span>{" "}
-                    • Candidats ciblés : <strong className="text-emerald-700 tabular-nums">{targetCandidates.length} élève(s)</strong>
+                    • Candidats ciblés :{" "}
+                    <strong className="text-emerald-700 tabular-nums">
+                      {targetCandidates.length} élève(s)
+                    </strong>
                   </>
                 ) : (
                   <>
@@ -1831,11 +2397,11 @@ export default function OrganizationSection({
                   </>
                 )}
               </div>
-              {selectedSlot && occupiedInParallelSlots.size > 0 && (
+              {activeSlots.length > 0 && occupiedInParallelSlots.size > 0 && (
                 <p className="text-[11px] text-amber-800 font-medium flex items-center gap-1.5">
                   <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                   <span>
-                    Protection anti-chevauchement active : <strong>{occupiedInParallelSlots.size}</strong> élève(s) déjà affecté(s) sur une autre épreuve à {selectedSlot.startTime}–{selectedSlot.endTime} sont automatiquement exclu(s).
+                    Protection anti-chevauchement active : <strong>{occupiedInParallelSlots.size}</strong> élève(s) déjà affecté(s) sur une autre épreuve hors sélection sont automatiquement exclu(s).
                   </span>
                 </p>
               )}
@@ -1844,16 +2410,22 @@ export default function OrganizationSection({
               <button
                 type="button"
                 onClick={handleResetDispatch}
-                className="px-3.5 py-2 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-700 font-semibold text-xs transition shadow-2xs flex items-center gap-1.5"
-                title={selectedSlot ? "Efface uniquement les attributions pour cette épreuve" : "Efface les attributions pour cet examen uniquement"}
+                className="px-3.5 py-2 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-700 font-semibold text-xs transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                title="Efface les attributions des épreuves sélectionnées et remet les salles à zéro"
               >
                 <RotateCcw className="h-4 w-4 text-rose-600" />
-                <span>{selectedSlot ? "Réinitialiser cette épreuve" : "Réinitialiser cet examen"}</span>
+                <span>
+                  {activeSlots.length > 1
+                    ? `Réinitialiser les ${activeSlots.length} épreuves`
+                    : primarySlot
+                      ? "Réinitialiser cette épreuve"
+                      : "Réinitialiser cet examen"}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={handleRunDispatch}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
               >
                 <Sparkles className="h-4 w-4" />
                 <span>Lancer le Brassage ({targetCandidates.length} élèves)</span>
@@ -1862,11 +2434,11 @@ export default function OrganizationSection({
                 <button
                   type="button"
                   onClick={handleRunDispatchAllSlots}
-                  className="px-4 py-2 rounded-xl bg-[#0F2A56] hover:bg-[#1D4ED8] text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-[#0F2A56] hover:bg-[#1D4ED8] text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5 cursor-pointer"
                   title="Exécute la répartition épreuve par épreuve sur toute la session en respectant salles, Tiers-Temps, spécialités et unicité horaire"
                 >
                   <Layers className="h-4 w-4 text-amber-300" />
-                  <span>Lancer le brassage intelligent sur toutes les épreuves de la session</span>
+                  <span>Brassage intelligent (toute la session)</span>
                 </button>
               )}
             </div>
@@ -2035,46 +2607,114 @@ export default function OrganizationSection({
             </div>
           </div>
 
-          {/* Salles Mobilisées & Remplissage */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          {/* Salles Mobilisées & Jauges Standard / Tiers-Temps */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-6 space-y-5">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <div>
                 <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                   <School className="h-4 w-4 text-emerald-600" />
                   <span>
-                    {selectedSlot
-                      ? `Salles mobilisées pour « ${selectedSlot.subject} » (${selectedRooms.length} / ${rooms.length})`
-                      : `Salles mobilisées pour cet examen (${selectedRooms.length} / ${rooms.length})`}
+                    {activeSlots.length > 1
+                      ? `Salles mobilisées fusionnées (${selectedRooms.length} salle${selectedRooms.length > 1 ? "s" : ""} unique${selectedRooms.length > 1 ? "s" : ""})`
+                      : primarySlot
+                        ? `Salles mobilisées pour « ${primarySlot.subject} » (${selectedRooms.length} / ${rooms.length})`
+                        : `Salles mobilisées pour cet examen (${selectedRooms.length} / ${rooms.length})`}
                   </span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  {selectedSlot
-                    ? `${formatDisplayDateFr(selectedSlot.date)} • ${selectedSlot.startTime}–${selectedSlot.endTime} — Choisissez uniquement les salles réservées à cette épreuve et définissez la salle Tiers-Temps.`
-                    : "Choisissez les salles et définissez la salle réservée aux élèves Tiers-Temps."}
+                  {activeSlots.length > 1
+                    ? `${formatDisplayDateFr(selectedDate)} — Fusion sans doublon de ${activeSlots.map((s) => s.subject).join(", ")}.`
+                    : primarySlot
+                      ? `${formatDisplayDateFr(primarySlot.date)} • ${primarySlot.startTime}–${primarySlot.endTime} — Choisissez uniquement les salles réservées à cette épreuve et définissez la salle Tiers-Temps.`
+                      : "Choisissez les salles et définissez la salle réservée aux élèves Tiers-Temps."}
                 </p>
               </div>
 
-              {/* Capacity Banner Indicator */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`px-3 py-1 rounded-xl font-bold text-xs flex items-center gap-1.5 border tabular-nums ${
-                    selectedCapacity >= targetCandidates.length
+                    capacityStats.totalCapacity >= capacityStats.totalStudentsCount
                       ? "bg-emerald-50 text-emerald-800 border-emerald-200"
                       : "bg-rose-50 text-rose-800 border-rose-200"
                   }`}
                 >
                   <span>
-                    Capacité : {selectedCapacity} places / {targetCandidates.length} élèves
+                    Capacité totale : {capacityStats.totalCapacity} pl. / {capacityStats.totalStudentsCount} él.
                   </span>
-                  {selectedCapacity >= targetCandidates.length ? "✓" : "⚠️ Manque de places"}
+                  {capacityStats.totalCapacity >= capacityStats.totalStudentsCount ? "✓" : "⚠️ Manque de places"}
                 </span>
                 <button
                   type="button"
                   onClick={() => setShowAllSchoolRooms(!showAllSchoolRooms)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer"
                 >
-                  {showAllSchoolRooms ? "Afficher uniquement les salles de l'épreuve" : "+ Afficher toutes les salles"}
+                  {showAllSchoolRooms ? "Afficher uniquement les salles sélectionnées" : "+ Afficher toutes les salles"}
                 </button>
+              </div>
+            </div>
+
+            {/* Dual Capacity Gauges: Standard vs Tiers-Temps (+1/3) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Gauge 1: Standard */}
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-800">
+                    🏫 Salles Standard ({capacityStats.stdRoomsCount})
+                  </span>
+                  <span className="font-mono font-bold text-slate-900 tabular-nums">
+                    {capacityStats.stdCapacity} places / {capacityStats.stdStudentsCount} candidats
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      capacityStats.stdCapacity >= capacityStats.stdStudentsCount
+                        ? "bg-emerald-600"
+                        : "bg-amber-500"
+                    }`}
+                    style={{
+                      width: `${Math.min(
+                        capacityStats.stdCapacity > 0
+                          ? Math.round((capacityStats.stdStudentsCount / capacityStats.stdCapacity) * 100)
+                          : capacityStats.stdStudentsCount > 0
+                            ? 100
+                            : 0,
+                        100
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Gauge 2: Tiers-Temps (+1/3) */}
+              <div className="p-3.5 rounded-xl border border-purple-200 bg-purple-50/40 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-purple-900">
+                    ♿ Salles Tiers-Temps (+1/3) ({capacityStats.ttRoomsCount})
+                  </span>
+                  <span className="font-mono font-bold text-purple-950 tabular-nums">
+                    {capacityStats.ttCapacity} places / {capacityStats.ttStudentsCount} PAP·PPS·TT
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-purple-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      capacityStats.ttCapacity >= capacityStats.ttStudentsCount
+                        ? "bg-purple-600"
+                        : "bg-amber-500"
+                    }`}
+                    style={{
+                      width: `${Math.min(
+                        capacityStats.ttCapacity > 0
+                          ? Math.round((capacityStats.ttStudentsCount / capacityStats.ttCapacity) * 100)
+                          : capacityStats.ttStudentsCount > 0
+                            ? 100
+                            : 0,
+                        100
+                      )}%`,
+                    }}
+                  />
+                </div>
               </div>
             </div>
 
@@ -2083,17 +2723,17 @@ export default function OrganizationSection({
               <div className="p-8 text-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl space-y-3">
                 <School className="h-8 w-8 text-slate-400 mx-auto" />
                 <p className="text-sm font-bold text-slate-800">
-                  {selectedSlot
-                    ? `Aucune salle réservée pour l'épreuve « ${selectedSlot.subject} » (${formatDisplayDateFr(selectedSlot.date)}).`
+                  {primarySlot
+                    ? `Aucune salle réservée pour les épreuves sélectionnées (${formatDisplayDateFr(selectedDate)}).`
                     : `Aucune salle n'est actuellement mobilisée pour "${selectedExam?.title || "cet examen"}".`}
                 </p>
                 <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Les salles cochées ici sont enregistrées exclusivement pour cette date et cette épreuve.
+                  Les salles cochées ici sont enregistrées pour les épreuves sélectionnées et dédoublonnées automatiquement.
                 </p>
                 <button
                   type="button"
                   onClick={() => setShowAllSchoolRooms(true)}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer"
                 >
                   + Afficher toutes les salles ({rooms.length}) et choisir
                 </button>
@@ -2106,7 +2746,7 @@ export default function OrganizationSection({
                   className={`p-4 rounded-xl border-2 transition space-y-3 ${
                     isMobilized
                       ? isTT
-                        ? "border-purple-400 bg-purple-50/50 shadow-xs ring-1 ring-purple-200"
+                        ? "border-purple-400 bg-purple-50/40 shadow-xs ring-1 ring-purple-200"
                         : "border-slate-300 bg-white hover:border-[#3498db] shadow-xs"
                       : "border-dashed border-slate-200 bg-slate-100/50 opacity-60"
                   }`}
@@ -2122,12 +2762,12 @@ export default function OrganizationSection({
                       <span>{room.name}</span>
                     </label>
 
-                    <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-slate-100 text-slate-700">
+                    <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-slate-100 text-slate-700 tabular-nums">
                       Cap. {room.capacity} pl.
                     </span>
                   </div>
 
-                  {/* Prominent Standard vs Tiers-Temps Categorization Switch */}
+                  {/* Standard vs Tiers-Temps Switch */}
                   {isMobilized && (
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-100 border border-slate-200">
@@ -2136,7 +2776,7 @@ export default function OrganizationSection({
                           onClick={() => {
                             if (isTT) handleToggleTTRoom(room.id);
                           }}
-                          className={`flex-1 py-1 rounded-md text-[11px] font-bold transition flex items-center justify-center gap-1 ${
+                          className={`flex-1 py-1 rounded-md text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                             !isTT
                               ? "bg-white text-slate-900 shadow-2xs border border-slate-300/80"
                               : "text-slate-500 hover:text-slate-800"
@@ -2149,7 +2789,7 @@ export default function OrganizationSection({
                           onClick={() => {
                             if (!isTT) handleToggleTTRoom(room.id);
                           }}
-                          className={`flex-1 py-1 rounded-md text-[11px] font-bold transition flex items-center justify-center gap-1 ${
+                          className={`flex-1 py-1 rounded-md text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
                             isTT
                               ? "bg-purple-600 text-white shadow-2xs font-bold"
                               : "text-purple-700 hover:bg-purple-100/60"
@@ -2160,12 +2800,12 @@ export default function OrganizationSection({
                       </div>
 
                       {isTT ? (
-                        <p className="text-[10px] text-purple-800 font-semibold flex items-center gap-1">
-                          <span>♿ Salle Tiers-Temps : les élèves PAP/PPS/Tiers-Temps du niveau y sont automatiquement affectés.</span>
+                        <p className="text-[10px] text-purple-800 font-semibold">
+                          ♿ Salle Tiers-Temps : les élèves PAP/PPS/TT y sont orientés en priorité.
                         </p>
                       ) : (
-                        <p className="text-[10px] text-slate-500 flex items-center gap-1">
-                          <span>🏫 Accueil des élèves standards.</span>
+                        <p className="text-[10px] text-slate-500">
+                          🏫 Accueil des candidats standard.
                         </p>
                       )}
                     </div>
@@ -2173,12 +2813,12 @@ export default function OrganizationSection({
 
                   {isMobilized ? (
                     <>
-                      {/* Quota Setting for this room */}
+                      {/* Quota Setting */}
                       <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
                             <SlidersHorizontal className="h-3 w-3 text-blue-600" />
-                            <span>Quota d'élèves pour cette salle :</span>
+                            <span>Quota :</span>
                           </label>
                           <div className="flex items-center gap-1">
                             <input
@@ -2194,12 +2834,14 @@ export default function OrganizationSection({
                                   ...prev,
                                   [key]: safeVal,
                                 }));
-                                if (selectedSlot) {
-                                  onUpdateExamSlot?.(selectedSlot.id, {
-                                    customRoomQuotas: {
-                                      ...(selectedSlot.customRoomQuotas || {}),
-                                      [room.id]: safeVal,
-                                    },
+                                if (activeSlots.length > 0) {
+                                  activeSlots.forEach((sl) => {
+                                    onUpdateExamSlot?.(sl.id, {
+                                      customRoomQuotas: {
+                                        ...(sl.customRoomQuotas || {}),
+                                        [room.id]: safeVal,
+                                      },
+                                    });
                                   });
                                 } else if (selectedExam) {
                                   onUpdateExam?.(selectedExam.id, {
@@ -2210,20 +2852,17 @@ export default function OrganizationSection({
                                   });
                                 }
                               }}
-                              className="w-16 px-2 py-0.5 text-xs font-bold text-center border border-slate-300 rounded bg-white text-slate-900 focus:ring-1 focus:ring-blue-500"
+                              className="w-16 px-2 py-0.5 text-xs font-bold text-center border border-slate-300 rounded bg-white text-slate-900 focus:ring-1 focus:ring-blue-500 tabular-nums"
                             />
-                            <span className="text-[10px] text-slate-400">places</span>
+                            <span className="text-[10px] text-slate-400">pl.</span>
                           </div>
                         </div>
-                        <p className="text-[10px] text-slate-500">
-                          Capacité physique : <strong>{room.capacity}</strong> places. La répartition placera au maximum <strong>{quota}</strong> élèves ici.
-                        </p>
                       </div>
 
                       <div className="flex items-center justify-between text-xs text-slate-500">
                         <span>Élèves affectés :</span>
-                        <span className="font-bold text-slate-900">
-                          {assignedCount} / {quota} prévus ({room.capacity} max phys.)
+                        <span className="font-bold text-slate-900 tabular-nums">
+                          {assignedCount} / {quota} prévus ({room.capacity} max)
                         </span>
                       </div>
 
@@ -2240,11 +2879,11 @@ export default function OrganizationSection({
                         />
                       </div>
 
-                      <div className="flex items-center justify-between text-[11px] text-slate-500">
-                        <span>Remplissage quota : {fillRate}%</span>
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 tabular-nums">
+                        <span>Remplissage : {fillRate}%</span>
                         {ttCount > 0 && (
                           <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[10px]">
-                            {ttCount} Tiers-temps / PAP
+                            {ttCount} Tiers-temps
                           </span>
                         )}
                       </div>
@@ -2254,16 +2893,16 @@ export default function OrganizationSection({
                         <button
                           type="button"
                           onClick={() => handleOpenManualAssign(room.name)}
-                          className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold transition flex items-center gap-1 border border-blue-200"
+                          className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold transition flex items-center gap-1 border border-blue-200 cursor-pointer"
                         >
                           <UserPlus className="h-3 w-3" />
-                          <span>+ Ajouter élève(s)</span>
+                          <span>+ Ajouter</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setInspectingRoomName(inspectingRoomName === room.name ? null : room.name)}
-                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition flex items-center gap-1"
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold transition flex items-center gap-1 cursor-pointer tabular-nums"
                         >
                           <span>Élèves ({assignedCount})</span>
                           {inspectingRoomName === room.name ? (
@@ -2274,12 +2913,12 @@ export default function OrganizationSection({
                         </button>
                       </div>
 
-                      {/* Expandable list of students strictly assigned to this room for THIS slot/exam */}
+                      {/* Expandable list of students assigned to this room */}
                       {inspectingRoomName === room.name && (
                         <div className="mt-2 pt-2 border-t border-slate-200 space-y-1.5 max-h-48 overflow-y-auto pr-1">
                           {assignedCount === 0 ? (
                             <p className="text-[11px] text-slate-400 italic text-center py-2">
-                              Aucun élève affecté à cette salle pour cette épreuve.
+                              Aucun élève affecté à cette salle (0 / {quota}).
                             </p>
                           ) : (
                             slotEligibleAllCandidates
@@ -2297,13 +2936,18 @@ export default function OrganizationSection({
                                     className="flex items-center justify-between p-1.5 rounded bg-white border border-slate-200 text-[11px]"
                                   >
                                     <div className="flex items-center gap-1.5 overflow-hidden">
-                                      <span className="font-bold text-blue-700 w-6 text-center shrink-0">
+                                      <span className="font-bold text-blue-700 w-7 text-center shrink-0 tabular-nums">
                                         T.{assign.tableNumber || "?"}
                                       </span>
                                       <span className="font-semibold text-slate-900 truncate">
                                         {c.lastName} {c.firstName}
                                       </span>
                                       <span className="text-[10px] text-slate-400 shrink-0">({c.className})</span>
+                                      {isMultiSlotMode && assign.slotSubject && (
+                                        <span className="text-[9px] px-1 rounded bg-blue-50 text-blue-700 font-semibold truncate max-w-[80px]">
+                                          {assign.slotSubject}
+                                        </span>
+                                      )}
                                     </div>
                                     <button
                                       type="button"
@@ -2322,7 +2966,7 @@ export default function OrganizationSection({
                     </>
                   ) : (
                     <p className="text-[11px] text-slate-400 italic">
-                      Non mobilisée pour cette session (les élèves ne seront pas placés ici).
+                      Non mobilisée pour cette sélection.
                     </p>
                   )}
                 </div>
@@ -2345,8 +2989,8 @@ export default function OrganizationSection({
                     Affecter un lot d'élèves à une salle
                   </h4>
                   <p className="text-[11px] text-slate-500">
-                    {selectedSlot
-                      ? `Épreuve : ${selectedSlot.subject} (${formatDisplayDateFr(selectedSlot.date)}) • ${slotEligibleAllCandidates.length} élève(s) éligible(s)`
+                    {primarySlot
+                      ? `Épreuve(s) : ${activeSlots.map((s) => s.subject).join(" + ")} (${formatDisplayDateFr(selectedDate)}) • ${slotEligibleAllCandidates.length} élève(s) éligible(s)`
                       : `Session : ${selectedExam?.title || "Général"} • Filtré strictement par niveau ciblé (${targetCandidates.length} éligible(s))`}
                   </p>
                 </div>
@@ -2576,179 +3220,251 @@ export default function OrganizationSection({
       )}
 
       {/* ======================================================== */}
-      {/* TAB 2: AFFECTATION ET BRASSAGE DES SURVEILLANTS          */}
+      {/* TAB 2: AFFECTATION DES SURVEILLANTS (SALLE PHYSIQUE × CRÉNEAU) */}
       {/* ======================================================== */}
       {activeTab === "surveillants" && (
         <div className="space-y-6">
-          {/* Controls Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-white border border-slate-200 shadow-2xs">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-semibold text-slate-700">Créneau d'épreuve :</span>
-              <select
-                value={selectedSlotId}
-                onChange={(e) => setSelectedSlotId(e.target.value)}
-                className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-indigo-500 max-w-xs"
+          {/* Controls & Equity Bar */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-xs font-bold text-[#0F2A56]">Filtrer par créneau :</span>
+                <select
+                  value={selectedSlotId}
+                  onChange={(e) => setSelectedSlotId(e.target.value)}
+                  className="px-3 py-1.5 text-xs rounded-lg border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-indigo-500 max-w-xs"
+                >
+                  <option value="all">Tous les créneaux ({examSlots.length})</option>
+                  {examSlots.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.date} • {s.subject} ({s.startTime} - {s.endTime})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAutoDispatchSurveillants}
+                className="px-5 py-2.5 rounded-xl bg-[#0F2A56] hover:bg-[#1D4ED8] text-white font-bold text-xs transition shadow-sm flex items-center gap-2 self-start sm:self-auto cursor-pointer"
               >
-                <option value="all">Tous les créneaux ({examSlots.length})</option>
-                {examSlots.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.date} • {s.subject} ({s.startTime} - {s.endTime})
-                  </option>
-                ))}
-              </select>
+                <Sparkles className="h-4 w-4 text-amber-300" />
+                <span>Répartir équitablement par salle physique</span>
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={handleAutoDispatchSurveillants}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-sm flex items-center gap-2 self-start sm:self-auto"
-            >
-              <Sparkles className="h-4 w-4" />
-              <span>🎲 Répartir équitablement les surveillants</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 text-[11px] text-slate-600">
+              <span className="flex items-center gap-1.5 font-semibold text-slate-800">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Couverture consolidée :</span>
+                <strong className="tabular-nums text-emerald-700">
+                  {teacherEquityStats.coveredRooms} / {teacherEquityStats.totalRooms} salles×créneaux
+                </strong>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="tabular-nums">
+                Professeurs mobilisés : <strong>{teacherEquityStats.mobilizedCount}</strong>
+              </span>
+              {teacherEquityStats.mobilizedCount > 0 && (
+                <>
+                  <span className="text-slate-300">•</span>
+                  <span className="tabular-nums">
+                    Amplitude horaire :{" "}
+                    <strong>
+                      {teacherEquityStats.minLabel} à {teacherEquityStats.maxLabel}
+                    </strong>
+                  </span>
+                </>
+              )}
+              <span className="text-slate-300 hidden sm:inline">•</span>
+              <span className="text-slate-500">
+                Verrouillage anti-chevauchement (+1/3 Tiers-Temps inclus) et détection même discipline actifs.
+              </span>
+            </div>
           </div>
 
-          {/* Slots & Rooms Grid Sorted Chronologically */}
-          {examSlots.length === 0 ? (
-            <div className="p-10 rounded-xl bg-white border-2 border-dashed border-slate-200 text-center text-slate-400 text-xs">
-              Aucun créneau d'épreuve configuré. Allez dans l'Étape 3 : "Créneaux des Épreuves" pour créer le calendrier.
+          {/* Consolidated Physical Rooms Grid by Date × Time Window */}
+          {consolidatedTimeWindows.length === 0 ? (
+            <div className="p-10 rounded-2xl bg-white border-2 border-dashed border-slate-200 text-center text-slate-400 text-xs">
+              Aucun créneau d&apos;épreuve configuré. Allez dans l&apos;Étape 4 : &laquo; Créneaux des Épreuves &raquo; pour créer le calendrier.
             </div>
           ) : (
             <div className="space-y-6">
-              {[...examSlots]
-                .sort((a, b) => {
-                  const d = (a.date || "").localeCompare(b.date || "");
-                  if (d !== 0) return d;
-                  return (a.startTime || "").localeCompare(b.startTime || "");
-                })
-                .filter((s) => selectedSlotId === "all" || s.id === selectedSlotId)
-                .map((slot) => {
-                  const mobilizedRooms = slot.roomNames && slot.roomNames.length > 0
-                    ? rooms.filter((r) => slot.roomNames!.includes(r.name))
-                    : selectedRooms;
-
-                return (
-                  <div
-                    key={slot.id}
-                    className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden"
-                  >
-                    {/* Slot Header */}
-                    <div className="bg-slate-50 border-b border-slate-200 px-5 py-3 flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5">
-                        <Clock className="h-4 w-4 text-indigo-600" />
-                        <div>
-                          <span className="font-bold text-sm text-slate-900">{slot.subject}</span>
-                          <span className="text-xs text-slate-500 ml-2">
-                            ({slot.date} de {slot.startTime} à {slot.endTime})
-                          </span>
-                        </div>
-                      </div>
-                      <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                        {slot.examTitle}
+              {consolidatedTimeWindows.map((win) => (
+                <div
+                  key={win.windowKey}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden"
+                >
+                  {/* Consolidated Window Header */}
+                  <div className="bg-[#0F2A56] text-white px-5 py-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <Clock className="h-4 w-4 text-sky-300 shrink-0" />
+                      <span className="font-bold text-sm">
+                        {formatDisplayDateFr(win.date)} • {win.startTime} – {win.baseEndTime}
+                      </span>
+                      <span className="text-[11px] text-blue-200">
+                        ({win.roomUnits.length} salle{win.roomUnits.length > 1 ? "s" : ""} physique{win.roomUnits.length > 1 ? "s" : ""})
                       </span>
                     </div>
-
-                    {/* Rooms Matrix */}
-                    <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {mobilizedRooms.map((room) => {
-                        const currentSurv = surveillances.find(
-                          (s) =>
-                            (s.slotId === slot.id ||
-                              (s.date === slot.date && s.timeSlot.includes(slot.startTime))) &&
-                            s.roomName === room.name
-                        );
-
-                        return (
-                          <div
-                            key={room.id}
-                            className={`p-4 rounded-xl border transition space-y-3 ${
-                              currentSurv
-                                ? "border-emerald-200 bg-emerald-50/20"
-                                : "border-rose-200 bg-rose-50/30"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <School className="h-4 w-4 text-slate-600" />
-                                <span className="font-bold text-xs text-slate-900">{room.name}</span>
-                              </div>
-                              <span className="text-[10px] text-slate-500">
-                                Capacité : {room.capacity}
-                              </span>
-                            </div>
-
-                            {/* Surveillance Selector */}
-                            <div>
-                              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                                Enseignant Surveillant :
-                              </label>
-                              <select
-                                value={currentSurv?.teacherName || ""}
-                                onChange={(e) =>
-                                  handleAssignTeacherToRoomSlot(slot, room, e.target.value)
-                                }
-                                className={`w-full px-2.5 py-1.5 text-xs rounded-lg border bg-white focus:ring-2 focus:ring-indigo-500 ${
-                                  currentSurv
-                                    ? "border-emerald-300 font-bold text-slate-900"
-                                    : "border-rose-300 text-rose-700"
-                                }`}
-                              >
-                                <option value="">-- Non affecté (Salle non surveillée) --</option>
-                                {teachers.map((t) => {
-                                  const fullName = `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`;
-                                  // Check if teacher is already assigned in another room on this slot
-                                  const isAssignedElsewhere = surveillances.some(
-                                    (s) =>
-                                      (s.slotId === slot.id ||
-                                        (s.date === slot.date && s.timeSlot.includes(slot.startTime))) &&
-                                      s.roomName !== room.name &&
-                                      s.teacherName === fullName
-                                  );
-
-                                  return (
-                                    <option
-                                      key={t.id}
-                                      value={fullName}
-                                      disabled={isAssignedElsewhere}
-                                    >
-                                      {fullName} ({t.subject})
-                                      {isAssignedElsewhere ? " ⚠️ (Déjà mobilisé ailleurs)" : ""}
-                                    </option>
-                                  );
-                                })}
-                              </select>
-                            </div>
-
-                            <div className="flex items-center justify-between text-[11px] pt-1">
-                              {currentSurv ? (
-                                <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                                  <UserCheck className="h-3 w-3" />
-                                  <span>Surveillance assurée</span>
-                                </span>
-                              ) : (
-                                <span className="text-rose-600 font-semibold flex items-center gap-1">
-                                  <AlertCircle className="h-3 w-3" />
-                                  <span>Salle sans surveillant !</span>
-                                </span>
-                              )}
-
-                              {currentSurv && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleAssignTeacherToRoomSlot(slot, room, "")}
-                                  className="text-[10px] text-slate-400 hover:text-rose-600"
-                                >
-                                  Retirer
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {Array.from(new Set(win.slots.map((s) => s.subject))).map((subj) => (
+                        <span
+                          key={subj}
+                          className="px-2 py-0.5 rounded bg-white/15 text-white text-[10px] font-semibold"
+                        >
+                          {subj}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                );
-              })}
+
+                  {/* Physical Rooms Matrix */}
+                  <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {win.roomUnits.map((unit) => {
+                      const currentSurv = surveillances.find(
+                        (s) =>
+                          s.roomName.trim().toLowerCase() === unit.room.name.trim().toLowerCase() &&
+                          surveillancesTimeOverlap(s.date, s.timeSlot, win.date, unit.effectiveTimeSlot)
+                      );
+                      const assignedTeacherObj = currentSurv
+                        ? teachers.find(
+                            (t) =>
+                              `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}` ===
+                              currentSurv.teacherName
+                          )
+                        : undefined;
+                      const isCurrentSameSubject = Boolean(
+                        assignedTeacherObj &&
+                          teacherMatchesSlotSubjects(assignedTeacherObj.subject, unit.subjects)
+                      );
+
+                      return (
+                        <div
+                          key={`${win.windowKey}-${unit.room.id}`}
+                          className={`p-4 rounded-xl border transition space-y-3 ${
+                            currentSurv
+                              ? unit.isTT
+                                ? "border-purple-300 bg-purple-50/30"
+                                : "border-emerald-200 bg-emerald-50/20"
+                              : "border-rose-200 bg-rose-50/30"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="space-y-0.5 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <School className="h-4 w-4 text-[#0F2A56] shrink-0" />
+                                <span className="font-bold text-sm text-slate-900 truncate">
+                                  {unit.room.name}
+                                </span>
+                              </div>
+                              <p className="text-[11px] font-medium text-slate-600 truncate">
+                                {unit.subjects.join(" • ")}
+                              </p>
+                            </div>
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold shrink-0 tabular-nums ${
+                                unit.isTT
+                                  ? "bg-purple-100 text-purple-900 border border-purple-200"
+                                  : "bg-slate-100 text-slate-700"
+                              }`}
+                            >
+                              {unit.isTT ? `♿ TT ${unit.effectiveTimeSlot}` : unit.effectiveTimeSlot}
+                            </span>
+                          </div>
+
+                          {/* Surveillance Selector */}
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                              Surveillant unique affecté :
+                            </label>
+                            <select
+                              value={currentSurv?.teacherName || ""}
+                              onChange={(e) =>
+                                handleAssignTeacherToRoomWindow(unit, win.date, e.target.value)
+                              }
+                              className={`w-full px-2.5 py-1.5 text-xs rounded-lg border bg-white focus:ring-2 focus:ring-indigo-500 ${
+                                currentSurv
+                                  ? "border-emerald-300 font-bold text-slate-900"
+                                  : "border-rose-300 text-rose-700"
+                              }`}
+                            >
+                              <option value="">-- Non affecté (Salle non surveillée) --</option>
+                              {teachers.map((t) => {
+                                const fullName = `${t.civility === "Madame" ? "Mme" : "M."} ${t.lastName} ${t.firstName}`;
+                                const conflict = surveillances.find(
+                                  (s) =>
+                                    s.teacherName === fullName &&
+                                    s.roomName.trim().toLowerCase() !==
+                                      unit.room.name.trim().toLowerCase() &&
+                                    surveillancesTimeOverlap(
+                                      s.date,
+                                      s.timeSlot,
+                                      win.date,
+                                      unit.effectiveTimeSlot
+                                    )
+                                );
+                                const isSameSubj = teacherMatchesSlotSubjects(
+                                  t.subject,
+                                  unit.subjects
+                                );
+
+                                return (
+                                  <option
+                                    key={t.id}
+                                    value={fullName}
+                                    disabled={Boolean(conflict)}
+                                  >
+                                    {fullName} ({t.subject})
+                                    {conflict
+                                      ? ` ⚠️ Indisponible (${conflict.roomName} • ${conflict.timeSlot})`
+                                      : isSameSubj
+                                        ? " ⚠️ Même discipline"
+                                        : ""}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] pt-1 gap-2">
+                            {currentSurv ? (
+                              <span
+                                className={`font-semibold flex items-center gap-1 ${
+                                  isCurrentSameSubject ? "text-amber-700" : "text-emerald-700"
+                                }`}
+                              >
+                                <UserCheck className="h-3 w-3 shrink-0" />
+                                <span>
+                                  {isCurrentSameSubject
+                                    ? "Affecté (même discipline)"
+                                    : unit.isTT
+                                      ? `Couvert jusqu'à ${unit.effectiveEndTime} (TT)`
+                                      : "Surveillance assurée"}
+                                </span>
+                              </span>
+                            ) : (
+                              <span className="text-rose-600 font-semibold flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3 shrink-0" />
+                                <span>Salle sans surveillant !</span>
+                              </span>
+                            )}
+
+                            {currentSurv && (
+                              <button
+                                type="button"
+                                onClick={() => handleAssignTeacherToRoomWindow(unit, win.date, "")}
+                                className="text-[10px] text-slate-400 hover:text-rose-600 cursor-pointer shrink-0"
+                              >
+                                Retirer
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

@@ -139,4 +139,9 @@ body {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
+
+  .print-break-before {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
 }
