@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-16T13:35:33.871Z",
+  "updatedAt": "2026-11-16T13:36:12.828Z",
   "siteInfo": {
     "title": "Lycée Français Jacques Prévert",
     "subtitle": "Lycée Français Jacques Prévert de Saly, Sénégal • Réseau AEFE",
@@ -1480,27 +1480,13 @@
       "firstName": "Safia",
       "className": "TERMINALE2",
       "examName": "Examens blancs - décembre 2026",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "1",
-      "anonymatNumber": "EXAM-TT001",
-      "assignmentsByExam": {
-        "exam-1794212893090": {
-          "roomName": "S2",
-          "tableNumber": "1",
-          "anonymatNumber": "EXAM-TT001"
-        }
-      },
-      "assignmentsBySlot": {
-        "slot-1794213028409": {
-          "roomName": "S2",
-          "tableNumber": "1",
-          "anonymatNumber": "EXAM-TT001",
-          "examId": "exam-1794212893090",
-          "slotId": "slot-1794213028409"
-        }
-      },
+      "tableNumber": "",
+      "anonymatNumber": "",
+      "assignmentsByExam": {},
+      "assignmentsBySlot": {},
       "specialty": "",
       "isTiersTemps": false
     },
@@ -1618,27 +1604,13 @@
       "firstName": "Cheikh Saliou Mbacké",
       "className": "TERMINALE2",
       "examName": "Examens blancs - décembre 2026",
-      "roomName": "S2",
+      "roomName": "",
       "convocationTime": "07h45",
       "accommodation": "",
-      "tableNumber": "2",
-      "anonymatNumber": "EXAM-TT002",
-      "assignmentsByExam": {
-        "exam-1794212893090": {
-          "roomName": "S2",
-          "tableNumber": "2",
-          "anonymatNumber": "EXAM-TT002"
-        }
-      },
-      "assignmentsBySlot": {
-        "slot-1794213028409": {
-          "roomName": "S2",
-          "tableNumber": "2",
-          "anonymatNumber": "EXAM-TT002",
-          "examId": "exam-1794212893090",
-          "slotId": "slot-1794213028409"
-        }
-      },
+      "tableNumber": "",
+      "anonymatNumber": "",
+      "assignmentsByExam": {},
+      "assignmentsBySlot": {},
       "specialty": "",
       "isTiersTemps": false
     },
