@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-16T14:08:29.439Z",
+  "updatedAt": "2026-11-16T14:22:45.457Z",
   "siteInfo": {
     "title": "Lycée Français Jacques Prévert",
     "subtitle": "Lycée Français Jacques Prévert de Saly, Sénégal • Réseau AEFE",
@@ -186,7 +186,13 @@
         "S4"
       ],
       "notes": "",
-      "id": "slot-1794216903837"
+      "id": "slot-1794216903837",
+      "customRoomQuotas": {
+        "room-1794212490400-20-f2vj": 15,
+        "room-1794212490400-23-ytv1": 15,
+        "room-1794212490400-24-graj": 15,
+        "room-1794212490400-25-gwd3": 15
+      }
     },
     {
       "examTitle": "Examens blancs - décembre 2026",
@@ -1270,6 +1276,13 @@
           "anonymatNumber": "EXAM-0101",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S2",
+          "tableNumber": "1",
+          "anonymatNumber": "EXAM-0101",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1298,6 +1311,13 @@
           "anonymatNumber": "EXAM-0102",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S1",
+          "tableNumber": "1",
+          "anonymatNumber": "EXAM-0102",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1326,6 +1346,13 @@
           "anonymatNumber": "EXAM-0103",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S2",
+          "tableNumber": "2",
+          "anonymatNumber": "EXAM-0103",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1354,6 +1381,13 @@
           "anonymatNumber": "EXAM-0104",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S4",
+          "tableNumber": "1",
+          "anonymatNumber": "EXAM-0104",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1382,6 +1416,13 @@
           "anonymatNumber": "EXAM-0105",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S4",
+          "tableNumber": "2",
+          "anonymatNumber": "EXAM-0105",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1410,6 +1451,13 @@
           "anonymatNumber": "EXAM-0106",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S1",
+          "tableNumber": "2",
+          "anonymatNumber": "EXAM-0106",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1438,6 +1486,13 @@
           "anonymatNumber": "EXAM-0107",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S3",
+          "tableNumber": "1",
+          "anonymatNumber": "EXAM-0107",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1466,6 +1521,13 @@
           "anonymatNumber": "EXAM-0108",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S1",
+          "tableNumber": "3",
+          "anonymatNumber": "EXAM-0108",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1494,6 +1556,13 @@
           "anonymatNumber": "EXAM-0109",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S2",
+          "tableNumber": "3",
+          "anonymatNumber": "EXAM-0109",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1522,6 +1591,13 @@
           "anonymatNumber": "EXAM-0110",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S1",
+          "tableNumber": "4",
+          "anonymatNumber": "EXAM-0110",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1550,6 +1626,13 @@
           "anonymatNumber": "EXAM-0111",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S1",
+          "tableNumber": "5",
+          "anonymatNumber": "EXAM-0111",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1578,6 +1661,13 @@
           "anonymatNumber": "EXAM-0112",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S4",
+          "tableNumber": "3",
+          "anonymatNumber": "EXAM-0112",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1606,6 +1696,13 @@
           "anonymatNumber": "EXAM-0113",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S2",
+          "tableNumber": "5",
+          "anonymatNumber": "EXAM-0113",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1634,6 +1731,13 @@
           "anonymatNumber": "EXAM-0114",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S4",
+          "tableNumber": "4",
+          "anonymatNumber": "EXAM-0114",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1662,6 +1766,13 @@
           "anonymatNumber": "EXAM-0115",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S3",
+          "tableNumber": "2",
+          "anonymatNumber": "EXAM-0115",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1690,6 +1801,13 @@
           "anonymatNumber": "EXAM-0116",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S1",
+          "tableNumber": "6",
+          "anonymatNumber": "EXAM-0116",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1718,6 +1836,13 @@
           "anonymatNumber": "EXAM-0117",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S1",
+          "tableNumber": "8",
+          "anonymatNumber": "EXAM-0117",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1746,6 +1871,13 @@
           "anonymatNumber": "EXAM-0118",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S4",
+          "tableNumber": "5",
+          "anonymatNumber": "EXAM-0118",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1774,6 +1906,13 @@
           "anonymatNumber": "EXAM-0119",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S3",
+          "tableNumber": "3",
+          "anonymatNumber": "EXAM-0119",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1802,6 +1941,13 @@
           "anonymatNumber": "EXAM-0120",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S4",
+          "tableNumber": "6",
+          "anonymatNumber": "EXAM-0120",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       },
       "specialty": "",
@@ -1832,6 +1978,13 @@
           "anonymatNumber": "EXAM-0121",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S3",
+          "tableNumber": "4",
+          "anonymatNumber": "EXAM-0121",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1860,6 +2013,13 @@
           "anonymatNumber": "EXAM-0122",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S4",
+          "tableNumber": "7",
+          "anonymatNumber": "EXAM-0122",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1888,6 +2048,13 @@
           "anonymatNumber": "EXAM-0123",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S3",
+          "tableNumber": "5",
+          "anonymatNumber": "EXAM-0123",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1916,6 +2083,13 @@
           "anonymatNumber": "EXAM-0124",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S4",
+          "tableNumber": "8",
+          "anonymatNumber": "EXAM-0124",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1944,6 +2118,13 @@
           "anonymatNumber": "EXAM-0125",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S4",
+          "tableNumber": "12",
+          "anonymatNumber": "EXAM-0125",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -1972,6 +2153,13 @@
           "anonymatNumber": "EXAM-0126",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S4",
+          "tableNumber": "9",
+          "anonymatNumber": "EXAM-0126",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2000,6 +2188,13 @@
           "anonymatNumber": "EXAM-0127",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S2",
+          "tableNumber": "8",
+          "anonymatNumber": "EXAM-0127",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2028,6 +2223,13 @@
           "anonymatNumber": "EXAM-0128",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S2",
+          "tableNumber": "4",
+          "anonymatNumber": "EXAM-0128",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2056,6 +2258,13 @@
           "anonymatNumber": "EXAM-0129",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S3",
+          "tableNumber": "7",
+          "anonymatNumber": "EXAM-0129",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2084,6 +2293,13 @@
           "anonymatNumber": "EXAM-0130",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S4",
+          "tableNumber": "10",
+          "anonymatNumber": "EXAM-0130",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       },
       "specialty": "",
@@ -2114,6 +2330,13 @@
           "anonymatNumber": "EXAM-0131",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S1",
+          "tableNumber": "11",
+          "anonymatNumber": "EXAM-0131",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2142,6 +2365,13 @@
           "anonymatNumber": "EXAM-0132",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S1",
+          "tableNumber": "7",
+          "anonymatNumber": "EXAM-0132",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2170,6 +2400,13 @@
           "anonymatNumber": "EXAM-0133",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S2",
+          "tableNumber": "10",
+          "anonymatNumber": "EXAM-0133",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2198,6 +2435,13 @@
           "anonymatNumber": "EXAM-0134",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S4",
+          "tableNumber": "11",
+          "anonymatNumber": "EXAM-0134",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2226,6 +2470,13 @@
           "anonymatNumber": "EXAM-0135",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S3",
+          "tableNumber": "8",
+          "anonymatNumber": "EXAM-0135",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2254,6 +2505,13 @@
           "anonymatNumber": "EXAM-0136",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S2",
+          "tableNumber": "6",
+          "anonymatNumber": "EXAM-0136",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2282,6 +2540,13 @@
           "anonymatNumber": "EXAM-0137",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S2",
+          "tableNumber": "11",
+          "anonymatNumber": "EXAM-0137",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2310,6 +2575,13 @@
           "anonymatNumber": "EXAM-0138",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S1",
+          "tableNumber": "9",
+          "anonymatNumber": "EXAM-0138",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2338,6 +2610,13 @@
           "anonymatNumber": "EXAM-0139",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S3",
+          "tableNumber": "9",
+          "anonymatNumber": "EXAM-0139",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2366,6 +2645,13 @@
           "anonymatNumber": "EXAM-TT001",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S2",
+          "tableNumber": "7",
+          "anonymatNumber": "EXAM-0140",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2394,6 +2680,13 @@
           "anonymatNumber": "EXAM-0141",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S1",
+          "tableNumber": "12",
+          "anonymatNumber": "EXAM-0141",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2422,6 +2715,13 @@
           "anonymatNumber": "EXAM-0142",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S1",
+          "tableNumber": "10",
+          "anonymatNumber": "EXAM-0142",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2450,6 +2750,13 @@
           "anonymatNumber": "EXAM-0143",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S3",
+          "tableNumber": "10",
+          "anonymatNumber": "EXAM-0143",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2478,6 +2785,13 @@
           "anonymatNumber": "EXAM-0144",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S3",
+          "tableNumber": "6",
+          "anonymatNumber": "EXAM-0144",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2506,6 +2820,13 @@
           "anonymatNumber": "EXAM-0145",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S1",
+          "tableNumber": "13",
+          "anonymatNumber": "EXAM-0145",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2534,6 +2855,13 @@
           "anonymatNumber": "EXAM-TT002",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S2",
+          "tableNumber": "9",
+          "anonymatNumber": "EXAM-0146",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2562,6 +2890,13 @@
           "anonymatNumber": "EXAM-TT003",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S2",
+          "tableNumber": "13",
+          "anonymatNumber": "EXAM-0147",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2590,6 +2925,13 @@
           "anonymatNumber": "EXAM-0148",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S2",
+          "tableNumber": "12",
+          "anonymatNumber": "EXAM-0148",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2618,6 +2960,13 @@
           "anonymatNumber": "EXAM-TT004",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S2",
+          "tableNumber": "14",
+          "anonymatNumber": "EXAM-0149",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2646,6 +2995,13 @@
           "anonymatNumber": "EXAM-0150",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S3",
+          "tableNumber": "11",
+          "anonymatNumber": "EXAM-0150",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2674,6 +3030,13 @@
           "anonymatNumber": "EXAM-0151",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S3",
+          "tableNumber": "12",
+          "anonymatNumber": "EXAM-0151",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
@@ -2702,6 +3065,13 @@
           "anonymatNumber": "EXAM-0152",
           "examId": "exam-1794212893090",
           "slotId": "slot-1794213028409"
+        },
+        "slot-1794474599910": {
+          "roomName": "S2",
+          "tableNumber": "15",
+          "anonymatNumber": "EXAM-0152",
+          "examId": "exam-1794212893090",
+          "slotId": "slot-1794474599910"
         }
       }
     },
