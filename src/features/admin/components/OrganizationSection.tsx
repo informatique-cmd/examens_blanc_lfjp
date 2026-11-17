@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Shuffle,
   Grid,
@@ -49,6 +49,7 @@ import {
   formatMinutesToColon,
   computeBalancedRoomTargets,
   resolveOwnerSlotForRoomAndCandidate,
+  CMS_IMPORTED_EVENT_NAME,
 } from "../../../shared/services/cms-store";
 
 type DispatchMode = "brassage" | "alphabetique" | "classe" | "specialite";
@@ -254,6 +255,23 @@ export default function OrganizationSection({
   const [slotTTRoomMap, setSlotTTRoomMap] = useState<Record<string, string[]>>({});
   const [examTTRoomMap, setExamTTRoomMap] = useState<Record<string, string[]>>({});
   const [showAllSchoolRooms, setShowAllSchoolRooms] = useState<boolean>(false);
+
+  useEffect(() => {
+    const handleCmsImported = () => {
+      setSlotRoomMap({});
+      setExamRoomMap({});
+      setSlotTTRoomMap({});
+      setExamTTRoomMap({});
+      setCustomRoomCapacities({});
+      setDispatchModeMap({});
+      setAnonymatPrefixMap({});
+      setCheckedSlotIdsByExamDate({});
+      setShowAllSchoolRooms(false);
+      setInspectingRoomName(null);
+    };
+    window.addEventListener(CMS_IMPORTED_EVENT_NAME, handleCmsImported);
+    return () => window.removeEventListener(CMS_IMPORTED_EVENT_NAME, handleCmsImported);
+  }, []);
 
   const getRoomIdsForSlot = useCallback(
     (slot: CmsExamSlot): string[] => {

@@ -1615,6 +1615,215 @@ export interface SavedConfigSnapshot {
 const CMS_STORAGE_KEY = "lfjp_examens_cms_data_v1";
 const CMS_SNAPSHOTS_KEY = "lfjp_config_snapshots_v1";
 const CMS_EVENT_NAME = "lfjp_cms_updated";
+export const CMS_IMPORTED_EVENT_NAME = "lfjp_cms_imported";
+
+export interface CmsMigrationStats {
+  migratedSlotAssignments: number;
+  cleanedSurveillances: number;
+}
+
+/**
+ * Normalizes and migrates an imported CMS JSON payload (or snapshot) without losing any
+ * existing assignments (rooms, table numbers, anonymat numbers, supervisors):
+ * 1. Moves candidate `assignmentsBySlot` entries to the true owner slot (same date & overlapping window)
+ *    owning their assigned `roomName`, including Tiers-Temps rooms/slots.
+ * 2. Cleans legacy supervisor labels ("Surveillant de renfort & couloir" -> "Surveillant renfort",
+ *    removes "(Renfort)" / "(AED / Vie Scolaire)" parenthetical tags, removes "couloir" from roomName).
+ */
+export function normalizeAndMigrateCmsData(raw: CmsData): {
+  data: CmsData;
+  stats: CmsMigrationStats;
+} {
+  const exams = Array.isArray(raw.exams) ? raw.exams : [];
+  const examSlots = Array.isArray(raw.examSlots) ? raw.examSlots : [];
+  const rooms = Array.isArray(raw.rooms) ? raw.rooms : [];
+  const candidates = Array.isArray(raw.candidates) ? raw.candidates : [];
+  const surveillances = Array.isArray(raw.surveillances) ? raw.surveillances : [];
+
+  let migratedSlotAssignments = 0;
+  let cleanedSurveillances = 0;
+
+  const findExamForSlot = (slot: CmsExamSlot, fallbackExamId?: string): CmsExam | null => {
+    return (
+      exams.find(
+        (e) =>
+          (slot.examId && e.id === slot.examId) ||
+          (fallbackExamId && e.id === fallbackExamId) ||
+          (slot.examTitle && e.title.trim().toLowerCase() === slot.examTitle.trim().toLowerCase())
+      ) || null
+    );
+  };
+
+  const getSlotRoomIds = (sl: CmsExamSlot): string[] => {
+    const names = new Set(
+      (sl.roomNames || []).map((rn) => rn.trim().toLowerCase()).filter(Boolean)
+    );
+    return rooms.filter((r) => names.has(r.name.trim().toLowerCase())).map((r) => r.id);
+  };
+
+  const getSlotTTRoomIds = (sl: CmsExamSlot, slotRoomIds: string[]): string[] => {
+    if (Array.isArray(sl.ttRoomIds)) return sl.ttRoomIds;
+    const examObj = findExamForSlot(sl);
+    if (examObj && Array.isArray(examObj.ttRoomIds)) {
+      return examObj.ttRoomIds.filter((id) => slotRoomIds.includes(id));
+    }
+    return rooms
+      .filter((r) => slotRoomIds.includes(r.id) && isRoomMarkedTiersTemps(r, [sl], examObj))
+      .map((r) => r.id);
+  };
+
+  // 1. Realign candidate assignmentsBySlot to exact owner slots on same date & time window
+  const migratedCandidates: CmsCandidate[] = candidates.map((cand) => {
+    if (!cand.assignmentsBySlot || typeof cand.assignmentsBySlot !== "object") {
+      return cand;
+    }
+
+    const originalEntries = Object.entries(cand.assignmentsBySlot);
+    if (originalEntries.length === 0) return cand;
+
+    const nextBySlot: Record<string, CandidateSlotAssignment> = { ...cand.assignmentsBySlot };
+    let candidateChanged = false;
+
+    for (const [sourceSlotId, assign] of originalEntries) {
+      if (!assign || !assign.roomName || !assign.roomName.trim()) continue;
+      const sourceSlot = examSlots.find((s) => s.id === sourceSlotId);
+      if (!sourceSlot) continue;
+
+      const examObj = findExamForSlot(sourceSlot, assign.examId);
+      const roomNorm = assign.roomName.trim().toLowerCase();
+      const roomObj = rooms.find((r) => r.name.trim().toLowerCase() === roomNorm);
+
+      // Concurrent slots on the exact same date & overlapping time window within the same exam
+      const sameWindowSlots = examSlots.filter((sl) => {
+        if (sl.date !== sourceSlot.date) return false;
+        if (!slotsTimeOverlap(sl, sourceSlot)) return false;
+        if (sourceSlot.examId && sl.examId) return sl.examId === sourceSlot.examId;
+        if (sourceSlot.examTitle && sl.examTitle) {
+          return sl.examTitle.trim().toLowerCase() === sourceSlot.examTitle.trim().toLowerCase();
+        }
+        return true;
+      });
+
+      if (sameWindowSlots.length <= 1) continue;
+
+      const owningSlots = sameWindowSlots.filter((sl) =>
+        (sl.roomNames || []).some((rn) => rn.trim().toLowerCase() === roomNorm)
+      );
+
+      const isRoomTT = roomObj
+        ? isRoomMarkedTiersTemps(
+            roomObj,
+            owningSlots.length > 0 ? owningSlots : sameWindowSlots,
+            examObj
+          )
+        : /\b(tt|tiers)\b/i.test(assign.roomName);
+      const isCandTT = isCandidateTiersTemps(cand);
+
+      const ttSlotsInWindow = sameWindowSlots.filter(
+        (sl) =>
+          /\b(tiers[\s-]*temps|tt)\b/i.test(sl.subject || "") &&
+          isCandidateEligibleForSlot(cand, examObj, sl, {
+            ignoreExistingAssignment: true,
+            allowMissingSpecialty: true,
+          })
+      );
+
+      let targetSlot: CmsExamSlot | null = null;
+
+      if (owningSlots.length === 1) {
+        const singleOwner = owningSlots[0];
+        if (
+          (isRoomTT || isCandTT) &&
+          !/\b(tiers[\s-]*temps|tt)\b/i.test(singleOwner.subject || "") &&
+          ttSlotsInWindow.length > 0
+        ) {
+          targetSlot =
+            ttSlotsInWindow.find((sl) =>
+              (sl.roomNames || []).some((rn) => rn.trim().toLowerCase() === roomNorm)
+            ) || ttSlotsInWindow[0];
+        } else {
+          targetSlot = singleOwner;
+        }
+      } else if (owningSlots.length > 1) {
+        targetSlot = resolveOwnerSlotForRoomAndCandidate(
+          roomObj?.id || "",
+          cand,
+          examObj,
+          owningSlots,
+          getSlotRoomIds,
+          getSlotTTRoomIds
+        );
+      } else if ((isRoomTT || isCandTT) && ttSlotsInWindow.length > 0) {
+        targetSlot = ttSlotsInWindow[0];
+      }
+
+      if (targetSlot && targetSlot.id !== sourceSlotId) {
+        const existingOnTarget = nextBySlot[targetSlot.id];
+        if (!existingOnTarget || !existingOnTarget.roomName) {
+          delete nextBySlot[sourceSlotId];
+          nextBySlot[targetSlot.id] = {
+            roomName: assign.roomName,
+            tableNumber: assign.tableNumber,
+            anonymatNumber: assign.anonymatNumber,
+            slotId: targetSlot.id,
+            examId: targetSlot.examId || assign.examId,
+          };
+          candidateChanged = true;
+          migratedSlotAssignments++;
+        } else if (
+          existingOnTarget.roomName.trim().toLowerCase() === roomNorm &&
+          (existingOnTarget.tableNumber || "") === (assign.tableNumber || "")
+        ) {
+          // Pure duplicate on wrong sourceSlotId -> drop stale duplicate safely
+          delete nextBySlot[sourceSlotId];
+          candidateChanged = true;
+          migratedSlotAssignments++;
+        }
+      }
+    }
+
+    return candidateChanged ? { ...cand, assignmentsBySlot: nextBySlot } : cand;
+  });
+
+  // 2. Clean legacy supervisor labels ("couloir", "(Renfort)", "(AED / Vie Scolaire)") while keeping assignments intact
+  const cleanedSurvs: CmsSurveillance[] = surveillances.map((s) => {
+    const isRenfort = isRenfortSurveillance(s);
+    const cleanedName = cleanSupervisorName(s.teacherName) || s.teacherName;
+    const cleanedMission = isRenfort
+      ? "Surveillant renfort"
+      : formatSupervisorMissionLabel(s.mission, false);
+    const cleanedRoom =
+      isRenfort && /\bcouloir\b/i.test(s.roomName || "") ? "Renfort" : s.roomName;
+
+    if (
+      cleanedName !== s.teacherName ||
+      cleanedMission !== s.mission ||
+      cleanedRoom !== s.roomName
+    ) {
+      cleanedSurveillances++;
+      return {
+        ...s,
+        teacherName: cleanedName,
+        mission: cleanedMission,
+        roomName: cleanedRoom,
+      };
+    }
+    return s;
+  });
+
+  return {
+    data: {
+      ...raw,
+      candidates: migratedCandidates,
+      surveillances: cleanedSurvs,
+      updatedAt: new Date().toISOString(),
+    },
+    stats: {
+      migratedSlotAssignments,
+      cleanedSurveillances,
+    },
+  };
+}
 
 // Default initial state built directly from the school's real configured data
 export const DEFAULT_CMS_DATA: CmsData = defaultCmsDataJson as unknown as CmsData;
@@ -1813,8 +2022,12 @@ export function restoreConfigSnapshot(id: string): CmsData | null {
   const existing = getSavedConfigSnapshots();
   const found = existing.find((s) => s.id === id);
   if (!found) return null;
-  saveCmsData(found.data);
-  return found.data;
+  const { data: normalized } = normalizeAndMigrateCmsData(found.data);
+  saveCmsData(normalized);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(CMS_IMPORTED_EVENT_NAME, { detail: { updatedAt: normalized.updatedAt } }));
+  }
+  return normalized;
 }
 
 /**
@@ -1837,16 +2050,29 @@ export function exportCmsDataJson(data?: CmsData): string {
 }
 
 /**
- * Imports CMS data from a JSON string.
+ * Imports CMS data from a JSON string, running automatic schema alignment,
+ * room-ownership migration for candidate slot assignments, and supervisor label cleanup.
  */
-export function importCmsDataJson(jsonString: string): { success: boolean; error?: string } {
+export function importCmsDataJson(jsonString: string): {
+  success: boolean;
+  error?: string;
+  stats?: CmsMigrationStats;
+} {
   try {
     const parsed = JSON.parse(jsonString);
     if (!parsed || typeof parsed !== "object") {
       return { success: false, error: "Format de fichier invalide." };
     }
-    saveCmsData(parsed as CmsData);
-    return { success: true };
+    const { data: normalized, stats } = normalizeAndMigrateCmsData(parsed as CmsData);
+    saveCmsData(normalized);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent(CMS_IMPORTED_EVENT_NAME, {
+          detail: { updatedAt: normalized.updatedAt, stats },
+        })
+      );
+    }
+    return { success: true, stats };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Erreur inconnue." };
   }

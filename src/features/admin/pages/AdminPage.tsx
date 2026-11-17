@@ -770,15 +770,25 @@ export default function AdminPage() {
   const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const inputEl = e.target;
     const reader = new FileReader();
     reader.onload = (ev) => {
       const content = ev.target?.result as string;
       const res = importCmsDataJson(content);
       if (res.success) {
-        showNotification("Données CMS restaurées avec succès !");
+        const migrated = res.stats?.migratedSlotAssignments || 0;
+        const cleaned = res.stats?.cleanedSurveillances || 0;
+        if (migrated > 0 || cleaned > 0) {
+          showNotification(
+            `Données restaurées & normalisées (${migrated} affectation(s) réalignée(s) par salle, ${cleaned} libellé(s) surveillant nettoyé(s)) !`
+          );
+        } else {
+          showNotification("Données CMS restaurées et synchronisées avec succès !");
+        }
       } else {
         alert("Erreur lors de l'importation : " + res.error);
       }
+      inputEl.value = "";
     };
     reader.readAsText(file);
   };
