@@ -503,6 +503,57 @@ export function formatSupervisorMissionLabel(mission?: string, isRenfort?: boole
   return (mission || "Surveillant titulaire").trim();
 }
 
+export function matchesSupervisorIdentity(
+  rawSurvName: string,
+  targetLast: string,
+  targetFirst: string = ""
+): boolean {
+  const norm = (v: string) =>
+    (v || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/^(madame|monsieur|mme|m\.|mlle)\s+/i, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const survClean = norm(cleanSupervisorName(rawSurvName) || rawSurvName);
+  const ln = norm(cleanSupervisorName(targetLast) || targetLast);
+  const fn = norm(cleanSupervisorName(targetFirst) || targetFirst);
+  if (!survClean || !ln) return false;
+
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const hasWordSeq = (haystack: string, needle: string) =>
+    new RegExp(`(?:^|[^a-z0-9])${esc(needle)}(?:$|[^a-z0-9])`, "i").test(haystack);
+
+  if (!fn) {
+    if (survClean === ln) return true;
+    const tokens = ln.split(" ").filter((t) => t.length >= 2);
+    return tokens.length > 0 && tokens.every((tok) => hasWordSeq(survClean, tok));
+  }
+
+  if (!hasWordSeq(survClean, ln)) return false;
+  const survTokens = survClean.split(" ").filter(Boolean);
+  const lnTokens = ln.split(" ").filter(Boolean);
+  if (survTokens.length <= lnTokens.length) return true;
+  const fnPrefix = fn.slice(0, Math.min(3, fn.length));
+  return hasWordSeq(survClean, fn) || survTokens.some((t) => t.startsWith(fnPrefix));
+}
+
+export function getSlotDisplayedEndTime(
+  slot: Pick<CmsExamSlot, "subject" | "startTime" | "endTime" | "durationMinutes" | "tiersTempsEndTime">,
+  isCandTT: boolean
+): string {
+  if (!isCandTT) return slot.endTime;
+  if (/\b(tiers[\s-]*temps|tt)\b/i.test(slot.subject || "")) {
+    return slot.endTime || slot.tiersTempsEndTime || "";
+  }
+  return (
+    slot.tiersTempsEndTime ||
+    computeTiersTempsEndTimeColon(slot.startTime, slot.durationMinutes)
+  );
+}
+
 export function isRenfortSurveillance(
   s: Pick<CmsSurveillance, "roomName" | "mission">
 ): boolean {
@@ -564,19 +615,29 @@ export function consolidateTeacherSurveillances(
           )
         : [];
 
+    const renfortRange = isRenfort ? parseTimeRangeMinutes(s.timeSlot) : null;
     const overlappingSlotsForRenfort = isRenfort
-      ? examSlots.filter(
-          (sl) =>
-            sl.date === s.date &&
-            (!s.examTitle ||
-              sl.examTitle.trim().toLowerCase() === s.examTitle.trim().toLowerCase()) &&
-            surveillancesTimeOverlap(
-              sl.date,
-              `${sl.startTime} - ${sl.tiersTempsEndTime || sl.endTime}`,
-              s.date,
-              s.timeSlot
-            )
-        )
+      ? examSlots.filter((sl) => {
+          if (sl.date !== s.date) return false;
+          if (
+            s.examTitle &&
+            sl.examTitle.trim().toLowerCase() !== s.examTitle.trim().toLowerCase()
+          ) {
+            return false;
+          }
+          const slStart = parseTimeMinutes(sl.startTime);
+          if (renfortRange && slStart !== null) {
+            const isSlotMorning = slStart < 12 * 60 + 30;
+            const isRenfortMorning = renfortRange.startMin < 12 * 60 + 30;
+            if (isSlotMorning !== isRenfortMorning) return false;
+          }
+          return surveillancesTimeOverlap(
+            sl.date,
+            `${sl.startTime} - ${sl.tiersTempsEndTime || sl.endTime}`,
+            s.date,
+            s.timeSlot
+          );
+        })
       : [];
 
     const subjectNames = Array.from(
@@ -584,15 +645,16 @@ export function consolidateTeacherSurveillances(
         [
           ...(matchedSlot ? [matchedSlot.subject] : []),
           ...parallelSlotsInRoom.map((sl) => sl.subject),
-          ...(!matchedSlot ? overlappingSlotsForRenfort.map((sl) => sl.subject) : []),
+          ...(isRenfort || !matchedSlot ? overlappingSlotsForRenfort.map((sl) => sl.subject) : []),
         ].filter(Boolean)
       )
     );
 
     const rawRenfortRooms = isRenfort
-      ? matchedSlot && Array.isArray(matchedSlot.roomNames) && matchedSlot.roomNames.length > 0
-        ? matchedSlot.roomNames
-        : overlappingSlotsForRenfort.flatMap((sl) => sl.roomNames || [])
+      ? [
+          ...(matchedSlot?.roomNames || []),
+          ...overlappingSlotsForRenfort.flatMap((sl) => sl.roomNames || []),
+        ]
       : [];
 
     const renfortRooms = Array.from(

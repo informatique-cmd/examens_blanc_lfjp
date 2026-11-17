@@ -29,18 +29,9 @@ import {
   isRenfortSurveillance,
   cleanSupervisorName,
   formatSupervisorMissionLabel,
+  matchesSupervisorIdentity,
+  getSlotDisplayedEndTime,
 } from "../../../shared/services/cms-store";
-
-function computeTTEndTime(startTime: string, durationMinutes: number): string {
-  if (!startTime || !startTime.includes(":")) return "";
-  const [hStr, mStr] = startTime.split(":");
-  const h = parseInt(hStr, 10);
-  const m = parseInt(mStr, 10);
-  if (isNaN(h) || isNaN(m)) return "";
-  const dur = durationMinutes > 0 ? durationMinutes : 60;
-  const ttTotal = h * 60 + m + Math.round(dur * (4 / 3));
-  return `${String(Math.floor(ttTotal / 60) % 24).padStart(2, "0")}h${String(ttTotal % 60).padStart(2, "0")}`;
-}
 
 type ViewMode = "candidat" | "classe_lot" | "enseignant" | "emargement";
 
@@ -228,7 +219,7 @@ export default function ConvocationsPage() {
   // Distinct cleaned supervisor names for Enseignant mode (teachers + renfort personnel)
   const supervisorOptions = useMemo(() => {
     const list: Array<{ value: string; label: string }> = cmsData.teachers.map((t) => ({
-      value: t.lastName,
+      value: `${t.lastName} ${t.firstName}`.trim(),
       label: `${t.civility === "Madame" ? "Mme" : "M."} ${t.firstName} ${t.lastName} (${t.subject})`,
     }));
     const existingLower = new Set(
@@ -240,7 +231,7 @@ export default function ConvocationsPage() {
       const baseLower = base.toLowerCase();
       if (!baseLower) return;
       const exists = Array.from(existingLower).some(
-        (n) => n.includes(baseLower) || baseLower.includes(n)
+        (n) => matchesSupervisorIdentity(s.teacherName, n)
       );
       if (!exists) {
         existingLower.add(baseLower);
@@ -257,10 +248,9 @@ export default function ConvocationsPage() {
   // Teacher surveillances (filtered by teacher and exam, consolidated by physical room × time window)
   const teacherSurveillances = useMemo(() => {
     const raw = cmsData.surveillances.filter((s) => {
-      const cleanName = cleanSupervisorName(s.teacherName).toLowerCase();
       const matchTeacher =
         selectedTeacherName === "all" ||
-        cleanName.includes(selectedTeacherName.toLowerCase());
+        matchesSupervisorIdentity(s.teacherName, selectedTeacherName);
       const matchExam =
         selectedExam === "all" ||
         (s.examTitle || "").trim().toLowerCase() === selectedExam.trim().toLowerCase();
@@ -305,9 +295,7 @@ export default function ConvocationsPage() {
     );
 
     const schedule = matchingSlots.map((slot) => {
-      const endTimeDisplay = isTT
-        ? slot.tiersTempsEndTime || computeTTEndTime(slot.startTime, slot.durationMinutes)
-        : slot.endTime;
+      const endTimeDisplay = getSlotDisplayedEndTime(slot, isTT);
       const slotAssign = getCandidateAssignmentForSlot(
         cand,
         resolvedExam,

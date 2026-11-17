@@ -39,22 +39,9 @@ import {
   formatSupervisorMissionLabel,
   isRoomMarkedTiersTemps,
   computeTiersTempsEndTimeColon,
+  matchesSupervisorIdentity,
+  getSlotDisplayedEndTime,
 } from "../../../shared/services/cms-store";
-
-// Helper to compute Tiers-Temps end time (+1/3 time)
-function calcTTEndTime(startTime: string, durationMinutes: number): string {
-  if (!startTime || !startTime.includes(":")) return "";
-  const [hStr, mStr] = startTime.split(":");
-  const h = parseInt(hStr, 10);
-  const m = parseInt(mStr, 10);
-  if (isNaN(h) || isNaN(m)) return "";
-  const duration = durationMinutes && durationMinutes > 0 ? durationMinutes : 60;
-  const ttDuration = Math.round(duration * (4 / 3));
-  const totalMin = h * 60 + m + ttDuration;
-  const endH = Math.floor(totalMin / 60) % 24;
-  const endM = totalMin % 60;
-  return `${String(endH).padStart(2, "0")}h${String(endM).padStart(2, "0")}`;
-}
 
 interface ConvocElevesSectionProps {
   candidates: CmsCandidate[];
@@ -803,9 +790,7 @@ export function ConvocElevesSection({
                             </tr>
                           ) : (
                             matchingSlots.map((slot) => {
-                              const endTimeDisplay = isTT
-                                ? slot.tiersTempsEndTime || calcTTEndTime(slot.startTime, slot.durationMinutes)
-                                : slot.endTime;
+                              const endTimeDisplay = getSlotDisplayedEndTime(slot, isTT);
                               const slotAssign = getCandidateAssignmentForSlot(
                                 candidate,
                                 candResolvedExam,
@@ -1181,10 +1166,7 @@ export function ConvocProfsSection({
           const displaySubject = teacher.isRenfort ? "Surveillant renfort" : teacher.subject;
 
           const rawTeacherSurvs = surveillances.filter((s) => {
-            const cleanSurvTeacher = cleanSupervisorName(s.teacherName).toLowerCase();
-            const matchesTeacher =
-              (cleanLast && cleanSurvTeacher.includes(cleanLast.toLowerCase())) ||
-              (cleanFirst && cleanSurvTeacher.includes(cleanFirst.toLowerCase()));
+            const matchesTeacher = matchesSupervisorIdentity(s.teacherName, cleanLast, cleanFirst);
             if (!matchesTeacher) return false;
             if (selectedExamTitle !== "all") {
               return (s.examTitle || "").trim().toLowerCase() === selectedExamTitle.trim().toLowerCase();

@@ -44,6 +44,7 @@ import {
   cleanSupervisorName,
   formatSupervisorMissionLabel,
   parseTimeRangeMinutes,
+  getSlotDisplayedEndTime,
 } from "../../../shared/services/cms-store";
 
 // Helper to normalize search strings (removes accents, lowercase, trim)
@@ -160,21 +161,6 @@ export default function HomePage() {
     return { label: `Dans ${diffDays} jours`, isUpcoming: true };
   };
 
-  // Helper to calculate time offset (e.g. 15 min before)
-  const computeTimeOffset = (timeStr: string, minutesOffset: number): string => {
-    try {
-      const clean = timeStr.replace("h", ":").trim();
-      const [h, m] = clean.split(":").map(Number);
-      if (isNaN(h) || isNaN(m)) return "07h45";
-      const totalMinutes = h * 60 + m + minutesOffset;
-      const rh = Math.floor(totalMinutes / 60) % 24;
-      const rm = totalMinutes % 60;
-      return `${String(rh).padStart(2, "0")}h${String(rm).padStart(2, "0")}`;
-    } catch {
-      return "07h45";
-    }
-  };
-
   // Helper to generate personalized exam schedule for a candidate (strictly per exam, level, and specialty)
   const getCandidateSchedule = (cand: CmsCandidate, specificExam?: CmsExam | null) => {
     const isTT = isCandidateTiersTemps(cand);
@@ -201,9 +187,7 @@ export default function HomePage() {
     );
 
     const schedule = matchedSlots.map((slot) => {
-      const ttEnd =
-        slot.tiersTempsEndTime ||
-        computeTimeOffset(slot.startTime, Math.round((slot.durationMinutes || 60) * (4 / 3)));
+      const ttEnd = getSlotDisplayedEndTime(slot, true);
       const slotAssign = getCandidateAssignmentForSlot(
         cand,
         resolvedExam,
@@ -1443,12 +1427,7 @@ export default function HomePage() {
                                 </p>
                               ) : (
                                 candSlots.map((slot, idx) => {
-                                  const ttEnd =
-                                    slot.tiersTempsEndTime ||
-                                    computeTimeOffset(
-                                      slot.startTime,
-                                      Math.round((slot.durationMinutes || 60) * (4 / 3))
-                                    );
+                                  const ttEnd = getSlotDisplayedEndTime(slot, true);
                                   const slotAssign = getCandidateAssignmentForSlot(
                                     cand,
                                     findRoomModalExam,
