@@ -8,6 +8,12 @@ export interface ProviseurAuth {
   name: string;
 }
 
+export const DEFAULT_SUPERADMIN_AUTH: ProviseurAuth = {
+  email: "informatique@lfjpsaly.org",
+  password: "Bonjour@12345",
+  name: "Service Informatique (DSI)",
+};
+
 export interface PendingDeploymentInfo {
   requestedAt?: string;
   requestedBy?: string;
@@ -32,6 +38,7 @@ export interface SiteInfo {
     type: "info" | "warning" | "urgent" | "success";
   };
   proviseurAuth?: ProviseurAuth;
+  superAdminAuth?: ProviseurAuth;
   pendingDeployment?: PendingDeploymentInfo | null;
   standardSlots?: Array<{
     id: string;
@@ -1931,6 +1938,13 @@ export function getCmsData(): CmsData {
           ...(DEFAULT_CMS_DATA.siteInfo?.proviseurVisibleModules || {}),
           ...(parsed.siteInfo?.proviseurVisibleModules || {}),
         },
+        superAdminAuth: parsed.siteInfo?.superAdminAuth
+          ? {
+              email: parsed.siteInfo.superAdminAuth.email || DEFAULT_SUPERADMIN_AUTH.email,
+              password: parsed.siteInfo.superAdminAuth.password || DEFAULT_SUPERADMIN_AUTH.password,
+              name: parsed.siteInfo.superAdminAuth.name || DEFAULT_SUPERADMIN_AUTH.name,
+            }
+          : (DEFAULT_CMS_DATA.siteInfo?.superAdminAuth || DEFAULT_SUPERADMIN_AUTH),
       },
       callouts: Array.isArray(parsed.callouts)
         ? parsed.callouts.map((c, i) => ({

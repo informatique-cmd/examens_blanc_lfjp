@@ -27,6 +27,11 @@
       "password": "ProviseurLFJP2026!",
       "name": "Mme le Proviseure"
     },
+    "superAdminAuth": {
+      "email": "informatique@lfjpsaly.org",
+      "password": "Bonjour@12345",
+      "name": "Service Informatique (DSI)"
+    },
     "evaluationTypes": [],
     "schoolLevels": [
       "3ème (DNB Collège)",

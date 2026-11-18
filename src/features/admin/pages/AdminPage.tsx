@@ -21,7 +21,6 @@ import {
   Layers,
   Search,
   LogOut,
-  Github,
   Loader2,
   CheckCircle,
   ClipboardPaste,
@@ -63,6 +62,7 @@ import {
   type SiteInfo,
   getProviseurVisibleModules,
   isProviseurSectionAllowed,
+  DEFAULT_SUPERADMIN_AUTH,
 } from "../../../shared/services/cms-store";
 
 import {
@@ -178,17 +178,20 @@ export default function AdminPage() {
   const [showProviseurLoginPass, setShowProviseurLoginPass] = useState<boolean>(false);
   const [proviseurLoginError, setProviseurLoginError] = useState<string | null>(null);
 
+  // SuperAdmin (DSI) Login state
+  const [superAdminEmailInput, setSuperAdminEmailInput] = useState<string>("informatique@lfjpsaly.org");
+  const [superAdminPasswordInput, setSuperAdminPasswordInput] = useState<string>("");
+  const [showSuperAdminLoginPass, setShowSuperAdminLoginPass] = useState<boolean>(false);
+  const [superAdminLoginError, setSuperAdminLoginError] = useState<string | null>(null);
+
   // Proviseur Save confirmation modal
   const [proviseurSaveModalOpen, setProviseurSaveModalOpen] = useState<boolean>(false);
 
-  // GitHub Auth & Sync hook (SuperAdmin)
+  // GitHub Auth & Sync hook (SuperAdmin deployment only, never exposed on login page)
   const {
-    isAuthenticated: isGitHubAuthenticated,
-    user: githubUser,
     config: githubConfig,
     token: githubToken,
     login: loginGitHub,
-    logout: logoutGitHub,
   } = useGitHubAuth();
 
   // Overall authentication check
@@ -197,16 +200,8 @@ export default function AdminPage() {
   // Navigation hook for redirect
   const navigate = useNavigate();
 
-  // Login form state
-  const [loginTokenInput, setLoginTokenInput] = useState(DEFAULT_GITHUB_TOKEN || githubToken || "");
-  const [loginOwnerInput, setLoginOwnerInput] = useState(githubConfig.owner || "informatique-cmd");
-  const [loginRepoInput, setLoginRepoInput] = useState(githubConfig.repo || "examens_blanc_lfjp");
-  const [loginBranchInput, setLoginBranchInput] = useState(githubConfig.branch || "main");
-  const [showToken, setShowToken] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [hasOpenedGitHub, setHasOpenedGitHub] = useState(false);
-  const [showAdvancedConfig, setShowAdvancedConfig] = useState(false);
+  // Dashboard GitHub token saving state (inside SuperAdmin Paramètres / Déploiement)
+  const [isSavingDashboardToken, setIsSavingDashboardToken] = useState(false);
 
   // Sync / Push modal state
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
@@ -357,10 +352,9 @@ export default function AdminPage() {
     }
   }, [githubToken]);
 
-  // Logout handler with immediate session reset
+  // Logout handler with immediate session reset (preserves DSI localStorage GitHub token)
   const handleLogout = () => {
     saveAdminSession(null);
-    logoutGitHub();
     showNotification("Vous avez été déconnecté de l'espace d'administration.");
   };
 
@@ -396,79 +390,49 @@ export default function AdminPage() {
     showNotification(`Connexion réussie ! Bienvenue ${newSession.name}.`);
   };
 
+  // SuperAdmin (DSI) Email/Password Login
+  const handleSuperAdminLogin = (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    setSuperAdminLoginError(null);
+
+    const configured = cmsData.siteInfo.superAdminAuth || DEFAULT_SUPERADMIN_AUTH;
+
+    const emailMatch =
+      superAdminEmailInput.trim().toLowerCase() === configured.email.trim().toLowerCase();
+    const passMatch = superAdminPasswordInput.trim() === configured.password.trim();
+
+    if (!emailMatch || !passMatch) {
+      setSuperAdminLoginError(
+        "Identifiants incorrects. Veuillez vérifier l'adresse email et le mot de passe DSI."
+      );
+      return;
+    }
+
+    const newSession = {
+      role: "superadmin" as const,
+      email: configured.email,
+      name: configured.name || "Service Informatique (DSI)",
+    };
+    saveAdminSession(newSession);
+    setCurrentSection("dashboard");
+    showNotification(`Connexion réussie ! Bienvenue ${newSession.name}.`);
+  };
+
   // Proviseur Save Changes (Direct deployment without waiting for superadmin approval)
   const handleProviseurSave = () => {
     handleUnifiedSaveAndDeploy();
   };
 
-  // Open GitHub OAuth / Token page in popup/tab
-  const handleStartGitHubConnect = () => {
-    setHasOpenedGitHub(true);
-    setLoginError(null);
-    window.open(
-      "https://github.com/settings/tokens/new?scopes=repo&description=LFJP+Admin+CMS",
-      "_blank"
-    );
-  };
-
-  // Paste token from clipboard
-  const handlePasteClipboard = async () => {
-    try {
-      if (navigator.clipboard?.readText) {
-        const text = await navigator.clipboard.readText();
-        if (text && text.trim()) {
-          setLoginTokenInput(text.trim());
-          showNotification("Jeton collé depuis le presse-papier !");
-        }
-      }
-    } catch {
-      // Ignore if permission denied
-    }
-  };
-
   const handleSaveDashboardToken = async () => {
     const tokenToUse = (dashboardTokenInput || DEFAULT_GITHUB_TOKEN).trim();
-    setIsLoggingIn(true);
+    setIsSavingDashboardToken(true);
     const loginRes = await loginGitHub(tokenToUse, githubConfig);
-    setIsLoggingIn(false);
+    setIsSavingDashboardToken(false);
     if (loginRes.success) {
       setModalNewToken(tokenToUse);
-      showNotification("Jeton GitHub validé et enregistré avec succès !");
+      showNotification("Jeton GitHub validé et enregistré dans ce navigateur (localStorage) !");
     } else {
       showNotification("Attention : validation GitHub échouée (" + (loginRes.error || "Erreur") + ")");
-    }
-  };
-
-  // Handle GitHub Login
-  const handleLoginSubmit = async (e?: FormEvent) => {
-    if (e) e.preventDefault();
-    const tokenToUse = loginTokenInput.trim();
-    if (!tokenToUse) {
-      setLoginError("Veuillez saisir ou coller votre jeton GitHub.");
-      return;
-    }
-
-    setIsLoggingIn(true);
-    setLoginError(null);
-
-    const result = await loginGitHub(tokenToUse, {
-      owner: loginOwnerInput.trim() || "informatique-cmd",
-      repo: loginRepoInput.trim() || "examens_blanc_lfjp",
-      branch: loginBranchInput.trim() || "main",
-    });
-
-    setIsLoggingIn(false);
-    if (!result.success) {
-      setLoginError(result.error || "Impossible de se connecter à GitHub avec cette clé.");
-    } else {
-      const newSession = {
-        role: "superadmin" as const,
-        email: result.user?.login || "admin",
-        name: result.user?.name || result.user?.login || "SuperAdmin Technique",
-      };
-      saveAdminSession(newSession);
-      setCurrentSection("dashboard");
-      showNotification(`Connexion réussie ! Bienvenue ${newSession.name}.`);
     }
   };
 
@@ -841,7 +805,7 @@ export default function AdminPage() {
                 id="tab-login-proviseur"
                 onClick={() => {
                   setAuthTab("proviseur");
-                  setLoginError(null);
+                  setSuperAdminLoginError(null);
                   setProviseurLoginError(null);
                 }}
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
@@ -858,7 +822,7 @@ export default function AdminPage() {
                 id="tab-login-superadmin"
                 onClick={() => {
                   setAuthTab("superadmin");
-                  setLoginError(null);
+                  setSuperAdminLoginError(null);
                   setProviseurLoginError(null);
                 }}
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
@@ -946,106 +910,70 @@ export default function AdminPage() {
                 </div>
               </form>
             ) : (
-              /* TAB 2: SUPERADMIN GITHUB ACCESS */
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white">
-                    <Github className="h-5 w-5" />
+              /* TAB 2: SUPERADMIN (DSI) EMAIL & PASSWORD */
+              <form onSubmit={handleSuperAdminLogin} className="space-y-4">
+                <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+                    <Shield className="h-5 w-5" />
                   </div>
                   <div>
                     <h2 className="text-sm font-bold text-slate-900">Administration Technique (DSI)</h2>
                     <p className="text-[11px] text-slate-500">
-                      Accès complet avec jeton GitHub et déploiements Vercel
+                      Connectez-vous avec vos identifiants SuperAdmin DSI
                     </p>
                   </div>
                 </div>
 
-                {loginError && (
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">Adresse Email</label>
+                  <input
+                    id="input-superadmin-email"
+                    type="email"
+                    value={superAdminEmailInput}
+                    onChange={(e) => setSuperAdminEmailInput(e.target.value)}
+                    placeholder="informatique@lfjpsaly.org"
+                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 shadow-xs focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-700">Mot de passe</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowSuperAdminLoginPass(!showSuperAdminLoginPass)}
+                      className="text-[11px] text-slate-500 hover:text-slate-800 font-medium"
+                    >
+                      {showSuperAdminLoginPass ? "Masquer" : "Afficher"}
+                    </button>
+                  </div>
+                  <input
+                    id="input-superadmin-password"
+                    type={showSuperAdminLoginPass ? "text" : "password"}
+                    value={superAdminPasswordInput}
+                    onChange={(e) => setSuperAdminPasswordInput(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-mono text-slate-900 shadow-xs focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+                    required
+                  />
+                </div>
+
+                {superAdminLoginError && (
                   <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
-                    <p className="font-bold">Erreur d'authentification</p>
-                    <p className="mt-0.5">{loginError}</p>
+                    {superAdminLoginError}
                   </div>
                 )}
 
-                {/* Single direct GitHub button */}
                 <button
-                  type="button"
-                  id="btn-login-github"
-                  onClick={handleStartGitHubConnect}
-                  className="flex w-full items-center justify-center gap-3 rounded-2xl bg-slate-900 px-5 py-3 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.99]"
+                  type="submit"
+                  id="btn-submit-superadmin-login"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white shadow-xs transition hover:bg-blue-800 active:scale-[0.99]"
                 >
-                  <Github className="h-4 w-4" />
-                  <span>Se connecter avec GitHub</span>
+                  <Shield className="h-4 w-4" />
+                  <span>Accéder à l'Administration Complète</span>
                 </button>
-
-                <div className="relative flex items-center justify-center">
-                  <div className="border-t border-slate-200 w-full" />
-                  <span className="bg-white px-3 text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-                    ou saisie de votre clé
-                  </span>
-                </div>
-
-                <form onSubmit={handleLoginSubmit} className="space-y-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-slate-700">
-                        Jeton personnel GitHub (Token)
-                      </label>
-                      <button
-                        type="button"
-                        onClick={handlePasteClipboard}
-                        className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 hover:text-blue-800"
-                      >
-                        <ClipboardPaste className="h-3 w-3" />
-                        <span>Coller</span>
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type={showToken ? "text" : "password"}
-                        value={loginTokenInput}
-                        onChange={(e) => setLoginTokenInput(e.target.value)}
-                        placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                        className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono text-slate-900 shadow-xs focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowToken(!showToken)}
-                        className="absolute right-3 top-2 text-xs text-slate-400 hover:text-slate-600"
-                      >
-                        {showToken ? "Masquer" : "Afficher"}
-                      </button>
-                    </div>
-                    {DEFAULT_GITHUB_TOKEN && loginTokenInput !== DEFAULT_GITHUB_TOKEN && (
-                      <div className="pt-1">
-                        <button
-                          type="button"
-                          onClick={() => setLoginTokenInput(DEFAULT_GITHUB_TOKEN)}
-                          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-blue-700 hover:text-blue-900"
-                        >
-                          <Key className="h-3 w-3" />
-                          <span>Insérer jeton LFJP configuré</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isLoggingIn || !loginTokenInput.trim()}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-blue-800 disabled:opacity-50"
-                  >
-                    {isLoggingIn ? (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        <span>Vérification de l'accès...</span>
-                      </>
-                    ) : (
-                      <span>Accéder à l'Administration Complète</span>
-                    )}
-                  </button>
-                </form>
-              </div>
+              </form>
             )}
           </div>
 
@@ -1119,21 +1047,13 @@ export default function AdminPage() {
               <span>Direction : {adminSession.name || "Proviseur"}</span>
             </div>
           ) : (
-            githubUser ? (
-              <div className="hidden sm:flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs">
-                <img
-                  src={githubUser.avatar_url}
-                  alt={githubUser.login}
-                  className="h-5 w-5 rounded-full border border-slate-300"
-                />
-                <span className="font-semibold text-slate-800">@{githubUser.login}</span>
-                <span className="rounded bg-blue-100 text-blue-700 px-1.5 py-0.5 text-[10px] font-bold">SuperAdmin</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs text-blue-900 font-bold">
-                <span>⚡ SuperAdmin</span>
-              </div>
-            )
+            <div className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs text-blue-900 font-bold shadow-xs">
+              <span className="flex h-2 w-2 rounded-full bg-blue-600" />
+              <span>{adminSession?.name || "Service Informatique (DSI)"}</span>
+              <span className="rounded bg-blue-100 text-blue-700 px-1.5 py-0.5 text-[10px] font-bold">
+                SuperAdmin
+              </span>
+            </div>
           )}
 
           <Link
@@ -2374,9 +2294,14 @@ export default function AdminPage() {
                     <button
                       type="button"
                       onClick={handleSaveDashboardToken}
-                      className="flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white hover:bg-slate-800"
+                      disabled={isSavingDashboardToken}
+                      className="flex items-center gap-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-50"
                     >
-                      <Check className="h-3.5 w-3.5" />
+                      {isSavingDashboardToken ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5" />
+                      )}
                       <span>Enregistrer ce jeton</span>
                     </button>
                     <button
