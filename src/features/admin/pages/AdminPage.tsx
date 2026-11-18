@@ -173,13 +173,13 @@ export default function AdminPage() {
   const [authTab, setAuthTab] = useState<"proviseur" | "superadmin">("proviseur");
 
   // Proviseur Login state
-  const [proviseurEmailInput, setProviseurEmailInput] = useState<string>("proviseur@lfjpsaly.org");
+  const [proviseurEmailInput, setProviseurEmailInput] = useState<string>("");
   const [proviseurPasswordInput, setProviseurPasswordInput] = useState<string>("");
   const [showProviseurLoginPass, setShowProviseurLoginPass] = useState<boolean>(false);
   const [proviseurLoginError, setProviseurLoginError] = useState<string | null>(null);
 
   // SuperAdmin (DSI) Login state
-  const [superAdminEmailInput, setSuperAdminEmailInput] = useState<string>("informatique@lfjpsaly.org");
+  const [superAdminEmailInput, setSuperAdminEmailInput] = useState<string>("");
   const [superAdminPasswordInput, setSuperAdminPasswordInput] = useState<string>("");
   const [showSuperAdminLoginPass, setShowSuperAdminLoginPass] = useState<boolean>(false);
   const [superAdminLoginError, setSuperAdminLoginError] = useState<string | null>(null);
@@ -857,7 +857,8 @@ export default function AdminPage() {
                     type="email"
                     value={proviseurEmailInput}
                     onChange={(e) => setProviseurEmailInput(e.target.value)}
-                    placeholder="proviseur@lfjpsaly.org"
+                    placeholder="Saisissez votre adresse email"
+                    autoComplete="off"
                     className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 shadow-xs focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
                     required
                   />
@@ -931,7 +932,8 @@ export default function AdminPage() {
                     type="email"
                     value={superAdminEmailInput}
                     onChange={(e) => setSuperAdminEmailInput(e.target.value)}
-                    placeholder="informatique@lfjpsaly.org"
+                    placeholder="Saisissez votre adresse email"
+                    autoComplete="off"
                     className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 shadow-xs focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
                     required
                   />
