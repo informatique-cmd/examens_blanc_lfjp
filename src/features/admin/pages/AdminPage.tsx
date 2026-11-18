@@ -1111,7 +1111,7 @@ export default function AdminPage() {
         </div>
 
         {/* User profile & Actions */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-2.5 ml-auto">
           {/* User badge */}
           {adminSession?.role === "proviseur" ? (
             <div className="flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-950 font-bold shadow-xs">
@@ -1145,28 +1145,6 @@ export default function AdminPage() {
             <Eye className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Voir le site</span>
             <ExternalLink className="h-3 w-3 opacity-50" />
-          </Link>
-
-          <Link
-            to="/convocations"
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 shadow-xs transition hover:bg-indigo-100"
-          >
-            <Printer className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Portail Convocations</span>
-            <ExternalLink className="h-3 w-3 opacity-50" />
-          </Link>
-
-          {/* Bouton Espace Impression Grand Format */}
-          <Link
-            to="/orga-dnb"
-            target="_blank"
-            className="flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs font-bold text-sky-800 shadow-xs transition hover:bg-sky-100"
-            title="Module d'impression grand format des listes d'émargement et étiquettes"
-          >
-            <Printer className="h-3.5 w-3.5 text-sky-600" />
-            <span className="hidden sm:inline">Espace Impression</span>
           </Link>
 
           {/* Actions : bouton Enregistrer & Mettre à jour direct vers le site en ligne (Vercel & GitHub) */}
