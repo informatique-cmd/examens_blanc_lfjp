@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-17T11:05:17.121Z",
+  "updatedAt": "2026-11-26T11:21:13.339Z",
   "siteInfo": {
     "title": "Lycée Français Jacques Prévert",
     "subtitle": "Lycée Français Jacques Prévert de Saly, Sénégal • Réseau AEFE",
@@ -1113,16 +1113,6 @@
       "mission": "Surveillant titulaire (plein créneau)"
     },
     {
-      "id": "surv-dec2026-22",
-      "examTitle": "Examens blancs - décembre 2026",
-      "slotId": "slot-1794216702499",
-      "roomName": "S3",
-      "date": "2026-12-09",
-      "timeSlot": "08:00 - 12:00",
-      "teacherName": "Mme MOURAIN DIOP Fanelly",
-      "mission": "Surveillant titulaire (plein créneau)"
-    },
-    {
       "id": "surv-dec2026-23",
       "examTitle": "Examens blancs - décembre 2026",
       "slotId": "slot-1794216903837",
@@ -1351,6 +1341,26 @@
       "timeSlot": "14:00 - 18:00",
       "teacherName": "M. TOURE Babacar",
       "mission": "Surveillant renfort"
+    },
+    {
+      "id": "surv-split1-1795691970927-80tp",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794216702499",
+      "roomName": "S3",
+      "date": "2026-12-09",
+      "timeSlot": "08:00 - 10:00",
+      "teacherName": "M. FAYE François",
+      "mission": "Surveillant relais (08:00 - 10:00)"
+    },
+    {
+      "id": "surv-split2-1795691970928-o8zb",
+      "examTitle": "Examens blancs - décembre 2026",
+      "slotId": "slot-1794216702499",
+      "roomName": "S3",
+      "date": "2026-12-09",
+      "timeSlot": "10:00 - 12:00",
+      "teacherName": "Mme MOURAIN DIOP Fanelly",
+      "mission": "Surveillant relais (10:00 - 12:00)"
     }
   ],
   "candidates": [
