@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "updatedAt": "2026-11-26T11:21:13.339Z",
+  "updatedAt": "2026-11-26T11:32:18.778Z",
   "siteInfo": {
     "title": "Lycée Français Jacques Prévert",
     "subtitle": "Lycée Français Jacques Prévert de Saly, Sénégal • Réseau AEFE",
@@ -1343,7 +1343,7 @@
       "mission": "Surveillant renfort"
     },
     {
-      "id": "surv-split1-1795691970927-80tp",
+      "id": "surv-custom-1795692677598-0a18",
       "examTitle": "Examens blancs - décembre 2026",
       "slotId": "slot-1794216702499",
       "roomName": "S3",
@@ -1353,7 +1353,7 @@
       "mission": "Surveillant relais (08:00 - 10:00)"
     },
     {
-      "id": "surv-split2-1795691970928-o8zb",
+      "id": "surv-custom-1795692702845-l1x6",
       "examTitle": "Examens blancs - décembre 2026",
       "slotId": "slot-1794216702499",
       "roomName": "S3",
