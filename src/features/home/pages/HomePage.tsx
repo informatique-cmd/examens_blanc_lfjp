@@ -45,6 +45,7 @@ import {
   formatSupervisorMissionLabel,
   parseTimeRangeMinutes,
   getSlotDisplayedEndTime,
+  surveillancesTimeOverlap,
 } from "../../../shared/services/cms-store";
 
 // Helper to normalize search strings (removes accents, lowercase, trim)
@@ -239,19 +240,51 @@ export default function HomePage() {
 
       const count = assignedCandidates.length;
 
-      // 2. Supervisor assigned for this room on this slot/time
-      const assignedSurv = cmsData.surveillances.find((s) => {
-        if (s.roomName !== room.name) return false;
-        if (s.slotId && slot.id && s.slotId === slot.id) return true;
-        if (s.date === slot.date && (!s.examTitle || s.examTitle.trim().toLowerCase() === exam.title.trim().toLowerCase())) {
-          const matchTime =
-            s.timeSlot.includes(slot.startTime) ||
-            s.timeSlot.includes(slot.endTime) ||
-            slot.startTime.includes(s.timeSlot.split(" - ")[0] || "---");
-          if (matchTime) return true;
-        }
-        return false;
-      });
+      // 2. ALL supervisors assigned for this room on this slot/time (excluding Renfort)
+      const slotRangeStr = `${slot.startTime} - ${slot.endTime}`;
+      const matchedSurvs = cmsData.surveillances
+        .filter((s) => {
+          if (isRenfortSurveillance(s)) return false;
+          if ((s.roomName || "").trim().toLowerCase() !== room.name.trim().toLowerCase()) {
+            return false;
+          }
+          if (!(s.teacherName || "").trim()) return false;
+          if (s.slotId && slot.id) {
+            return s.slotId === slot.id;
+          }
+          if (
+            s.date === slot.date &&
+            (!s.examTitle ||
+              s.examTitle.trim().toLowerCase() === exam.title.trim().toLowerCase())
+          ) {
+            return surveillancesTimeOverlap(slot.date, slotRangeStr, s.date, s.timeSlot);
+          }
+          return false;
+        })
+        .sort((a, b) => {
+          const rangeA = parseTimeRangeMinutes(a.timeSlot);
+          const rangeB = parseTimeRangeMinutes(b.timeSlot);
+          const startDiff = (rangeA?.startMin ?? 0) - (rangeB?.startMin ?? 0);
+          if (startDiff !== 0) return startDiff;
+          const endDiff = (rangeA?.endMin ?? 0) - (rangeB?.endMin ?? 0);
+          if (endDiff !== 0) return endDiff;
+          return (a.timeSlot || "").localeCompare(b.timeSlot || "");
+        });
+
+      const seenSurvKeys = new Set<string>();
+      const surveillants: Array<{ id: string; teacherName: string; timeSlot: string }> = [];
+      for (const s of matchedSurvs) {
+        const cleanedName = cleanSupervisorName(s.teacherName) || s.teacherName.trim();
+        const cleanSlot = (s.timeSlot || "").trim();
+        const dedupKey = `${cleanedName.toLowerCase()}::${cleanSlot}`;
+        if (seenSurvKeys.has(dedupKey)) continue;
+        seenSurvKeys.add(dedupKey);
+        surveillants.push({
+          id: s.id,
+          teacherName: cleanedName,
+          timeSlot: cleanSlot,
+        });
+      }
 
       const isTTRoom =
         Boolean(slot.ttRoomIds?.includes(room.id)) ||
@@ -263,15 +296,57 @@ export default function HomePage() {
       return {
         room,
         candidateCount: count,
-        surveillant: assignedSurv?.teacherName || null,
+        surveillants,
         isTTRoom,
       };
     });
 
-    // Keep ONLY rooms with assigned candidates OR assigned supervisor!
+    // Keep ONLY rooms with assigned candidates OR assigned supervisors!
     return activeList.filter(
-      (item) => item.candidateCount > 0 || item.surveillant !== null
+      (item) => item.candidateCount > 0 || item.surveillants.length > 0
     );
+  };
+
+  /**
+   * Returns Renfort supervisors assigned to a given slot, sorted chronologically.
+   */
+  const getRenfortsForSlot = (slot: CmsExamSlot, exam: CmsExam) => {
+    const slotRangeStr = `${slot.startTime} - ${slot.endTime}`;
+    const matched = cmsData.surveillances
+      .filter((s) => {
+        if (!isRenfortSurveillance(s)) return false;
+        if (!(s.teacherName || "").trim()) return false;
+        if (s.slotId && slot.id) {
+          return s.slotId === slot.id;
+        }
+        if (
+          s.date === slot.date &&
+          (!s.examTitle ||
+            s.examTitle.trim().toLowerCase() === exam.title.trim().toLowerCase())
+        ) {
+          return surveillancesTimeOverlap(slot.date, slotRangeStr, s.date, s.timeSlot);
+        }
+        return false;
+      })
+      .sort((a, b) => {
+        const rangeA = parseTimeRangeMinutes(a.timeSlot);
+        const rangeB = parseTimeRangeMinutes(b.timeSlot);
+        const startDiff = (rangeA?.startMin ?? 0) - (rangeB?.startMin ?? 0);
+        if (startDiff !== 0) return startDiff;
+        return (a.timeSlot || "").localeCompare(b.timeSlot || "");
+      });
+
+    const seenKeys = new Set<string>();
+    const list: Array<{ id: string; teacherName: string; timeSlot: string }> = [];
+    for (const s of matched) {
+      const cleanedName = cleanSupervisorName(s.teacherName) || s.teacherName.trim();
+      const cleanSlot = (s.timeSlot || "").trim();
+      const key = `${cleanedName.toLowerCase()}::${cleanSlot}`;
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      list.push({ id: s.id, teacherName: cleanedName, timeSlot: cleanSlot });
+    }
+    return list;
   };
 
   const alertBannerConfig = {
@@ -835,6 +910,7 @@ export default function HomePage() {
                                 <tbody className="divide-y divide-slate-200/80 bg-white">
                                   {visibleSlots.map((slot, sIdx) => {
                                     const activeRooms = getActiveRoomsForSlot(slot, exam);
+                                    const slotRenforts = getRenfortsForSlot(slot, exam);
 
                                     return (
                                       <tr key={slot.id || sIdx} className="hover:bg-slate-50/70 align-top">
@@ -877,42 +953,95 @@ export default function HomePage() {
 
                                         {/* Salles & Surveillants */}
                                         <td className="py-3 px-3.5 min-w-[260px]">
-                                          {activeRooms.length === 0 ? (
+                                          {activeRooms.length === 0 && slotRenforts.length === 0 ? (
                                             <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 border border-dashed border-slate-200 px-2.5 py-1 rounded-lg">
                                               <Info className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                                               <span>Affectation en cours de confirmation</span>
                                             </span>
                                           ) : (
                                             <div className="flex flex-wrap gap-1.5">
-                                              {activeRooms.map((activeItem) => (
-                                                <div
-                                                  key={activeItem.room.id}
-                                                  className={`px-2.5 py-1.5 rounded-lg border text-[11px] leading-tight ${
-                                                    activeItem.isTTRoom
-                                                      ? "border-purple-200 bg-purple-50/50"
-                                                      : "border-slate-200 bg-slate-50/70"
-                                                  }`}
-                                                >
-                                                  <div className="flex items-center gap-1.5 font-bold text-[#0F2A56]">
-                                                    <School className="h-3 w-3 text-[#1D4ED8] shrink-0" />
-                                                    <span>{activeItem.room.name}</span>
-                                                    {activeItem.isTTRoom && (
-                                                      <span className="px-1 rounded bg-purple-200 text-purple-900 font-bold text-[9px]">
-                                                        TT
+                                              {activeRooms.map((activeItem) => {
+                                                const hasMultipleRelays = activeItem.surveillants.length > 1;
+                                                return (
+                                                  <div
+                                                    key={activeItem.room.id}
+                                                    className={`px-2.5 py-1.5 rounded-lg border text-[11px] leading-tight ${
+                                                      activeItem.isTTRoom
+                                                        ? "border-purple-200 bg-purple-50/50"
+                                                        : "border-slate-200 bg-slate-50/70"
+                                                    }`}
+                                                  >
+                                                    <div className="flex items-center gap-1.5 font-bold text-[#0F2A56]">
+                                                      <School className="h-3 w-3 text-[#1D4ED8] shrink-0" />
+                                                      <span>{activeItem.room.name}</span>
+                                                      {activeItem.isTTRoom && (
+                                                        <span className="px-1 rounded bg-purple-200 text-purple-900 font-bold text-[9px]">
+                                                          TT
+                                                        </span>
+                                                      )}
+                                                      <span className="text-slate-500 font-mono font-semibold tabular-nums">
+                                                        ({activeItem.candidateCount})
                                                       </span>
+                                                    </div>
+
+                                                    {activeItem.surveillants.length === 0 ? (
+                                                      <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-0.5">
+                                                        <UserCheck className="h-2.5 w-2.5 text-slate-400 shrink-0" />
+                                                        <span>Surveillant à confirmer</span>
+                                                      </div>
+                                                    ) : (
+                                                      <div className="flex flex-col gap-0.5 mt-1">
+                                                        {activeItem.surveillants.map((surv) => (
+                                                          <div
+                                                            key={surv.id}
+                                                            className="flex items-center gap-1 text-[10px] text-slate-700"
+                                                          >
+                                                            <UserCheck className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
+                                                            <span>
+                                                              {surv.teacherName}
+                                                              {hasMultipleRelays && surv.timeSlot ? (
+                                                                <span className="text-slate-500 font-mono tabular-nums ml-1">
+                                                                  ({surv.timeSlot})
+                                                                </span>
+                                                              ) : null}
+                                                            </span>
+                                                          </div>
+                                                        ))}
+                                                      </div>
                                                     )}
-                                                    <span className="text-slate-500 font-mono font-semibold tabular-nums">
-                                                      ({activeItem.candidateCount})
+                                                  </div>
+                                                );
+                                              })}
+
+                                              {slotRenforts.length > 0 && (
+                                                <div className="px-2.5 py-1.5 rounded-lg border border-amber-200 bg-amber-50/60 text-[11px] leading-tight">
+                                                  <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                                                    <ShieldCheck className="h-3 w-3 text-amber-700 shrink-0" />
+                                                    <span>Renforts</span>
+                                                    <span className="text-amber-700 font-mono font-semibold tabular-nums">
+                                                      ({slotRenforts.length})
                                                     </span>
                                                   </div>
-                                                  <div className="flex items-center gap-1 text-[10px] text-slate-600 mt-0.5">
-                                                    <UserCheck className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
-                                                    <span className="truncate max-w-[150px]">
-                                                      {activeItem.surveillant || "Surveillant à confirmer"}
-                                                    </span>
+                                                  <div className="flex flex-col gap-0.5 mt-1">
+                                                    {slotRenforts.map((renf) => (
+                                                      <div
+                                                        key={renf.id}
+                                                        className="flex items-center gap-1 text-[10px] text-amber-950"
+                                                      >
+                                                        <UserCheck className="h-2.5 w-2.5 text-amber-700 shrink-0" />
+                                                        <span>
+                                                          {renf.teacherName}
+                                                          {renf.timeSlot ? (
+                                                            <span className="text-amber-800/80 font-mono tabular-nums ml-1">
+                                                              ({renf.timeSlot})
+                                                            </span>
+                                                          ) : null}
+                                                        </span>
+                                                      </div>
+                                                    ))}
                                                   </div>
                                                 </div>
-                                              ))}
+                                              )}
                                             </div>
                                           )}
                                         </td>
